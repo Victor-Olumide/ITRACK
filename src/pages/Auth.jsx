@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
-import { MdMonitor } from 'react-icons/md'
+import { Monitor } from 'lucide-react'
 
 // ── tiny SVG logo ─────────────────────────────────────────────
 function Logo({ size = 40 }) {
@@ -120,7 +120,7 @@ function LoginForm() {
 
       {/* Workstation hint */}
       <div className="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100">
-        <MdMonitor className="mt-0.5 text-gray-400 shrink-0" size={18} />
+        <Monitor className="mt-0.5 text-gray-400 shrink-0" size={18} />
         <p className="text-xs text-gray-500">
           This computer: <span className="font-semibold text-gray-700">IT-DESK-PC03</span> · IT office.
           Gate PCs open the gate station after sign-in.

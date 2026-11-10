@@ -1,37 +1,36 @@
-import React, { useState } from 'react'
+// src/components/Sidebar.jsx
+// Dark, narrow left navigation. Icons come from lucide-react.
+// Badge counts are derived from mockData — nothing is hard-coded inline.
+
+import { useState } from 'react'
 import { NavLink } from 'react-router'
 import {
-  MdHome,
-  MdConfirmationNumber,
-  MdMonitor,
-  MdMeetingRoom,
-  MdBarChart,
-  MdPeople,
-  MdLocationOn,
-  MdMenu,
-  MdClose,
-} from 'react-icons/md'
+  Home, Ticket, Monitor, Package, ClipboardCheck,
+  ScanLine, BarChart3, Settings, Menu, X,
+} from 'lucide-react'
+import { tickets, gatePasses, metrics } from '../lib/mockData'
+
+const unassignedCount = tickets.filter((t) => !t.assigneeId && t.status !== 'Resolved').length
+const passesWaiting = gatePasses.filter((g) => g.status === 'Waiting').length
 
 const NAV = [
-  { to: '/',        label: 'Home',        Icon: MdHome,               badge: null },
-  { to: '/issues',  label: 'Tickets',     Icon: MdConfirmationNumber, badge: 6    },
-  { to: '/devices', label: 'Devices',     Icon: MdMonitor,            badge: null },
-  { to: '/gate',    label: 'Gate passes', Icon: MdMeetingRoom,        badge: 2    },
-  { to: '/reports', label: 'Reports',     Icon: MdBarChart,           badge: null },
+  { to: '/',         label: 'Home',     Icon: Home },
+  { to: '/tickets',  label: 'Tickets',  Icon: Ticket,        badge: unassignedCount },
+  { to: '/devices',  label: 'Devices',  Icon: Monitor },
+  { to: '/stock',    label: 'Stock',    Icon: Package },
+  { to: '/passes',   label: 'Passes',   Icon: ClipboardCheck, badge: passesWaiting },
+  { to: '/gate',     label: 'Gate',     Icon: ScanLine },
+  { to: '/reports',  label: 'Reports',  Icon: BarChart3 },
+  { to: '/settings', label: 'Settings', Icon: Settings },
 ]
 
-const MGMT = [
-  { to: '/team',     label: 'People and roles', Icon: MdPeople     },
-  { to: '/settings', label: 'Locations',        Icon: MdLocationOn },
-]
-
-// ITrack logo mark (kept as SVG — it's a custom brand shape, not a generic icon)
+// ITrack logo mark (custom brand shape, kept as SVG — not a generic icon).
 function LogoMark() {
   return (
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
       <circle cx="11" cy="11" r="9" stroke="white" strokeWidth="2" />
-      <circle cx="11" cy="7"  r="1.5" fill="#CCFF00" />
-      <rect   x="10" y="10" width="2" height="6" rx="1" fill="white" />
+      <circle cx="11" cy="7" r="1.5" fill="#CCFF00" />
+      <rect x="10" y="10" width="2" height="6" rx="1" fill="white" />
     </svg>
   )
 }
@@ -62,22 +61,11 @@ export default function Sidebar() {
           <NavLink key={to} to={to} end={to === '/'} className={linkClass}>
             <Icon size={18} />
             <span className="flex-1">{label}</span>
-            {badge && (
+            {badge ? (
               <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-[#CCFF00] text-[#0a1628] leading-none">
                 {badge}
               </span>
-            )}
-          </NavLink>
-        ))}
-
-        <p className="pt-5 pb-1 px-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
-          Management
-        </p>
-
-        {MGMT.map(({ to, label, Icon }) => (
-          <NavLink key={to} to={to} className={linkClass}>
-            <Icon size={18} />
-            <span>{label}</span>
+            ) : null}
           </NavLink>
         ))}
       </nav>
@@ -85,11 +73,11 @@ export default function Sidebar() {
       {/* SLA meter */}
       <div className="m-3 p-4 rounded-xl bg-white/5 border border-white/10">
         <p className="text-xs text-slate-400 mb-1">SLA met this month</p>
-        <p className="text-3xl font-extrabold text-white">87%</p>
+        <p className="text-3xl font-extrabold text-white">{metrics.slaMetPercentage}%</p>
         <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
-          <div className="h-full rounded-full bg-[#CCFF00]" style={{ width: '87%' }} />
+          <div className="h-full rounded-full bg-[#CCFF00]" style={{ width: `${metrics.slaMetPercentage}%` }} />
         </div>
-        <p className="text-xs text-slate-500 mt-1">Target 90%</p>
+        <p className="text-xs text-slate-500 mt-1">Target {metrics.slaTargetPercentage}%</p>
       </div>
     </div>
   )
@@ -104,10 +92,10 @@ export default function Sidebar() {
       {/* Mobile toggle button */}
       <button
         className="md:hidden fixed bottom-4 left-4 z-50 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center"
-        onClick={() => setMobileOpen(p => !p)}
+        onClick={() => setMobileOpen((p) => !p)}
         aria-label="Toggle sidebar"
       >
-        {mobileOpen ? <MdClose size={22} /> : <MdMenu size={22} />}
+        {mobileOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
 
       {/* Mobile drawer */}
