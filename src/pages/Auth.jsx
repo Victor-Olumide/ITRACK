@@ -1,22 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Monitor } from 'lucide-react'
-
-// ── tiny SVG logo ─────────────────────────────────────────────
-function Logo({ size = 40 }) {
-  return (
-    <div
-      style={{ width: size, height: size }}
-      className="rounded-xl bg-[#275AF2] flex items-center justify-center shrink-0"
-    >
-      <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 22 22" fill="none">
-        <circle cx="11" cy="11" r="9" stroke="white" strokeWidth="2" />
-        <circle cx="11" cy="7"  r="1.5" fill="#CCFF00" />
-        <rect   x="10" y="10" width="2" height="6" rx="1" fill="white" />
-      </svg>
-    </div>
-  )
-}
+import Logo from '../components/Logo'
+import { DEMO_PASSWORD, homePathForRole, useAuth } from '../contexts/AuthContext'
+import { metrics } from '../lib/mockData'
 
 // ── reusable input ─────────────────────────────────────────────
 function Field({ label, id, type = 'text', placeholder, value, onChange, right }) {
@@ -48,14 +35,22 @@ function Field({ label, id, type = 'text', placeholder, value, onChange, right }
 
 // ── Login form ────────────────────────────────────────────────
 function LoginForm() {
-  const [email,    setEmail]    = useState('')
+  const { users, login } = useAuth()
+  const navigate = useNavigate()
+  const [email,    setEmail]    = useState(users[0]?.email ?? '')
   const [password, setPassword] = useState('')
   const [show,     setShow]     = useState(false)
   const [remember, setRemember] = useState(true)
+  const [error,    setError]    = useState('')
 
   const handleSubmit = e => {
     e.preventDefault()
-    // TODO: wire up auth
+    if (!login(email, password)) {
+      setError('Email or password is incorrect.')
+      return
+    }
+    const user = users.find((item) => item.email.toLowerCase() === email.trim().toLowerCase())
+    navigate(homePathForRole(user.role), { replace: true })
   }
 
   return (
@@ -63,15 +58,29 @@ function LoginForm() {
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Sign in</h2>
         <p className="text-sm text-gray-500 mt-0.5">
-          Use your work email. IT staff and Security only.
+            Sign in with an account provided by your IT Admin.
         </p>
       </div>
 
-      <Field
-        label="Work email"
-        id="email"
-        type="email"
-        placeholder="you@company.ng"
+        <label htmlFor="demo-user" className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+          Demo account
+          <select
+            id="demo-user"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800"
+          >
+            {users.map((user) => (
+              <option key={user.id} value={user.email}>{user.name} · {user.role}</option>
+            ))}
+          </select>
+        </label>
+
+        <Field
+          label="Work email"
+          id="email"
+          type="email"
+          placeholder="you@abuad.edu.ng"
         value={email}
         onChange={e => setEmail(e.target.value)}
       />
@@ -117,100 +126,25 @@ function LoginForm() {
       >
         Sign in
       </button>
+      {error && (
+        <p role="alert" className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+          {error}
+        </p>
+      )}
 
-      {/* Workstation hint */}
       <div className="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100">
         <Monitor className="mt-0.5 text-gray-400 shrink-0" size={18} />
         <p className="text-xs text-gray-500">
-          This computer: <span className="font-semibold text-gray-700">IT-DESK-PC03</span> · IT office.
-          Gate PCs open the gate station after sign-in.
+          Demo mode only: seeded accounts use <span className="font-semibold text-gray-700">{DEMO_PASSWORD}</span>.
+          Created accounts use the password set by the admin.
         </p>
       </div>
-    </form>
-  )
-}
-
-// ── Sign-up form ──────────────────────────────────────────────
-function SignupForm() {
-  const [name,     setName]     = useState('')
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm,  setConfirm]  = useState('')
-  const [show,     setShow]     = useState(false)
-
-  const handleSubmit = e => {
-    e.preventDefault()
-    // TODO: wire up registration
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Create account</h2>
-        <p className="text-sm text-gray-500 mt-0.5">
-          IT staff and Security personnel only.
-        </p>
-      </div>
-
-      <Field
-        label="Full name"
-        id="name"
-        placeholder="Ngozi Emeka"
-        value={name}
-        onChange={e => setName(e.target.value)}
-      />
-
-      <Field
-        label="Work email"
-        id="signup-email"
-        type="email"
-        placeholder="you@company.ng"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-      />
-
-      <Field
-        label="Password"
-        id="signup-password"
-        type={show ? 'text' : 'password'}
-        placeholder="Min. 8 characters"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        right={
-          <button
-            type="button"
-            onClick={() => setShow(p => !p)}
-            className="text-xs text-gray-500 hover:text-gray-800 font-medium"
-          >
-            {show ? 'Hide' : 'Show'}
-          </button>
-        }
-      />
-
-      <Field
-        label="Confirm password"
-        id="confirm-password"
-        type={show ? 'text' : 'password'}
-        placeholder="Repeat password"
-        value={confirm}
-        onChange={e => setConfirm(e.target.value)}
-      />
-
-      <button
-        type="submit"
-        className="w-full py-3 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95
-                   text-white font-semibold text-sm tracking-wide transition-all"
-      >
-        Create account
-      </button>
     </form>
   )
 }
 
 // ── Main Auth page ────────────────────────────────────────────
 export default function Auth() {
-  const [tab, setTab] = useState('login') // 'login' | 'signup'
-
   return (
     <div className="min-h-screen flex">
 
@@ -225,14 +159,25 @@ export default function Auth() {
         {/* Hero copy */}
         <div className="relative z-10">
           <h1 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight">
-            Every ticket.<br />
-            Every device.<br />
-            <span className="text-[#CCF326]">One desk.</span>
+            Report it.<br />
+            Track it.<br />
+            <span className="text-[#CCF326]">Get it fixed.</span>
           </h1>
           <p className="mt-4 text-sm text-gray-400 leading-relaxed max-w-xs">
-            The IT team's desktop app. It keeps running in the tray,
-            so SLA alerts and gate checks reach you even when the window is closed.
+            One place for IT problems, every device the university owns, and the passes that let them leave the gate.
           </p>
+          <div className="mt-8 grid max-w-sm grid-cols-3 gap-3">
+            {[
+              [String(metrics.devicesTotal), 'devices tracked'],
+              [`${metrics.avgResolutionHours ?? '—'} h`, 'average fix time'],
+              [`${metrics.slaMetPercentage}%`, 'on time this month'],
+            ].map(([value, label]) => (
+              <div key={label} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-xl font-bold text-white">{value}</p>
+                <p className="mt-1 text-[10px] leading-4 text-gray-400">{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Footer */}
@@ -254,24 +199,7 @@ export default function Auth() {
         {/* Card */}
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
 
-          {/* Tab switcher */}
-          <div className="flex rounded-lg bg-gray-100 p-1 mb-6">
-            {['login', 'signup'].map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  tab === t
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {t === 'login' ? 'Sign in' : 'Sign up'}
-              </button>
-            ))}
-          </div>
-
-          {tab === 'login' ? <LoginForm /> : <SignupForm />}
+          <LoginForm />
         </div>
 
         {/* <p className="mt-4 text-xs text-gray-400">Version 1.0.0</p> */}

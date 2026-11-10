@@ -2,7 +2,7 @@
 
 A desktop-class IT support ticket and asset management web app built for internal IT teams. Manage helpdesk tickets, track hardware assets, run gate-pass approvals, and monitor SLA performance — all from a single interface.
 
-> **Status:** Active development · 5 of 25 screens designed
+> **Status:** Active development · role-based UI prototypes in progress
 
 ---
 
@@ -32,12 +32,38 @@ npm install
 # Dev server (http://localhost:5173)
 npm run dev
 
+# API transport tests
+npm test
+
 # Production build
 npm run build
 
 # Preview production build
 npm run preview
 ```
+
+## Role UI routes
+
+| Workspace | Route |
+|---|---|
+| IT Admin | `/` |
+| Technician | `/technician` |
+| Employee | `/employee` |
+| Security gate station | `/security` |
+| Sign in | `/login` |
+| Create accounts (IT Admin only) | `/signup` or `/people` |
+
+The UI requires a signed-in user and checks role access for each workspace. The frontend demo has seeded accounts for each role; all seeded accounts use `ITrackDemo2026!`. IT Admins can create browser-session accounts from `/people` or `/signup`.
+
+Authentication and account creation are demo-only: credentials and role checks run in the browser and are not secure against tampering. Use a backend or identity provider with server-enforced authorization before deploying. Employee ticket/gate-pass submissions and gate-pass status changes are also stored in browser session storage; they are not sent to a backend.
+
+## Backend handoff
+
+The app is still a frontend prototype; setting `VITE_API_BASE_URL` does not switch the pages to backend data. A configurable JSON API transport and optional Vite proxy are provided as integration scaffolding. See [docs/BACKEND_HANDOFF.md](./docs/BACKEND_HANDOFF.md) for the current data boundaries, proposed API map, domain/security rules, and frontend work remaining. Copy `.env.example` to `.env.local` for local API configuration. The backend developer should agree the contract and authentication model before implementing those proposed routes.
+
+IT Admins and Technicians can preview and print an A4 gate-pass slip from the pass review dialog. Printed pass details come from the available demo records; signatures, gate release, and return checks are left for the relevant staff to complete.
+
+The Security route opens a full-screen gate kiosk. It accepts tags typed by hand or sent as keyboard input by a scanner, loads the matching pass, and records a movement only after each pass item is verified. Scanner hardware connectivity and camera-based QR reading are not integrated in this frontend demo.
 
 ---
 
@@ -48,10 +74,13 @@ src/
 ├── App.jsx                  # Route definitions
 ├── main.jsx                 # React entry point
 ├── index.css                # Tailwind import
+├── contexts/
+│   └── AuthContext.jsx      # Demo session and account state
 │
 ├── lib/
-│   └── mockData.js          # Relational dummy data (users, tickets,
-│                            # devices, gate passes, stock, gate log)
+│   ├── mockData.js          # Relational dummy data (users, tickets,
+│   │                        # devices, gate passes, stock, gate log)
+│   └── sessionData.js       # Employee demo submissions in browser session storage
 │
 ├── components/
 │   ├── Layout.jsx           # App shell: Sidebar + Topbar + <Outlet />
@@ -61,8 +90,12 @@ src/
 │   └── AssetTag.jsx         # Lime-green device tag (e.g. IT-LAP-0042)
 │
 └── pages/
-    ├── Auth.jsx             # Sign in / sign up (full-screen, no shell)
+    ├── Auth.jsx             # Sign in (full-screen, no shell)
+    ├── ResetPassword.jsx    # Password reset request (demo state)
     ├── Home.jsx             # Dashboard — KPIs, SLA, ticket queue
+    ├── TechnicianHome.jsx   # Technician queue and SLA summary
+    ├── EmployeePortal.jsx   # Employee home, report, tickets, and gate passes
+    ├── AdminWorkspace.jsx   # Locations, categories, audit, models, notifications
     ├── Tickets.jsx          # Split-pane: queue list + ticket detail
     ├── Devices.jsx          # Grid/list asset view with status filters
     ├── DeviceDetailPage.jsx # 3D viewer + device info tabs
@@ -71,7 +104,7 @@ src/
     ├── GateStation.jsx      # Kiosk: scan items in/out + gate log
     ├── Stock.jsx            # Accessories / consumables table
     ├── Reports.jsx          # SLA and ticket category charts
-    ├── Settings.jsx         # Signature, notifications, start-up prefs
+    ├── Settings.jsx         # Profile, security, and notification preferences
     └── NotFound.jsx         # 404 page
 ```
 
@@ -115,10 +148,10 @@ Lookup helpers (`userById`, `deviceById`, `deviceByTag`, `ticketById`, `gatePass
 ### Everyone
 | ID | Page | Status |
 |---|---|---|
-| W01 | Sign in | 🔲 |
-| W02 | Reset password | 🔲 |
-| W18 | Notifications | 🔲 |
-| W19 | Profile and preferences | 🔲 |
+| W01 | Sign in | ✅ |
+| W02 | Reset password | ✅ |
+| W18 | Notifications | ✅ |
+| W19 | Profile and preferences | ✅ |
 | W20 | No access / not found / offline | 🔲 |
 | W21 | Empty states | 🔲 |
 | W22 | Session expired (popup) | 🔲 |
@@ -127,10 +160,10 @@ Lookup helpers (`userById`, `deviceById`, `deviceByTag`, `ticketById`, `gatePass
 ### Employees
 | ID | Page | Status |
 |---|---|---|
-| W04 | Employee home | 🔲 |
-| W07 | Report a problem | 🔲 |
-| W08 | My tickets and status | 🔲 |
-| W14 | Request a gate pass | 🔲 |
+| W04 | Employee home | ✅ |
+| W07 | Report a problem | ✅ |
+| W08 | My tickets and status | ✅ |
+| W14 | Request a gate pass | ✅ |
 
 ### IT Admin & Technicians
 | ID | Page | Status |
@@ -140,13 +173,13 @@ Lookup helpers (`userById`, `deviceById`, `deviceByTag`, `ticketById`, `gatePass
 | W09 | Devices, hover to turn | ✅ |
 | W10 | Device 3D viewer | ✅ |
 | W11 | Register a device | ✅ |
-| W12 | 3D model library | 🔲 |
-| W13 | Gate pass approvals | 🔲 |
-| W25 | Stock and licences | 🔲 |
-| W26 | Audit trail | 🔲 |
-| W15 | Reports | 🔲 |
-| W16 | People and roles | 🔲 |
-| W17 | Categories and SLA targets | 🔲 |
+| W12 | 3D model library | ✅ |
+| W13 | Gate pass approvals | ✅ |
+| W25 | Stock and licences | ✅ |
+| W26 | Audit trail | ✅ |
+| W15 | Reports | ✅ |
+| W16 | People and roles | ✅ |
+| W17 | Categories and SLA targets | ✅ |
 | W24 | Resolve / reassign / retire dialogs (popup) | 🔲 |
 
 ---
@@ -155,5 +188,5 @@ Lookup helpers (`userById`, `deviceById`, `deviceByTag`, `ticketById`, `gatePass
 
 1. Branch off `main` — use `feat/`, `fix/`, or `chore/` prefixes.
 2. Keep each page or component in one commit with a clear message.
-3. Run `npm run lint` and `npm run build` before opening a PR — both must pass with zero errors.
-4. Swap `src/lib/mockData.js` exports for real API calls when the backend is ready; page components should need no other changes.
+3. Run `npm test`, `npm run lint`, and `npm run build` before opening a PR — all must pass.
+4. Follow [docs/BACKEND_HANDOFF.md](./docs/BACKEND_HANDOFF.md) when replacing the demo data sources with asynchronous API services.

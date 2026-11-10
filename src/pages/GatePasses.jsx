@@ -4,9 +4,16 @@
 
 import { useState } from 'react'
 import { X, ClipboardCheck } from 'lucide-react'
-import { gatePasses, userById, deviceByTag, currentUser } from '../lib/mockData'
+import { gatePasses, userById, deviceByTag } from '../lib/mockData'
 import Badge from '../components/Badge'
 import AssetTag from '../components/AssetTag'
+import { useAuth } from '../contexts/AuthContext'
+import {
+  getGatePassStatusUpdates,
+  getSubmittedPasses,
+  saveGatePassStatus,
+} from '../lib/sessionData'
+import GatePassSlip from './GatePassSlip'
 
 // ── helpers ──────────────────────────────────────────────────
 const CLASS_BY_PREFIX = {
@@ -31,11 +38,11 @@ function toItemRow(it) {
 }
 
 // ── Review modal ─────────────────────────────────────────────
-function ReviewModal({ pass, onClose }) {
+function ReviewModal({ pass, onClose, onPreview, viewer, users, onResolve }) {
   const [isReturnable, setIsReturnable] = useState(true)
   const [pin, setPin] = useState('')
 
-  const requester = userById(pass.requesterId)
+  const requester = users.find((item) => item.id === pass.requesterId) ?? userById(pass.requesterId)
   const items = pass.items.map(toItemRow)
 
   return (
@@ -200,7 +207,7 @@ function ReviewModal({ pass, onClose }) {
             <div className="p-5 sm:border-r border-b sm:border-b-0 border-slate-200 bg-white">
               <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Issued By</h4>
               <p className="text-sm font-bold text-[#111a38] mb-4">
-                {currentUser.name} · {currentUser.role} · {currentUser.staffId}
+                {viewer.name} · {viewer.role} · {viewer.staffId}
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -234,15 +241,25 @@ function ReviewModal({ pass, onClose }) {
 
         {/* ── Footer ── */}
         <div className="px-7 py-5 sm:px-8 border-t border-slate-100 flex items-center justify-between rounded-b-[32px] bg-white shrink-0">
-          <button className="text-red-600 text-sm font-bold px-4 py-2 rounded-xl hover:bg-red-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => onResolve('Rejected')}
+            className="text-red-600 text-sm font-bold px-4 py-2 rounded-xl hover:bg-red-50 transition-colors"
+          >
             Reject…
-          </button>
-          <div className="flex gap-3">
-            <button className="px-6 py-2.5 rounded-full border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition-colors">
-              Preview slip
             </button>
-            <button
-              disabled={pin.length < 4}
+          <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => onPreview({ ...pass, isReturnable })}
+            className="px-6 py-2.5 rounded-full border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition-colors"
+          >
+            Preview slip
+          </button>
+          <button
+            type="button"
+            onClick={() => onResolve('Approved')}
+            disabled={pin.length < 4}
               className={`px-6 py-2.5 rounded-full text-sm font-bold transition-colors ${
                 pin.length >= 4
                   ? 'bg-[#3155ff] text-white hover:bg-blue-700 cursor-pointer'
@@ -260,15 +277,32 @@ function ReviewModal({ pass, onClose }) {
 }
 
 // ── Gate passes list ─────────────────────────────────────────
-const STATUSES = ['Waiting', 'Approved', 'Overdue']
+const STATUSES = ['Waiting', 'Approved', 'Overdue', 'Rejected']
 
 export default function GatePasses() {
+  const { user, users } = useAuth()
+  const [passes, setPasses] = useState(() => {
+    const updates = getGatePassStatusUpdates()
+    return [...gatePasses, ...getSubmittedPasses()].map((pass) => ({
+      ...pass,
+      status: updates[pass.id] ?? pass.status,
+    }))
+  })
   const [reviewPass, setReviewPass] = useState(null)
+  const [previewPass, setPreviewPass] = useState(null)
 
   const counts = STATUSES.reduce((acc, s) => {
-    acc[s] = gatePasses.filter((g) => g.status === s).length
+    acc[s] = passes.filter((g) => g.status === s).length
     return acc
   }, {})
+
+  const resolvePass = (status) => {
+    saveGatePassStatus(reviewPass.id, status)
+    setPasses((current) => current.map((pass) => (
+      pass.id === reviewPass.id ? { ...pass, status } : pass
+    )))
+    setReviewPass(null)
+  }
 
   return (
     <div className="min-h-full bg-[#f4f6fc] p-5 sm:p-7">
@@ -308,8 +342,8 @@ export default function GatePasses() {
               </tr>
             </thead>
             <tbody>
-              {gatePasses.map((pass) => {
-                const requester = userById(pass.requesterId)
+              {passes.map((pass) => {
+                const requester = users.find((item) => item.id === pass.requesterId) ?? userById(pass.requesterId)
                 return (
                   <tr key={pass.id} className="border-t border-slate-100 hover:bg-blue-50/40">
                     <td className="px-5 py-4 font-mono font-semibold text-slate-800">{pass.id}</td>
@@ -350,7 +384,21 @@ export default function GatePasses() {
 
       {/* ── Review modal (portal-free, rendered at end of page) ── */}
       {reviewPass && (
-        <ReviewModal pass={reviewPass} onClose={() => setReviewPass(null)} />
+        <ReviewModal
+          pass={reviewPass}
+          viewer={user}
+          users={users}
+          onClose={() => setReviewPass(null)}
+          onPreview={setPreviewPass}
+          onResolve={resolvePass}
+        />
+      )}
+      {previewPass && (
+        <GatePassSlip
+          pass={previewPass}
+          viewer={user}
+          onClose={() => setPreviewPass(null)}
+        />
       )}
     </div>
   )

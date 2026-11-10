@@ -1,270 +1,389 @@
-// src/pages/Home.jsx
-// Home — dashboard with KPIs and quick queues. All data comes from
-// src/lib/mockData (no inline dummy data).
+// Admin dashboard — KPIs, action queue, device register, and team workload.
 
 import { Link } from 'react-router'
-import { ArrowUpRight, Plus } from 'lucide-react'
 import {
-  metrics, ticketsByCategory, needsAction, todayQueue,
-  technicianWorkload, deviceRegisterSegments, currentUser,
+  AlertCircle,
+  ArrowUpRight,
+  CircleHelp,
+  Clock3,
+  Plus,
+  Wrench,
+} from 'lucide-react'
+import {
+  deviceRegisterSegments,
+  metrics,
+  needsAction,
+  technicianWorkload,
+  ticketsByCategory,
+  todayQueue,
 } from '../lib/mockData'
+import { useAuth } from '../contexts/AuthContext'
 
-// ── tiny helpers ──────────────────────────────────────────────
+const ACTION_ICONS = [AlertCircle, CircleHelp, Clock3, Wrench]
+const ACTION_ROUTES = {
+  'Review passes': '/passes',
+  'View devices': '/devices',
+  'View repairs': '/devices?status=In%20repair',
+}
+const MAX_CATEGORY_VALUE = Math.max(1, ...ticketsByCategory.map(({ value }) => value))
+const CHART_TICKS = [3, 2, 1, 0].map((step) => Math.ceil(MAX_CATEGORY_VALUE / 3) * step)
+
 function Card({ className = '', children }) {
   return (
-    <div className={`rounded-2xl border border-gray-100 shadow-sm ${className}`}>
+    <section
+      className={`rounded-[18px] border border-[#e9edf6] bg-white shadow-[0_1px_3px_rgba(16,28,82,0.04)] ${className}`}
+    >
       {children}
-    </div>
+    </section>
   )
 }
 
-function StatCard({ label, value, sub, subColor = 'text-red-500', arrow = true }) {
+function StatCard({ label, value, note, noteColor = 'text-slate-500' }) {
   return (
-    <Card className="p-5 flex flex-col gap-1 relative">
-      {arrow && (
-        <ArrowUpRight className="absolute top-4 right-4 text-gray-300" size={16} />
-      )}
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{label}</p>
-      <p className="text-4xl font-extrabold text-gray-900">{value}</p>
-      {sub && <p className={`text-xs font-medium ${subColor} flex items-center gap-1`}>{sub}</p>}
+    <Card className="relative flex min-h-28 flex-col justify-center gap-1 px-4 py-4 sm:px-5">
+      <ArrowUpRight
+        aria-hidden="true"
+        size={15}
+        className="absolute right-4 top-4 text-slate-400"
+      />
+      <p className="pr-5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </p>
+      <p className="text-[30px] font-bold leading-tight tracking-tight text-[#111a3b]">
+        {value}
+      </p>
+      <p className={`flex items-center gap-1.5 text-[11px] font-medium ${noteColor}`}>
+        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+        {note}
+      </p>
     </Card>
   )
 }
 
-// ── bar chart (pure CSS) ───────────────────────────────────────
-const MAX_VAL = Math.max(...ticketsByCategory.map((c) => c.value))
-const CHART_H = 140 // px — fixed bar area height
-
-function BarChart() {
+function SlaCard() {
   return (
-    <div className="flex items-end justify-between gap-2 px-1">
-      {ticketsByCategory.map(({ label, value, color }) => {
-        const barH = Math.round((value / MAX_VAL) * CHART_H)
-        return (
-          <div key={label} className="flex flex-col items-center gap-1 flex-1">
-            <span className="text-xs font-semibold text-gray-600">{value}</span>
+    <Card className="!border-[#3155ff] !bg-[#3155ff] flex min-h-28 flex-col justify-between px-4 py-4 text-white sm:px-5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="rounded-full bg-[#d2f54a] px-2 py-1 text-[10px] font-bold leading-none text-[#16214b]">
+          SLA goal
+        </span>
+        <span className="text-[10px] font-medium text-blue-100">
+          Target {metrics.slaTargetPercentage}%
+        </span>
+      </div>
+      <div className="flex items-baseline gap-2">
+        <p className="text-[30px] font-bold leading-tight tracking-tight">
+          {metrics.slaMetPercentage}%
+        </p>
+        <p className="text-[10px] text-blue-100">met in 30 days</p>
+      </div>
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-white/25"
+        role="progressbar"
+        aria-label="SLA target met in the last 30 days"
+        aria-valuenow={metrics.slaMetPercentage}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="h-full rounded-full bg-[#d2f54a]"
+          style={{ width: `${metrics.slaMetPercentage}%` }}
+        />
+      </div>
+    </Card>
+  )
+}
+
+function CategoryChart() {
+  return (
+    <div
+      role="img"
+      aria-label={`Tickets by category: ${ticketsByCategory.map(({ label, value }) => `${label}, ${value}`).join('; ')}`}
+      className="grid grid-cols-[24px_minmax(0,1fr)] gap-2"
+    >
+      <div className="flex h-44 flex-col justify-between pb-6 text-right text-[10px] text-slate-400">
+        {CHART_TICKS.map((tick) => <span key={tick}>{tick}</span>)}
+      </div>
+      <div className="min-w-0">
+        <div className="relative h-44">
+          {CHART_TICKS.map((tick, index) => (
             <div
-              className="w-full rounded-t-md transition-all"
-              style={{ height: barH, backgroundColor: color }}
+              key={tick}
+              className="absolute inset-x-0 border-t border-[#edf0f7]"
+              style={{ top: `${index * 33.333}%` }}
             />
-            <span className="text-[10px] text-gray-400 text-center leading-tight mt-1">{label}</span>
+          ))}
+          <div className="absolute inset-0 flex items-end justify-between gap-2 px-1">
+            {ticketsByCategory.map(({ label, value, color }) => (
+              <div
+                key={label}
+                className="relative z-10 flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+              >
+                <span className="mb-1 text-[10px] font-bold text-[#27304d]">{value}</span>
+                <div
+                  className="w-full max-w-10 rounded-t-lg transition-[height]"
+                  style={{
+                    height: `${Math.max(14, (value / MAX_CATEGORY_VALUE) * 126)}px`,
+                    backgroundColor: color,
+                  }}
+                />
+              </div>
+            ))}
           </div>
-        )
-      })}
+        </div>
+        <div className="mt-2 grid grid-cols-6 gap-1 text-center text-[9px] leading-tight text-slate-500 sm:text-[10px]">
+          {ticketsByCategory.map(({ label }) => <span key={label}>{label}</span>)}
+        </div>
+      </div>
     </div>
   )
 }
 
-// ──────────────────────────────────────────────────────────────
+function NeedsActionCard() {
+  return (
+    <Card className="p-4 sm:p-5">
+      <div className="mb-2 flex items-center gap-2">
+        <h2 className="text-sm font-bold text-[#18203e]">Needs action</h2>
+        <span className="rounded-full bg-[#f0f2f8] px-2 py-0.5 text-[10px] font-bold text-slate-600">
+          {needsAction.length}
+        </span>
+      </div>
+      <div className="divide-y divide-[#edf0f7]">
+        {needsAction.map((action, index) => {
+          const Icon = ACTION_ICONS[index]
+          return (
+            <div key={action.title} className="flex gap-2.5 py-3 last:pb-0">
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${action.color}`}>
+                <Icon size={14} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold leading-4 text-[#202844]">{action.title}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-slate-500">{action.desc}</p>
+                <Link
+                  to={action.href ?? ACTION_ROUTES[action.link] ?? '/'}
+                  className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#3155ff] hover:underline"
+                >
+                  {action.link}
+                  <ArrowUpRight size={11} />
+                </Link>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
+function DeviceRegisterAndQueue() {
+  const segments = [
+    { color: 'bg-[#3155ff]', label: `${metrics.devicesAssigned} Assigned` },
+    { color: 'bg-[#b2d833]', label: `${metrics.devicesInStore} In store` },
+    { color: 'bg-violet-500', label: `${metrics.devicesOffSite} Off-site` },
+    { color: 'bg-orange-500', label: `${metrics.devicesInRepair} In repair` },
+    { color: 'bg-slate-400', label: `${metrics.devicesRetired} Retired` },
+  ]
+
+  return (
+    <Card className="flex flex-col gap-4 p-4 sm:p-5">
+      <section aria-labelledby="device-register-title">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 id="device-register-title" className="text-sm font-bold text-[#18203e]">
+            Device register
+          </h2>
+          <span className="text-[10px] text-slate-500">{metrics.devicesTotal} devices</span>
+        </div>
+        <div
+          className="flex h-2.5 gap-1 overflow-hidden rounded-full"
+          role="img"
+          aria-label={segments.map(({ label }) => label).join(', ')}
+        >
+          {deviceRegisterSegments.map((segment, index) => (
+            <span
+              key={segments[index].label}
+              className={`${segment.color} h-full`}
+              style={{ width: `${segment.pct}%` }}
+            />
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+          {segments.map(({ color, label }) => (
+            <span key={label} className="flex items-center gap-1 text-[10px] text-slate-600">
+              <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+              <span className="font-semibold text-[#27304d]">{label.split(' ')[0]}</span>
+              <span>{label.substring(label.indexOf(' ') + 1)}</span>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="today-queue-title" className="border-t border-[#edf0f7] pt-3">
+        <div className="mb-1 flex items-center justify-between">
+          <h2 id="today-queue-title" className="text-sm font-bold text-[#18203e]">
+            Open queue
+            <span className="ml-1.5 rounded-full bg-[#f0f2f8] px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+              {todayQueue.length}
+            </span>
+          </h2>
+          <Link to="/tickets" className="text-[10px] font-semibold text-[#3155ff] hover:underline">
+            See all
+          </Link>
+        </div>
+        <div className="divide-y divide-[#edf0f7]">
+          {todayQueue.map((ticket) => (
+            <Link
+              key={ticket.id}
+              to={`/tickets?ticket=${ticket.id}`}
+              className="flex min-w-0 items-center gap-2.5 py-2.5"
+            >
+              <span className="h-4 w-4 shrink-0 rounded-full border-2 border-[#cbd3e5]" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[11px] font-semibold text-[#202844]">
+                  {ticket.title}
+                </span>
+                <span className="mt-0.5 block truncate text-[9px] text-slate-500">
+                  <span className="font-mono font-semibold text-[#27304d]">{ticket.id}</span>
+                  {' · '}{ticket.cat}{' · '}{ticket.user} · {ticket.dept}
+                </span>
+              </span>
+              <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold ${ticket.badgeColor}`}>
+                {ticket.badge}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </Card>
+  )
+}
+
+function WorkloadCard() {
+  return (
+    <Card className="p-4 sm:p-5">
+      <h2 className="mb-4 text-sm font-bold text-[#18203e]">Technician workload</h2>
+      <div className="space-y-4">
+        {technicianWorkload.map((technician, index) => (
+          <div key={technician.initials} className="flex items-center gap-2.5">
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                index === 0
+                  ? 'bg-[#ffeadf] text-[#c45523]'
+                  : index === 1
+                    ? 'bg-[#e6ebff] text-[#3155ff]'
+                    : index === 2
+                      ? 'bg-[#f0f7d8] text-[#657d1a]'
+                      : 'bg-[#eee9ff] text-[#6844c5]'
+              }`}
+            >
+              {technician.initials}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center gap-1.5">
+                <p className="truncate text-[11px] font-semibold text-[#202844]">{technician.name}</p>
+                {technician.sub && (
+                  <span className="truncate text-[9px] text-slate-500">{technician.sub}</span>
+                )}
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-[#edf0f7]">
+                <div
+                  className={`h-full rounded-full ${technician.barColor}`}
+                  style={{ width: `${(technician.tickets / technician.max) * 100}%` }}
+                />
+              </div>
+            </div>
+            <span className="w-4 text-right text-[10px] font-bold text-[#27304d]">
+              {technician.tickets}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export default function Home() {
+  const { user } = useAuth()
   const today = new Date().toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
   })
 
   return (
-    <div className="bg-linear-to-br from-[#0B184C] to-[#0A174B] p-4">
-      <div className="flex flex-col gap-5 min-h-full rounded-xl bg-gray-50 p-5">
-
-        {/* ── Page header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">
-              Good morning, {currentUser.name.split(' ')[0]}
-            </h1>
-            <p className="text-sm text-gray-400 mt-0.5">
-              {today} · {metrics.unassignedTickets} tickets are waiting for someone
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/devices/register"
-              className="px-4 py-2 rounded-full border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-            >
-              Register device
-            </Link>
-            <Link
-              to="/tickets"
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
-            >
-              <Plus size={16} />
-              New ticket
-            </Link>
-          </div>
+    <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-[#111a3b] sm:text-2xl">
+            Good morning, {user.name.split(' ')[0]}
+          </h1>
+          <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+            {today} · {metrics.unassignedTickets} tickets are waiting for someone
+          </p>
         </div>
-
-        {/* ── Top stat row ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Open Tickets"
-            value={metrics.openTickets}
-            sub={<><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {metrics.unassignedTickets} unassigned</>}
-          />
-          <StatCard
-            label="Devices Off-Site"
-            value={metrics.devicesOffSite}
-            sub={<><span className="w-2 h-2 rounded-full bg-orange-500 inline-block" /> 1 return overdue</>}
-            subColor="text-orange-500"
-          />
-          <StatCard
-            label="Warranties Ending"
-            value={metrics.warrantiesEnding}
-            sub={<><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block" /> Within 30 days</>}
-            subColor="text-yellow-600"
-          />
-
-          {/* SLA goal card */}
-          <Card className="p-5 bg-[#244BFE] text-white flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full text-black bg-[#CFF231]">SLA goal</span>
-              <span className="text-xs text-slate-200">Target {metrics.slaTargetPercentage}%</span>
-            </div>
-            <div className="flex items-center justify-start gap-4">
-              <p className="text-4xl font-extrabold text-white">{metrics.slaMetPercentage}%</p>
-              <p className="text-xs text-slate-200">met in 30 days</p>
-            </div>
-            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full rounded-full bg-[#CCFF00]" style={{ width: `${metrics.slaMetPercentage}%` }} />
-            </div>
-          </Card>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/devices/register"
+            className="rounded-full border border-[#dce2ef] bg-white px-4 py-2 text-xs font-semibold text-[#202844] transition hover:bg-slate-50"
+          >
+            Register device
+          </Link>
+          <Link
+            to="/tickets/new"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#3155ff] px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-700"
+          >
+            <Plus size={14} />
+            New ticket
+          </Link>
         </div>
+      </div>
 
-        {/* ── Middle row: chart + needs action ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard
+          label="Open tickets"
+          value={metrics.openTickets}
+          note={`${metrics.unassignedTickets} unassigned`}
+          noteColor="text-[#d0453f]"
+        />
+        <StatCard
+          label="Devices off-site"
+          value={metrics.devicesOffSite}
+          note={`${metrics.gatePassesOverdue} return${metrics.gatePassesOverdue === 1 ? '' : 's'} overdue`}
+          noteColor="text-[#bd5e16]"
+        />
+        <StatCard
+          label="Warranties ending"
+          value={metrics.warrantiesEnding}
+          note="Within 30 days"
+        />
+        <SlaCard />
+      </div>
 
-          {/* Bar chart */}
-          <Card className="lg:col-span-3 p-5">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-sm font-bold text-gray-700">Tickets by category</p>
-                <p className="text-xs text-gray-400">125 in 30 days</p>
-              </div>
-              <span className="text-xs text-gray-400">Last 30 days</span>
-            </div>
-            <BarChart />
-          </Card>
-
-          {/* Needs action */}
-          <Card className="lg:col-span-2 p-5">
-            <p className="text-sm font-bold text-gray-700 mb-4">
-              Needs action <span className="ml-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{needsAction.length}</span>
-            </p>
-            <div className="flex flex-col divide-y divide-gray-50">
-              {needsAction.map((a, i) => (
-                <div key={i} className="py-3 flex gap-3">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${a.color}`}>
-                    {a.num}
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-sm font-semibold text-gray-800">{a.title}</p>
-                    <p className="text-xs text-gray-400">{a.desc}</p>
-                    <a href="#" className="text-xs text-blue-600 hover:underline mt-0.5 inline-flex items-center gap-0.5">
-                      {a.link}
-                      <ArrowUpRight size={12} />
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* ── Bottom row: device register + queue | workload ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-
-          {/* Device register + queue */}
-          <Card className="lg:col-span-3 p-5 flex flex-col gap-4">
-
-            {/* Device register */}
+      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-5">
+        <Card className="p-4 sm:p-5 xl:col-span-3">
+          <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-bold text-gray-700">Device register</p>
-                <span className="text-xs text-gray-400">{metrics.devicesTotal} devices</span>
-              </div>
-              <div className="flex h-2.5 rounded-full overflow-hidden gap-0.5">
-                {deviceRegisterSegments.map((s, i) => (
-                  <div key={i} className={`${s.color}`} style={{ width: `${s.pct}%` }} />
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                {[
-                  { color: 'bg-blue-600', label: `${metrics.devicesAssigned} Assigned` },
-                  { color: 'bg-[#CCFF00]', label: `${metrics.devicesInStore} In store` },
-                  { color: 'bg-violet-500', label: `${metrics.devicesOffSite} Off-site` },
-                  { color: 'bg-orange-500', label: `${metrics.devicesInRepair} In repair` },
-                  { color: 'bg-gray-400', label: `${metrics.devicesRetired} Retired` },
-                ].map(({ color, label }) => (
-                  <span key={label} className="flex items-center gap-1 text-xs text-gray-500">
-                    <span className={`w-2 h-2 rounded-full ${color} inline-block`} />
-                    {label}
-                  </span>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-bold text-[#18203e]">Tickets by category</h2>
+                <span className="rounded-full bg-[#f0f2f8] px-2 py-0.5 text-[9px] font-semibold text-slate-600">
+                  {ticketsByCategory.reduce((total, category) => total + category.value, 0)} tickets
+                </span>
               </div>
             </div>
-
-            {/* Today's queue */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-bold text-gray-700">
-                  Today's queue <span className="ml-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{todayQueue.length}</span>
-                </p>
-                <Link to="/tickets" className="text-xs text-blue-600 hover:underline">See all</Link>
-              </div>
-
-              <div className="flex flex-col divide-y divide-gray-50">
-                {todayQueue.map((q, i) => (
-                  <div key={i} className="py-3 flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full border-2 border-gray-200 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{q.title}</p>
-                      <p className="text-xs text-gray-400">
-                        {q.id} · <span className="text-gray-500">{q.cat}</span> · {q.user} · {q.dept}
-                      </p>
-                    </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap ${q.badgeColor}`}>
-                      {q.badge}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          {/* Workload + unassigned */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            <Card className="p-5 flex-1">
-              <p className="text-sm font-bold text-gray-700 mb-4">Technician workload</p>
-              <div className="flex flex-col gap-4">
-                {technicianWorkload.map((t, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">
-                      {t.initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-semibold text-gray-800">{t.name}</p>
-                        <span className="text-sm font-bold text-gray-600">{t.tickets}</span>
-                      </div>
-                      {t.sub && <p className="text-xs text-red-500 -mt-1 mb-1">{t.sub}</p>}
-                      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${t.barColor} transition-all`}
-                          style={{ width: `${(t.tickets / t.max) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            {/* Unassigned alert */}
-            <Card className="p-4 bg-[#f5ffe0] border-[#CCFF00]">
-              <p className="text-sm font-bold text-gray-800">{metrics.unassignedTickets} tickets unassigned</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Ifeanyi has the most open work. Assign new tickets to Tunde or Kemi.
-              </p>
-            </Card>
+            <span className="shrink-0 text-[10px] text-slate-500">Current ticket register</span>
           </div>
+          <CategoryChart />
+        </Card>
+        <div className="xl:col-span-2">
+          <NeedsActionCard />
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <DeviceRegisterAndQueue />
+        </div>
+        <div className="xl:col-span-2">
+          <WorkloadCard />
         </div>
       </div>
     </div>

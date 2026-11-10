@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { ChevronLeft, Search, Upload, Box } from "lucide-react";
 import { deviceModels as existingModels } from "../lib/mockData";
 
-export default function RegisterDevicePage() {
+export default function RegisterDevicePage({ basePath = '/devices' }) {
   const navigate = useNavigate();
   const [modelTab, setModelTab] = useState("existing"); // 'existing' | 'upload'
   const [selectedModel, setSelectedModel] = useState(existingModels[0].name);
@@ -33,7 +33,7 @@ export default function RegisterDevicePage() {
           <div className="mb-2 flex items-center text-sm font-medium text-slate-400">
             <ChevronLeft size={16} className="mr-1" />
             <button
-              onClick={() => navigate('/devices')}
+              onClick={() => navigate(basePath)}
               className="hover:text-white transition-colors"
             >
               Devices
@@ -55,7 +55,7 @@ export default function RegisterDevicePage() {
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <button
-                onClick={() => navigate('/devices')}
+                onClick={() => navigate(basePath)}
                 className="rounded-full bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel

@@ -25,7 +25,7 @@ export default function NotFound() {
             <MonitorX size={20} />
           </div>
           <span className="text-lg font-bold text-[#101a3b]">
-            IT Desk
+            ITrack
           </span>
         </div>
 

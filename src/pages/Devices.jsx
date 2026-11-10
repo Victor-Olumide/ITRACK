@@ -7,7 +7,7 @@ import {
   Plus, Search, Grid2X2, List, Monitor, Laptop,
   Smartphone, Rotate3D
 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { devices as mockDevices, userById } from "../lib/mockData";
 
 const initials = (name = "") =>
@@ -150,10 +150,14 @@ function DeviceCard({ device, onClick }) {
   );
 }
 
-export default function DevicesPage() {
+export default function DevicesPage({ basePath = "/devices" }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedStatus = searchParams.get("status");
   const [devices] = useState(initialDevices);
-  const [activeTab, setActiveTab] = useState("All");
+  const [activeTab, setActiveTab] = useState(
+    tabs.includes(requestedStatus) ? requestedStatus : "All"
+  );
   const [view, setView] = useState("Grid");
   const [readyOnly, setReadyOnly] = useState(false);
   const [search, setSearch] = useState("");
@@ -185,7 +189,7 @@ export default function DevicesPage() {
   }, [devices, activeTab, readyOnly, search]);
 
   return (
-    <main className="min-h-screen bg-[#0c194d] p-2 sm:p-4 lg:p-5">
+    <main className="min-h-screen bg-[#0c194d]">
       <div className="mx-auto min-h-[calc(100vh-40px)] max-w-[1800px] rounded-[28px] bg-[#f4f6fc] p-5 sm:p-7 lg:p-8">
 
         {/* DEVICE BREAKDOWN */}
@@ -273,7 +277,7 @@ export default function DevicesPage() {
               </div>
 
               <button
-                onClick={() => navigate('/devices/register')}
+                onClick={() => navigate(`${basePath}/register`)}
                 className="flex items-center gap-2 rounded-full bg-[#3155ff] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
               >
                 <Plus size={19} /> Register device
@@ -322,7 +326,7 @@ export default function DevicesPage() {
               <DeviceCard
                 key={device.id}
                 device={device}
-                onClick={d => navigate(`/devices/${d.tag}`, { state: { device: d } })}
+                onClick={d => navigate(`${basePath}/${d.tag}`, { state: { device: d } })}
               />
             ))}
           </section>
@@ -341,7 +345,7 @@ export default function DevicesPage() {
                   {filteredDevices.map(device => (
                     <tr
                       key={device.id}
-                      onClick={() => navigate(`/devices/${device.tag}`, { state: { device } })}
+                      onClick={() => navigate(`${basePath}/${device.tag}`, { state: { device } })}
                       className="cursor-pointer border-t border-slate-100 hover:bg-blue-50/50"
                     >
                       <td className="px-5 py-4 font-bold">{device.name}</td>

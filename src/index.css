@@ -1,1 +1,58 @@
 @import "tailwindcss";
+
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .gate-pass-print,
+  .gate-pass-print * {
+    visibility: visible !important;
+  }
+
+  .gate-pass-preview {
+    position: static !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .gate-pass-toolbar {
+    display: none !important;
+  }
+
+  .gate-pass-print {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    font-size: 9pt !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .gate-pass-print section,
+  .gate-pass-print header,
+  .gate-pass-print footer {
+    break-inside: avoid;
+  }
+}

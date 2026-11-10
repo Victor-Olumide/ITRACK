@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router'
+import Logo from './Logo'
 
 const links = [
   { to: '/',          label: 'Dashboard' },
@@ -18,7 +19,8 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
 
           {/* Logo */}
-          <NavLink to="/" className="text-xl font-bold tracking-wide">
+          <NavLink to="/" className="flex items-center gap-2 text-xl font-bold tracking-wide">
+            <Logo size={32} />
             ITrack
           </NavLink>
 

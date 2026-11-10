@@ -25,7 +25,7 @@ export const ROLES = [
 
 // ── Users (covers all four roles) ──────────────────────────────
 // Fields: id, name, role, department, staffId
-export const users = [
+const seedUsers = [
   { id: 'u01', name: 'Ngozi Eze',      role: 'IT Admin',   department: 'IT',          staffId: 'IT-A-001' },
   { id: 'u02', name: 'Tunde Adeyemi',  role: 'Technician', department: 'IT',          staffId: 'IT-T-014' },
   { id: 'u03', name: 'Ifeanyi Okafor', role: 'Technician', department: 'IT',          staffId: 'IT-T-021' },
@@ -38,8 +38,10 @@ export const users = [
   { id: 'u10', name: 'Sade Bello',     role: 'Technician', department: 'IT',          staffId: 'IT-T-031' },
 ]
 
-// Mocked "logged-in" user.
-export const currentUser = users[0]
+export const users = seedUsers.map((user) => ({
+  ...user,
+  email: `${user.name.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '')}@abuad.edu.ng`,
+}))
 
 // ── Devices ────────────────────────────────────────────────────
 // Fields: id, tag, category, make, model, serialNumber, status,
@@ -155,7 +157,7 @@ export const tickets = [
     priority: 'Low', status: 'Resolved', timeState: 'On track',
     assigneeId: 'u04', requesterId: 'u07', deviceId: null,
     description: 'Anker charger no longer powers the laptop. Tried two cables.',
-    response: 'Met', resolution: 'Resolved', sla: 'Resolved',
+    response: 'Met', resolution: 'Resolved', sla: 'Resolved', resolutionHours: 1,
     history: [
       { time: '10:00', text: 'Amaka O. submitted the ticket' },
       { time: '10:20', text: 'Kemi S. took it' },
@@ -266,66 +268,134 @@ export const gateLog = [
   { id: 'GL-008', time: '2026-11-05 14:20', event: 'Back',    deviceId: 'd08', personId: 'u04', gate: 'Gate B', passId: 'GP-0030', loggedById: 'u09' },
 ]
 
-// ── Dashboard metrics (aggregate "system" numbers) ─────────────
+// Dashboard summaries are derived from the same records used by the pages.
+const activeTickets = tickets.filter((ticket) => ticket.status !== 'Resolved')
+const deviceStatuses = ['Assigned', 'In store', 'Off-site', 'In repair', 'Retired']
+const deviceCounts = Object.fromEntries(
+  deviceStatuses.map((status) => [status, devices.filter((device) => device.status === status).length]),
+)
+const now = new Date()
+const warrantyCutoff = new Date(now)
+warrantyCutoff.setDate(warrantyCutoff.getDate() + 30)
+const resolvedDurations = tickets
+  .filter((ticket) => ticket.status === 'Resolved' && Number.isFinite(ticket.resolutionHours))
+  .map((ticket) => ticket.resolutionHours)
+const onTrackCount = tickets.filter((ticket) => ticket.timeState === 'On track').length
+
 export const metrics = {
-  openTickets: 23,
-  unassignedTickets: 3,
-  ticketsToday: 4,
-  avgResolutionHours: 6.4,
-  slaMetPercentage: 87,
+  openTickets: activeTickets.length,
+  unassignedTickets: activeTickets.filter((ticket) => !ticket.assigneeId).length,
+  avgResolutionHours: resolvedDurations.length
+    ? Math.round(resolvedDurations.reduce((sum, hours) => sum + hours, 0) / resolvedDurations.length * 10) / 10
+    : null,
+  slaMetPercentage: tickets.length ? Math.round(onTrackCount / tickets.length * 100) : 0,
   slaTargetPercentage: 90,
-  devicesTotal: 150,
-  devicesAssigned: 102,
-  devicesInStore: 34,
-  devicesOffSite: 6,
-  devicesInRepair: 5,
-  devicesRetired: 3,
-  warrantiesEnding: 4,
-  gatePassesWaiting: 2,
+  devicesTotal: devices.length,
+  devicesAssigned: deviceCounts.Assigned,
+  devicesInStore: deviceCounts['In store'],
+  devicesOffSite: deviceCounts['Off-site'],
+  devicesInRepair: deviceCounts['In repair'],
+  devicesRetired: deviceCounts.Retired,
+  warrantiesEnding: devices.filter((device) => {
+    const warrantyDate = new Date(device.warrantyEnds)
+    return warrantyDate >= now && warrantyDate <= warrantyCutoff
+  }).length,
+  gatePassesWaiting: gatePasses.filter((pass) => pass.status === 'Waiting').length,
+  gatePassesOverdue: gatePasses.filter((pass) => pass.status === 'Overdue').length,
 }
 
-// Tickets by category — colour is presentation, kept here for the chart.
-export const ticketsByCategory = [
-  { label: 'Printer',     value: 31, color: '#254BFE' },
-  { label: 'Requests',    value: 27, color: '#ADD900' },
-  { label: 'Network',     value: 24, color: '#8159FF' },
-  { label: 'PC hardware', value: 19, color: '#FF6E2F' },
-  { label: 'Software',    value: 15, color: '#00A9A6' },
-  { label: 'Accounts',    value: 9,  color: '#0B184C' },
-]
+const categoryColors = ['#254BFE', '#ADD900', '#8159FF', '#FF6E2F', '#00A9A6', '#0B184C']
+const categoryCounts = new Map()
+tickets.forEach((ticket) => categoryCounts.set(ticket.category, (categoryCounts.get(ticket.category) ?? 0) + 1))
+export const ticketsByCategory = [...categoryCounts]
+  .map(([label, value], index) => ({ label, value, color: categoryColors[index % categoryColors.length] }))
+  .sort((a, b) => b.value - a.value)
 
-// Dashboard "needs action" queue.
+const breachedTickets = activeTickets.filter((ticket) => ticket.timeState === 'Breached')
+const waitingPasses = gatePasses.filter((pass) => pass.status === 'Waiting')
+const repairDevices = devices.filter((device) => device.status === 'In repair')
 export const needsAction = [
-  { color: 'bg-red-100 text-red-600',       num: '!', title: '1 ticket breached its target', desc: 'IT-0181 has passed its 8 hour resolution time.', link: 'Open ticket' },
-  { color: 'bg-gray-100 text-gray-500',     num: '?', title: '2 gate passes waiting',         desc: 'Devices can only leave once you approve them.', link: 'Review passes' },
-  { color: 'bg-yellow-100 text-yellow-600', num: '!', title: '4 warranties ending soon',      desc: 'Renew or claim before cover runs out.',         link: 'View devices' },
-  { color: 'bg-blue-100 text-blue-600',      num: 'i', title: '5 devices in repair',           desc: 'Two have been in repair for over a week.',      link: 'View repairs' },
+  ...(breachedTickets.length ? [{
+    color: 'bg-red-100 text-red-600',
+    num: '!',
+    title: `${breachedTickets.length} ticket${breachedTickets.length === 1 ? '' : 's'} breached the target`,
+    desc: `${breachedTickets[0].id} · ${breachedTickets[0].title}`,
+    link: 'Open ticket',
+    href: `/tickets?ticket=${breachedTickets[0].id}`,
+  }] : []),
+  ...(waitingPasses.length ? [{
+    color: 'bg-gray-100 text-gray-500',
+    num: '?',
+    title: `${waitingPasses.length} gate pass${waitingPasses.length === 1 ? '' : 'es'} waiting`,
+    desc: 'Devices can only leave once you approve them.',
+    link: 'Review passes',
+  }] : []),
+  ...(metrics.warrantiesEnding ? [{
+    color: 'bg-yellow-100 text-yellow-600',
+    num: '!',
+    title: `${metrics.warrantiesEnding} warranties ending soon`,
+    desc: 'Renew or claim before cover runs out.',
+    link: 'View devices',
+  }] : []),
+  ...(repairDevices.length ? [{
+    color: 'bg-blue-100 text-blue-600',
+    num: 'i',
+    title: `${repairDevices.length} device${repairDevices.length === 1 ? '' : 's'} in repair`,
+    desc: 'Review equipment currently in the workshop.',
+    link: 'View repairs',
+  }] : []),
 ]
 
-// Today's queue — surfaced on the dashboard.
-export const todayQueue = [
-  { title: 'PC switches off during work',       id: 'IT-0181', cat: 'PC hardware', user: 'Bola K.',  dept: 'Finance',    badge: 'Breached 1h 20m', badgeColor: 'bg-red-50 text-red-600 border border-red-200' },
-  { title: 'Need a new mouse',                  id: 'IT-0169', cat: 'Requests',   user: 'Yusuf B.', dept: 'Operations', badge: 'At risk · 5h left', badgeColor: 'bg-orange-50 text-orange-600 border border-orange-200' },
-  { title: 'Printer keeps showing a paper jam', id: 'IT-0187', cat: 'Printer',     user: 'Amaka O.', dept: 'Finance',    badge: '7h 40m left',      badgeColor: 'bg-green-50 text-green-700 border border-green-200' },
-  { title: 'Fan very loud on desktop',          id: 'IT-0175', cat: 'PC hardware', user: 'Chidi N.', dept: 'HR',         badge: '20h left',         badgeColor: 'bg-green-50 text-green-700 border border-green-200' },
-]
+const timeStateColors = {
+  Breached: 'bg-red-50 text-red-600 border border-red-200',
+  'At risk': 'bg-orange-50 text-orange-600 border border-orange-200',
+  'On track': 'bg-green-50 text-green-700 border border-green-200',
+  Paused: 'bg-gray-100 text-gray-600 border border-gray-200',
+}
+export const todayQueue = activeTickets.slice(0, 4).map((ticket) => {
+  const requester = users.find((user) => user.id === ticket.requesterId)
+  return {
+    title: ticket.title,
+    id: ticket.id,
+    cat: ticket.category,
+    user: requester
+      ? `${requester.name.split(' ')[0]} ${requester.name.split(' ')[1]?.[0] ?? ''}.`
+      : 'Unknown',
+    dept: requester?.department ?? '—',
+    badge: ticket.sla,
+    badgeColor: timeStateColors[ticket.timeState] ?? timeStateColors.Paused,
+  }
+})
 
-// Technician workload chart.
-export const technicianWorkload = [
-  { initials: 'IO', name: 'Ifeanyi O.', sub: '2 at risk',  tickets: 5, barColor: 'bg-orange-500', max: 6 },
-  { initials: 'TA', name: 'Tunde A.',   sub: '1 breached', tickets: 4, barColor: 'bg-blue-600',   max: 6 },
-  { initials: 'KS', name: 'Kemi S.',    sub: '',           tickets: 4, barColor: 'bg-blue-600',   max: 6 },
-  { initials: 'SB', name: 'Sade B.',    sub: '',           tickets: 4, barColor: 'bg-blue-600',   max: 6 },
-]
+const technicianRecords = users.filter((user) => user.role === 'Technician').map((technician) => {
+  const assigned = activeTickets.filter((ticket) => ticket.assigneeId === technician.id)
+  const atRisk = assigned.filter((ticket) => ticket.timeState === 'At risk').length
+  const breached = assigned.filter((ticket) => ticket.timeState === 'Breached').length
+  return {
+    initials: technician.name.split(' ').map((part) => part[0]).join('').slice(0, 2),
+    name: technician.name,
+    sub: breached ? `${breached} breached` : atRisk ? `${atRisk} at risk` : '',
+    tickets: assigned.length,
+  }
+})
+const workloadMax = Math.max(1, ...technicianRecords.map(({ tickets: count }) => count))
+export const technicianWorkload = technicianRecords.map((technician, index) => ({
+  ...technician,
+  barColor: ['bg-orange-500', 'bg-blue-600', 'bg-blue-600', 'bg-blue-600'][index % 4],
+  max: workloadMax,
+}))
 
-// Device register breakdown segments.
-export const deviceRegisterSegments = [
-  { pct: 68, color: 'bg-blue-600' },
-  { pct: 23, color: 'bg-[#CCFF00]' },
-  { pct: 4,  color: 'bg-violet-500' },
-  { pct: 3,  color: 'bg-orange-500' },
-  { pct: 2,  color: 'bg-gray-400' },
-]
+const deviceStatusColors = {
+  Assigned: 'bg-blue-600',
+  'In store': 'bg-[#CCFF00]',
+  'Off-site': 'bg-violet-500',
+  'In repair': 'bg-orange-500',
+  Retired: 'bg-gray-400',
+}
+export const deviceRegisterSegments = deviceStatuses.map((status) => ({
+  pct: metrics.devicesTotal ? deviceCounts[status] / metrics.devicesTotal * 100 : 0,
+  color: deviceStatusColors[status],
+}))
 
 // ── Lookups ─────────────────────────────────────────────────────
 export const userById        = (id)  => users.find((u) => u.id === id)

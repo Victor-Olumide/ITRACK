@@ -4,15 +4,18 @@
 // no inline dummy data lives in this file.
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import {
   Search, Check, Circle, Send
 } from "lucide-react";
-import { tickets as mockTickets, userById, deviceById, currentUser } from "../lib/mockData";
+import { tickets as mockTickets, userById, deviceById } from "../lib/mockData";
+import { getSubmittedTickets } from "../lib/sessionData";
+import { useAuth } from "../contexts/AuthContext";
 
 // Resolve relational mockData into the shape this view consumes.
-function toView(t) {
-  const requester = userById(t.requesterId);
-  const assignee = userById(t.assigneeId);
+function toView(t, users) {
+  const requester = users.find((user) => user.id === t.requesterId) ?? userById(t.requesterId);
+  const assignee = users.find((user) => user.id === t.assigneeId) ?? userById(t.assigneeId);
   const device = deviceById(t.deviceId);
   return {
     ...t,
@@ -25,8 +28,6 @@ function toView(t) {
     group: t.timeState,
   };
 }
-
-const initialTickets = mockTickets.map(toView);
 
 const groupStyles = {
   Breached: { dot: "bg-red-600", color: "text-red-600" },
@@ -295,17 +296,31 @@ function TicketDetails({ ticket, onUpdate }) {
   );
 }
 
-export default function TicketPage() {
-  const [tickets, setTickets] = useState(initialTickets);
-  const [selectedId, setSelectedId] = useState("IT-0181");
-  const [tab, setTab] = useState("All open");
-  const [department, setDepartment] = useState("Finance");
+export default function TicketPage({ technicianView = false }) {
+  const { user, users } = useAuth()
+  const assigneeId = user.id
+  const availableTickets = useMemo(
+    () => [...mockTickets, ...getSubmittedTickets()].map((ticket) => toView(ticket, users)),
+    [users]
+  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTicketId = searchParams.get("ticket");
+  const [tickets, setTickets] = useState(availableTickets);
+  const [selectedId, setSelectedId] = useState(() => (
+    requestedTicketId ?? availableTickets.find(ticket => ticket.assigneeId === assigneeId)?.id ?? availableTickets[0]?.id ?? ''
+  ));
+  const [tab, setTab] = useState(technicianView ? "Mine" : "All open");
+  const [department, setDepartment] = useState(technicianView ? "" : "Finance");
   const [priority, setPriority] = useState("");
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
 
-  const selectedTicket = tickets.find(t => t.id === selectedId);
+  const scopedTickets = technicianView
+    ? tickets.filter((ticket) => ticket.assigneeId === assigneeId)
+    : tickets
+  const selectedTicket = scopedTickets.find(t => t.id === requestedTicketId)
+    ?? scopedTickets.find(t => t.id === selectedId);
 
   const updateTicket = (id, changes) => {
     setTickets(prev =>
@@ -314,12 +329,12 @@ export default function TicketPage() {
   };
 
   const filteredTickets = useMemo(() => {
-    return tickets.filter(ticket => {
+    return scopedTickets.filter(ticket => {
       const isOpen = ticket.status !== "Resolved";
 
       return (
         (tab === "All open" ? isOpen :
-          tab === "Mine" ? ticket.assigneeId === currentUser.id && isOpen :
+          tab === "Mine" ? ticket.assigneeId === assigneeId && isOpen :
           tab === "Unassigned" ? !ticket.assigneeId && isOpen :
           true) &&
         (!department || ticket.department === department) &&
@@ -330,12 +345,12 @@ export default function TicketPage() {
           .toLowerCase().includes(search.toLowerCase()))
       );
     });
-  }, [tickets, tab, department, priority, category, type, search]);
+  }, [scopedTickets, tab, department, priority, category, type, search, assigneeId]);
 
   const groups = ["Breached", "At risk", "On track", "Paused"];
 
   return (
-    <main className="min-h-screen bg-[#0c194d] p-2 sm:p-4 lg:p-5">
+    <main className="min-h-screen bg-[#0c194d] ">
       <div className="mx-auto grid max-w-[1800px] grid-cols-1 items-stretch gap-3 lg:grid-cols-[1.3fr_1fr]">
 
         {/* LEFT: TICKET LIST */}
@@ -343,7 +358,7 @@ export default function TicketPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-[#101a3b]">
-                Tickets
+                {technicianView ? "My tickets" : "Tickets"}
               </h1>
               <p className="mt-1 text-sm text-slate-500">
                 {tickets.filter(t => t.status !== "Resolved").length} open · {tickets.filter(t => !t.assigneeId).length} unassigned · sorted by time left
@@ -366,7 +381,7 @@ export default function TicketPage() {
                     {item === "Unassigned"
                       ? tickets.filter(t => !t.assigneeId).length
                       : item === "Mine"
-                      ? tickets.filter(t => t.assigneeId === currentUser.id).length
+                      ? tickets.filter(t => t.assigneeId === assigneeId).length
                       : tickets.filter(t => t.status !== "Resolved").length}
                   </span>
                 </button>
@@ -381,7 +396,7 @@ export default function TicketPage() {
               className="rounded-full border border-blue-100 bg-blue-100 px-4 py-2.5 text-sm text-blue-800 outline-none"
             >
               <option value="">All departments</option>
-              {["Finance", "Admin", "Operations", "HR", "Security"].map(d => (
+              {["Finance", "Admin", "Operations", "HR", "Security", "IT"].map(d => (
                 <option key={d}>{d}</option>
               ))}
             </select>
@@ -425,7 +440,10 @@ export default function TicketPage() {
                         key={ticket.id}
                         ticket={ticket}
                         selected={selectedId === ticket.id}
-                        onClick={() => setSelectedId(ticket.id)}
+                        onClick={() => {
+                          setSelectedId(ticket.id);
+                          setSearchParams({ ticket: ticket.id });
+                        }}
                       />
                     ))}
                   </div>

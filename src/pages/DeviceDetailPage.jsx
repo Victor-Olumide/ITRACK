@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation, useParams } from 'react-router';
+import { deviceByTag, userById } from '../lib/mockData';
+import { useAuth } from '../contexts/AuthContext';
 import {
   ChevronLeft, HelpCircle, RotateCcw, ZoomOut, ZoomIn,
   Rotate3D, Maximize, MapPin, Monitor, Laptop, Smartphone, Printer
@@ -49,13 +51,44 @@ function DeviceImage({ device }) {
   )
 }
 
-export default function DeviceDetailsPage() {
+function fromAssetRecord(record) {
+  if (!record) return null
+  const owner = userById(record.assigneeId)
+  const category = {
+    Laptops: 'Laptop',
+    Desktops: 'Desktop tower',
+    Monitors: 'Monitor',
+    Phones: 'Work phone',
+  }[record.category] ?? record.category
+  const warranty = new Date(record.warrantyEnds)
+
+  return {
+    id: record.id,
+    name: `${record.make} ${record.model}`,
+    tag: record.tag,
+    category,
+    specs: '',
+    status: record.status,
+    assignedTo: owner?.name ?? 'Not assigned',
+    initials: owner?.name.split(' ').map((part) => part[0]).join('').slice(0, 2) ?? '—',
+    location: record.location,
+    warranty: Number.isNaN(warranty.getTime())
+      ? '—'
+      : warranty.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+    image: '',
+  }
+}
+
+export default function DeviceDetailsPage({ basePath = '/devices' }) {
   const navigate  = useNavigate()
   const location  = useLocation()
+  const { tag } = useParams()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('Overview')
 
-  // Device is passed via navigate state; fall back gracefully if missing
-  const device = location.state?.device
+  const assetRecord = deviceByTag(tag)
+  const hasAccess = user.role !== 'Employee' || assetRecord?.assigneeId === user.id
+  const device = hasAccess ? location.state?.device ?? fromAssetRecord(assetRecord) : null
 
   if (!device) {
     return (
@@ -63,7 +96,7 @@ export default function DeviceDetailsPage() {
         <div className="text-center text-white">
           <p className="text-lg font-semibold mb-3">Device not found.</p>
           <button
-            onClick={() => navigate('/devices')}
+            onClick={() => navigate(basePath)}
             className="text-sm text-blue-300 hover:underline"
           >
             ← Back to Devices
@@ -83,7 +116,7 @@ export default function DeviceDetailsPage() {
         <div className="mb-6 flex items-center text-sm font-medium text-white/70">
           <ChevronLeft size={16} className="mr-1" />
           <button
-            onClick={() => navigate('/devices')}
+            onClick={() => navigate(basePath)}
             className="hover:text-white transition-colors"
           >
             Devices
