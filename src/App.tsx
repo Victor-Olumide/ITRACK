@@ -28,11 +28,11 @@ import NotFound from './pages/NotFound'
 
 export default function App() {
   return (
-    <AuthProvider>
     <BrowserRouter>
-      <AppRoutes />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </BrowserRouter>
-    </AuthProvider>
   )
 }
 
