@@ -25,8 +25,18 @@ import {
   userById,
 } from '../lib/mockData'
 import { useAuth } from '../contexts/AuthContext'
+import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import type { PublicUser } from '../lib/types'
 
-function PageHeading({ icon: Icon, title, description, children }) {
+interface PageHeadingProps {
+  icon: LucideIcon
+  title: string
+  description: string
+  children?: ReactNode
+}
+
+function PageHeading({ icon: Icon, title, description, children }: PageHeadingProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -45,7 +55,7 @@ function Locations() {
   const [query, setQuery] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [newLocation, setNewLocation] = useState('')
-  const [addedLocations, setAddedLocations] = useState([])
+  const [addedLocations, setAddedLocations] = useState<string[]>([])
   const locations = useMemo(() => {
     const counts = new Map()
     devices.forEach((device) => {
@@ -339,7 +349,7 @@ function AuditTrail() {
 }
 
 function Models() {
-  const [uploadedModels, setUploadedModels] = useState([])
+  const [uploadedModels, setUploadedModels] = useState<string[]>([])
   return (
     <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
       <PageHeading
@@ -424,7 +434,7 @@ const INITIAL_NOTIFICATIONS = [
   })),
 ]
 
-function Notifications({ viewer }) {
+function Notifications({ viewer }: { viewer: PublicUser }) {
   const [items, setItems] = useState(INITIAL_NOTIFICATIONS)
   const [filter, setFilter] = useState('All')
   const filters = ['All', 'Unread', 'Tickets', 'Gate passes', 'Security', 'Stock']
@@ -511,8 +521,14 @@ function Notifications({ viewer }) {
   )
 }
 
-export default function AdminWorkspace({ section }) {
+interface AdminWorkspaceProps {
+  section: string
+  viewer?: PublicUser | null
+}
+
+export default function AdminWorkspace({ section }: AdminWorkspaceProps) {
   const { user } = useAuth()
+  if (!user) return null
   if (section === 'locations') return <Locations />
   if (section === 'categories') return <Categories />
   if (section === 'audit') return <AuditTrail />

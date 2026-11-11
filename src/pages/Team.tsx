@@ -79,7 +79,7 @@ export default function Team({ showCreateForm = false }) {
               setInvitePassword('')
               setShowInvite(false)
             } catch (error) {
-              setFormError(error.message)
+              setFormError(error instanceof Error ? error.message : 'Unable to create the account.')
             }
           }}
         >
@@ -123,7 +123,10 @@ export default function Team({ showCreateForm = false }) {
             Role
             <select
               value={inviteRole}
-              onChange={(event) => setInviteRole(event.target.value)}
+              onChange={(event) => {
+                const nextRole = ROLES.find(({ value }) => value === event.target.value)?.value
+                if (nextRole) setInviteRole(nextRole)
+              }}
               className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm font-normal text-slate-800"
             >
               {ROLES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}

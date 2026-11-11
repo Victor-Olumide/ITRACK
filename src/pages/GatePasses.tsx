@@ -14,20 +14,31 @@ import {
   saveGatePassStatus,
 } from '../lib/sessionData'
 import GatePassSlip from './GatePassSlip'
+import type { GatePass, GatePassItem, GatePassStatus, PublicUser } from '../lib/types'
 
 // ── helpers ──────────────────────────────────────────────────
-const CLASS_BY_PREFIX = {
+const CLASS_BY_PREFIX: Record<string, string> = {
   'IT-LAP': 'Asset', 'IT-DSK': 'Asset', 'IT-MON': 'Asset', 'IT-PHN': 'Asset',
   'IT-ACC': 'Accessory',
 }
 
-function toItemRow(it) {
+interface GatePassItemRow {
+  item: string
+  classType: string
+  tag: string
+  make?: string
+  serial?: string
+  qty: number
+  condition?: string
+}
+
+function toItemRow(it: GatePassItem): GatePassItemRow {
   const prefix = it.tag.split('-').slice(0, 2).join('-')
   const device = deviceByTag(it.tag)
   return {
     item: device
       ? device.make + ' ' + device.model
-      : it.make,
+      : it.make ?? 'Accessory',
     classType: CLASS_BY_PREFIX[prefix] ?? 'Asset',
     tag: it.tag,
     make: it.make,
@@ -38,7 +49,16 @@ function toItemRow(it) {
 }
 
 // ── Review modal ─────────────────────────────────────────────
-function ReviewModal({ pass, onClose, onPreview, viewer, users, onResolve }) {
+interface ReviewModalProps {
+  pass: GatePass
+  onClose: () => void
+  onPreview: (pass: GatePass) => void
+  viewer: PublicUser
+  users: PublicUser[]
+  onResolve: (status: GatePassStatus) => void
+}
+
+function ReviewModal({ pass, onClose, onPreview, viewer, users, onResolve }: ReviewModalProps) {
   const [isReturnable, setIsReturnable] = useState(true)
   const [pin, setPin] = useState('')
 
@@ -277,26 +297,27 @@ function ReviewModal({ pass, onClose, onPreview, viewer, users, onResolve }) {
 }
 
 // ── Gate passes list ─────────────────────────────────────────
-const STATUSES = ['Waiting', 'Approved', 'Overdue', 'Rejected']
+const STATUSES: GatePassStatus[] = ['Waiting', 'Approved', 'Overdue', 'Rejected']
 
 export default function GatePasses() {
   const { user, users } = useAuth()
-  const [passes, setPasses] = useState(() => {
+  const [passes, setPasses] = useState<GatePass[]>(() => {
     const updates = getGatePassStatusUpdates()
     return [...gatePasses, ...getSubmittedPasses()].map((pass) => ({
       ...pass,
       status: updates[pass.id] ?? pass.status,
     }))
   })
-  const [reviewPass, setReviewPass] = useState(null)
-  const [previewPass, setPreviewPass] = useState(null)
+  const [reviewPass, setReviewPass] = useState<GatePass | null>(null)
+  const [previewPass, setPreviewPass] = useState<GatePass | null>(null)
 
-  const counts = STATUSES.reduce((acc, s) => {
-    acc[s] = passes.filter((g) => g.status === s).length
+  const counts = STATUSES.reduce<Record<GatePassStatus, number>>((acc, status) => {
+    acc[status] = passes.filter((pass) => pass.status === status).length
     return acc
-  }, {})
+  }, { Waiting: 0, Approved: 0, Overdue: 0, Rejected: 0 })
 
-  const resolvePass = (status) => {
+  const resolvePass = (status: GatePassStatus) => {
+    if (!reviewPass) return
     saveGatePassStatus(reviewPass.id, status)
     setPasses((current) => current.map((pass) => (
       pass.id === reviewPass.id ? { ...pass, status } : pass
@@ -383,7 +404,7 @@ export default function GatePasses() {
       </div>
 
       {/* ── Review modal (portal-free, rendered at end of page) ── */}
-      {reviewPass && (
+      {reviewPass && user && (
         <ReviewModal
           pass={reviewPass}
           viewer={user}
@@ -393,7 +414,7 @@ export default function GatePasses() {
           onResolve={resolvePass}
         />
       )}
-      {previewPass && (
+      {previewPass && user && (
         <GatePassSlip
           pass={previewPass}
           viewer={user}

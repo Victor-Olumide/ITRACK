@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Monitor } from 'lucide-react'
 import Logo from '../components/Logo'
@@ -6,7 +7,17 @@ import { DEMO_PASSWORD, homePathForRole, useAuth } from '../contexts/AuthContext
 import { metrics } from '../lib/mockData'
 
 // ── reusable input ─────────────────────────────────────────────
-function Field({ label, id, type = 'text', placeholder, value, onChange, right }) {
+interface FieldProps {
+  label: string
+  id: string
+  type?: string
+  placeholder?: string
+  value: string
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void
+  right?: ReactNode
+}
+
+function Field({ label, id, type = 'text', placeholder, value, onChange, right }: FieldProps) {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium text-gray-700">
@@ -43,13 +54,17 @@ function LoginForm() {
   const [remember, setRemember] = useState(true)
   const [error,    setError]    = useState('')
 
-  const handleSubmit = e => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!login(email, password)) {
       setError('Email or password is incorrect.')
       return
     }
     const user = users.find((item) => item.email.toLowerCase() === email.trim().toLowerCase())
+    if (!user) {
+      setError('Email or password is incorrect.')
+      return
+    }
     navigate(homePathForRole(user.role), { replace: true })
   }
 
@@ -82,7 +97,7 @@ function LoginForm() {
           type="email"
           placeholder="you@abuad.edu.ng"
         value={email}
-        onChange={e => setEmail(e.target.value)}
+        onChange={(e) => setEmail(e.target.value)}
       />
 
       <Field
@@ -91,7 +106,7 @@ function LoginForm() {
         type={show ? 'text' : 'password'}
         placeholder="••••••••••••"
         value={password}
-        onChange={e => setPassword(e.target.value)}
+        onChange={(e) => setPassword(e.target.value)}
         right={
           <button
             type="button"

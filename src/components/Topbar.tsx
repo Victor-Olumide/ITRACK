@@ -4,11 +4,18 @@ import { Bell, LogOut, Menu, Plus, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
 import Logo from './Logo'
 import { useAuth } from '../contexts/AuthContext'
+import type { PublicUser, UserRole } from '../lib/types'
 
 const initials = (name = '') =>
   name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
-export default function Topbar({ onMenuClick, user, role }) {
+interface TopbarProps {
+  onMenuClick: () => void
+  user: PublicUser | null
+  role: UserRole
+}
+
+export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const isSecurity = role === 'Security'

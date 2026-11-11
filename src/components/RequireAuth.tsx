@@ -1,7 +1,14 @@
 import { Navigate, useLocation } from 'react-router'
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
+import type { ReactNode } from 'react'
+import type { UserRole } from '../lib/types'
 
-export default function RequireAuth({ roles, children }) {
+interface RequireAuthProps {
+  roles: UserRole[]
+  children: ReactNode
+}
+
+export default function RequireAuth({ roles, children }: RequireAuthProps) {
   const { user } = useAuth()
   const location = useLocation()
 

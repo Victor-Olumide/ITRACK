@@ -1,7 +1,23 @@
+interface ApiErrorOptions {
+  status?: number
+  code?: string
+  details?: unknown
+  requestId?: string | null
+}
+
+interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
+  body?: BodyInit | Record<string, unknown> | null
+}
+
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
 
 export class ApiError extends Error {
-  constructor(message, { status, code, details, requestId } = {}) {
+  status?: number
+  code?: string
+  details?: unknown
+  requestId?: string | null
+
+  constructor(message: string, { status, code, details, requestId }: ApiErrorOptions = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
@@ -11,7 +27,7 @@ export class ApiError extends Error {
   }
 }
 
-async function readResponse(response) {
+async function readResponse(response: Response): Promise<unknown> {
   if (response.status === 204) return null
 
   const contentType = response.headers.get('content-type') ?? ''
@@ -29,7 +45,16 @@ async function readResponse(response) {
   return response.text()
 }
 
-export async function apiRequest(path, options = {}) {
+function isApiErrorBody(value: unknown): value is {
+  message?: string
+  code?: string
+  details?: unknown
+  requestId?: string
+} {
+  return value !== null && typeof value === 'object'
+}
+
+export async function apiRequest<T = unknown>(path: string, options: ApiRequestOptions = {}): Promise<T | null> {
   if (typeof path !== 'string' || !path.startsWith('/')) {
     throw new TypeError('API paths must be relative to the configured API base and start with "/".')
   }
@@ -51,7 +76,7 @@ export async function apiRequest(path, options = {}) {
       body: body === undefined || isFormData ? body : JSON.stringify(body),
     })
   } catch (error) {
-    if (error.name === 'AbortError') throw error
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
     throw new ApiError('Unable to reach the server. Check your connection and try again.', {
       details: error,
     })
@@ -59,14 +84,15 @@ export async function apiRequest(path, options = {}) {
 
   const data = await readResponse(response)
   if (!response.ok) {
-    throw new ApiError(data?.message ?? `Request failed with status ${response.status}.`, {
+    const errorBody = isApiErrorBody(data) ? data : {}
+    throw new ApiError(errorBody.message ?? `Request failed with status ${response.status}.`, {
       status: response.status,
-      code: data?.code,
-      details: data?.details ?? data,
-      requestId: data?.requestId ?? response.headers.get('x-request-id'),
+      code: errorBody.code,
+      details: errorBody.details ?? data,
+      requestId: errorBody.requestId ?? response.headers.get('x-request-id'),
     })
   }
-  return data
+  return data as T
 }
 
 export { API_BASE_URL }

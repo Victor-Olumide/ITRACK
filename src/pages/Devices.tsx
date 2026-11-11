@@ -9,15 +9,32 @@ import {
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 import { devices as mockDevices, userById } from "../lib/mockData";
+import type { Device, DeviceStatus } from "../lib/types";
+import type { LucideIcon } from "lucide-react";
 
 const initials = (name = "") =>
   name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
 // Format an ISO warranty date into the short strings the cards expect.
-function formatWarranty(warrantyEnds) {
+interface DeviceCardData {
+  id: string
+  name: string
+  tag: string
+  category: string
+  specs: string
+  status: DeviceStatus
+  assignedTo: string
+  initials: string
+  location: string
+  warranty: string
+  image: string
+  ready: boolean
+}
+
+function formatWarranty(warrantyEnds: string) {
   const end = new Date(warrantyEnds);
   if (Number.isNaN(end.getTime())) return "—";
-  const diffDays = Math.round((end - new Date()) / 86400000);
+  const diffDays = Math.round((end.getTime() - Date.now()) / 86400000);
   if (diffDays < 0) return "Expired";
   if (diffDays <= 30) {
     return `Ends ${end.getDate()} ${end.toLocaleDateString("en-GB", { month: "short" })}`;
@@ -26,7 +43,7 @@ function formatWarranty(warrantyEnds) {
 }
 
 // Resolve a relational mockData device into the shape the cards consume.
-function toCard(d) {
+function toCard(d: Device): DeviceCardData {
   const owner = userById(d.assigneeId);
   return {
     id: d.id,
@@ -46,7 +63,7 @@ function toCard(d) {
 
 const initialDevices = mockDevices.map(toCard);
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   Assigned: "bg-blue-100 text-blue-800",
   "In store": "bg-lime-100 text-lime-800",
   "Off-site": "bg-purple-100 text-purple-700",
@@ -54,7 +71,7 @@ const statusStyles = {
   Retired: "bg-slate-200 text-slate-600"
 };
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   Assigned: "#3155ff",
   "In store": "#a8d900",
   "Off-site": "#8055ff",
@@ -62,17 +79,17 @@ const statusColors = {
   Retired: "#94a3b8"
 };
 
-const tabs = ["All", "Assigned", "In store", "Off-site", "In repair"];
+const tabs: string[] = ["All", "Assigned", "In store", "Off-site", "In repair"];
 
-function DeviceImage({ device }) {
+function DeviceImage({ device }: { device: DeviceCardData }) {
   const [failed, setFailed] = useState(false);
 
-  const Icon = {
+  const Icon = ({
     Laptops: Laptop,
     Desktops: Monitor,
     Phones: Smartphone,
     Monitors: Monitor,
-  }[device.category] || Monitor;
+  } as Record<string, LucideIcon>)[device.category] || Monitor;
 
   return (
     <div className="device-image relative flex h-[174px] items-center justify-center overflow-hidden bg-gradient-to-b from-[#f1f4fc] to-[#e8edf9]">
@@ -101,7 +118,7 @@ function DeviceImage({ device }) {
   );
 }
 
-function DeviceCard({ device, onClick }) {
+function DeviceCard({ device, onClick }: { device: DeviceCardData; onClick: (device: DeviceCardData) => void }) {
   return (
     <button
       onClick={() => onClick(device)}
@@ -156,7 +173,7 @@ export default function DevicesPage({ basePath = "/devices" }) {
   const requestedStatus = searchParams.get("status");
   const [devices] = useState(initialDevices);
   const [activeTab, setActiveTab] = useState(
-    tabs.includes(requestedStatus) ? requestedStatus : "All"
+    requestedStatus && tabs.includes(requestedStatus) ? requestedStatus : "All"
   );
   const [view, setView] = useState("Grid");
   const [readyOnly, setReadyOnly] = useState(false);
@@ -164,7 +181,7 @@ export default function DevicesPage({ basePath = "/devices" }) {
 
   const total = devices.length;
 
-  const counts = {
+  const counts: Record<string, number> = {
     Assigned: devices.filter(d => d.status === "Assigned").length,
     "In store": devices.filter(d => d.status === "In store").length,
     "Off-site": devices.filter(d => d.status === "Off-site").length,

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router";
 import { ChevronLeft, Search, Upload, Box } from "lucide-react";
 import { deviceModels as existingModels } from "../lib/mockData";
@@ -19,7 +20,7 @@ export default function RegisterDevicePage({ basePath = '/devices' }) {
     assignTo: ""
   });
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };

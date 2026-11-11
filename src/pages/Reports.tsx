@@ -6,7 +6,7 @@ import {
   CircleAlert,
   Clock3,
   Laptop,
-  Ticket,
+  Ticket as TicketIcon,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { devices, gatePasses, tickets, userById } from '../lib/mockData'
@@ -15,6 +15,9 @@ import {
   getSubmittedPasses,
   getSubmittedTickets,
 } from '../lib/sessionData'
+import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import type { Ticket as TicketRecord } from '../lib/types'
 
 const TICKET_STATES = [
   { label: 'In progress', color: '#3155ff' },
@@ -37,7 +40,7 @@ const DEVICE_STATES = [
 ]
 const CATEGORY_COLORS = ['#3155ff', '#84cc16', '#8b5cf6', '#f97316', '#06b6d4', '#0f1b4c']
 
-function countBy(records, getKey) {
+function countBy<T>(records: T[], getKey: (record: T) => string) {
   return records.reduce((counts, record) => {
     const key = getKey(record)
     counts.set(key, (counts.get(key) ?? 0) + 1)
@@ -45,7 +48,13 @@ function countBy(records, getKey) {
   }, new Map())
 }
 
-function SummaryCard({ label, value, note, Icon, tone }) {
+function SummaryCard({ label, value, note, Icon, tone }: {
+  label: string
+  value: string | number
+  note: string
+  Icon: LucideIcon
+  tone: string
+}) {
   return (
     <article className="rounded-2xl border border-[#e9edf6] bg-white p-4 shadow-[0_1px_3px_rgba(16,28,82,0.04)] sm:p-5">
       <div className="flex items-start justify-between gap-3">
@@ -62,7 +71,12 @@ function SummaryCard({ label, value, note, Icon, tone }) {
   )
 }
 
-function Panel({ title, description, children, className = '' }) {
+function Panel({ title, description, children, className = '' }: {
+  title: string
+  description?: string
+  children: ReactNode
+  className?: string
+}) {
   return (
     <section className={`rounded-2xl border border-[#e9edf6] bg-white p-4 shadow-[0_1px_3px_rgba(16,28,82,0.04)] sm:p-5 ${className}`}>
       <div className="mb-4">
@@ -74,7 +88,19 @@ function Panel({ title, description, children, className = '' }) {
   )
 }
 
-function BarList({ rows, total, emptyMessage = 'No records to report.' }) {
+interface BarRow {
+  label: string
+  value: number
+  color: string
+  href?: string
+  note?: string
+}
+
+function BarList({ rows, total, emptyMessage = 'No records to report.' }: {
+  rows: BarRow[]
+  total: number
+  emptyMessage?: string
+}) {
   if (!rows.length) return <p className="py-6 text-center text-xs text-slate-500">{emptyMessage}</p>
 
   return (
@@ -102,7 +128,7 @@ function BarList({ rows, total, emptyMessage = 'No records to report.' }) {
   )
 }
 
-function TicketAttention({ items }) {
+function TicketAttention({ items }: { items: TicketRecord[] }) {
   if (!items.length) {
     return <p className="py-6 text-center text-xs text-slate-500">No breached or at-risk tickets right now.</p>
   }
@@ -162,7 +188,7 @@ export default function Reports() {
   const slaOnTrackRate = allTickets.length ? Math.round(onTrackCount / allTickets.length * 100) : 0
   const avgResolution = allTickets
     .filter((ticket) => ticket.status === 'Resolved' && Number.isFinite(ticket.resolutionHours))
-    .map((ticket) => ticket.resolutionHours)
+    .map((ticket) => ticket.resolutionHours ?? 0)
   const avgResolutionHours = avgResolution.length
     ? Math.round(avgResolution.reduce((total, hours) => total + hours, 0) / avgResolution.length * 10) / 10
     : null
@@ -187,7 +213,7 @@ export default function Reports() {
       </header>
 
       <section aria-label="Key metrics" className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-5">
-        <SummaryCard label="Total tickets" value={allTickets.length} note={`${openTickets.length} currently open`} Icon={Ticket} tone="bg-blue-50 text-blue-700" />
+        <SummaryCard label="Total tickets" value={allTickets.length} note={`${openTickets.length} currently open`} Icon={TicketIcon} tone="bg-blue-50 text-blue-700" />
         <SummaryCard label="Needs attention" value={attentionTickets.length} note={`${slaStates.get('Breached') ?? 0} breached · ${slaStates.get('At risk') ?? 0} at risk`} Icon={CircleAlert} tone="bg-orange-50 text-orange-700" />
         <SummaryCard label="SLA on track" value={`${slaOnTrackRate}%`} note={`${onTrackCount} of ${allTickets.length} ticket records`} Icon={Clock3} tone="bg-emerald-50 text-emerald-700" />
         <SummaryCard label="Avg. resolution" value={avgResolutionHours == null ? '—' : `${avgResolutionHours}h`} note={`${avgResolution.length} resolved ticket${avgResolution.length === 1 ? '' : 's'} with duration data`} Icon={BriefcaseBusiness} tone="bg-violet-50 text-violet-700" />

@@ -1,7 +1,8 @@
 // Employee self-service home, ticket reporting, ticket status, and pass requests.
 
 import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link, Navigate, useSearchParams } from 'react-router'
+import type { ReactNode } from 'react'
 import {
   ArrowRight,
   Check,
@@ -26,17 +27,18 @@ import {
   saveSubmittedTicket,
 } from '../lib/sessionData'
 import { useAuth } from '../contexts/AuthContext'
+import type { PublicUser } from '../lib/types'
 
-const getEmployeeTickets = (userId) => [
+const getEmployeeTickets = (userId: string) => [
   ...tickets.filter((ticket) => ticket.requesterId === userId),
   ...getSubmittedTickets().filter((ticket) => ticket.requesterId === userId),
 ]
-const getEmployeePasses = (userId) => [
+const getEmployeePasses = (userId: string) => [
   ...gatePasses.filter((pass) => pass.requesterId === userId),
   ...getSubmittedPasses().filter((pass) => pass.requesterId === userId),
 ]
 
-function PageTitle({ title, description, children }) {
+function PageTitle({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -48,7 +50,7 @@ function PageTitle({ title, description, children }) {
   )
 }
 
-function Home({ viewer }) {
+function Home({ viewer }: { viewer: PublicUser }) {
   const myTickets = useMemo(() => getEmployeeTickets(viewer.id), [viewer.id])
   const myPasses = getEmployeePasses(viewer.id)
   const employeeDevices = devices.filter((device) => device.assigneeId === viewer.id)
@@ -182,7 +184,7 @@ function Home({ viewer }) {
   )
 }
 
-function ReportProblem({ viewer }) {
+function ReportProblem({ viewer }: { viewer: PublicUser }) {
   const [submitted, setSubmitted] = useState(false)
   const reportDevices = devices.filter((device) => device.assigneeId === viewer.id)
   const [deviceId, setDeviceId] = useState('')
@@ -373,7 +375,7 @@ function ReportProblem({ viewer }) {
   )
 }
 
-function MyTickets({ viewer }) {
+function MyTickets({ viewer }: { viewer: PublicUser }) {
   const [status, setStatus] = useState('Open')
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTicketId = searchParams.get('ticket')
@@ -490,7 +492,7 @@ function MyTickets({ viewer }) {
   )
 }
 
-function Passes({ request = false, viewer }) {
+function Passes({ request = false, viewer }: { request?: boolean; viewer: PublicUser }) {
   const employeeDevices = devices.filter((device) => device.assigneeId === viewer.id)
   const [selectedDevices, setSelectedDevices] = useState(() => employeeDevices.slice(0, 1).map((device) => device.id))
   const [destination, setDestination] = useState('')
@@ -523,6 +525,7 @@ function Passes({ request = false, viewer }) {
                 status: 'Waiting',
                 items: selectedDevices.map((id) => {
                   const device = devices.find((item) => item.id === id)
+                  if (!device) throw new Error('A selected device is no longer available.')
                   return {
                     tag: device.tag,
                     make: `${device.make} ${device.model}`,
@@ -645,9 +648,10 @@ function Passes({ request = false, viewer }) {
   )
 }
 
-export default function EmployeePortal({ section, viewer }) {
+export default function EmployeePortal({ section, viewer }: { section: string; viewer?: PublicUser | null }) {
   const { user } = useAuth()
   const activeViewer = viewer ?? user
+  if (!activeViewer) return <Navigate to="/login" replace />
   if (section === 'report') return <ReportProblem viewer={activeViewer} />
   if (section === 'tickets') return <MyTickets viewer={activeViewer} />
   if (section === 'passes') return <Passes viewer={activeViewer} />

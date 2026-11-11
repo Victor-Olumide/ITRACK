@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 export default function TechnicianHome() {
   const { user } = useAuth()
-  const myTickets = tickets.filter((ticket) => ticket.assigneeId === user.id)
+  const myTickets = tickets.filter((ticket) => ticket.assigneeId === user?.id)
   const activeTickets = myTickets.filter((ticket) => ticket.status !== 'Resolved')
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -22,7 +22,7 @@ export default function TechnicianHome() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-[#3155ff]">Technician workspace</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#111a3b]">
-            Good morning, {user.name.split(' ')[0]}
+            Good morning, {user?.name.split(' ')[0] ?? 'there'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">{today} · {activeTickets.length} tickets assigned to you</p>
         </div>

@@ -19,23 +19,36 @@ import {
   saveGateEvent,
 } from '../lib/sessionData'
 import { useAuth } from '../contexts/AuthContext'
+import type { GateEventType, GateLogEntry, GatePass, GatePassItem, PublicUser } from '../lib/types'
 
-function eventTime(entry) {
+interface ActivePass {
+  pass: GatePass
+  direction: 'Out' | 'Back'
+  verifiedTags: string[]
+  lastScannedTag: string
+}
+
+interface GateNotice {
+  kind: 'error' | 'warning' | 'success'
+  text: string
+}
+
+function eventTime(entry: GateLogEntry) {
   return entry.occurredAt ?? Date.parse(entry.time)
 }
 
-function tagForEvent(entry) {
+function tagForEvent(entry: GateLogEntry) {
   return entry.assetTag ?? deviceById(entry.deviceId)?.tag
 }
 
-function formatTime(entry) {
+function formatTime(entry: GateLogEntry) {
   const date = new Date(eventTime(entry))
   return Number.isNaN(date.getTime())
     ? entry.time
     : new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(date)
 }
 
-function formatDate(value) {
+function formatDate(value: string) {
   if (!value) return '—'
   const date = new Date(`${value}T00:00:00`)
   return Number.isNaN(date.getTime())
@@ -43,7 +56,7 @@ function formatDate(value) {
     : new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(date)
 }
 
-function StatusPill({ event }) {
+function StatusPill({ event }: { event: GateEventType }) {
   const styles = {
     Out: 'bg-violet-900/80 text-violet-200',
     Back: 'bg-emerald-900/80 text-emerald-200',
@@ -56,7 +69,7 @@ function StatusPill({ event }) {
   )
 }
 
-function EntryRow({ entry, users }) {
+function EntryRow({ entry, users }: { entry: GateLogEntry; users: PublicUser[] }) {
   const device = deviceById(entry.deviceId)
   const tag = tagForEvent(entry)
   const person = users.find((item) => item.id === entry.personId) ?? userById(entry.personId)
@@ -73,7 +86,12 @@ function EntryRow({ entry, users }) {
   )
 }
 
-function PassItem({ item, checked, onToggle, isMain }) {
+function PassItem({ item, checked, onToggle, isMain }: {
+  item: GatePassItem
+  checked: boolean
+  onToggle: () => void
+  isMain: boolean
+}) {
   const device = deviceByTag(item.tag)
   const name = item.name ?? item.type ?? (device ? device.category.replace(/s$/, '') : 'Accessory')
   const description = item.make ?? `${device?.make ?? ''} ${device?.model ?? ''}`.trim()
@@ -98,17 +116,17 @@ function PassItem({ item, checked, onToggle, isMain }) {
   )
 }
 
-export default function GateStationKiosk({ kiosk = false }) {
+export default function GateStationKiosk({ kiosk = false }: { kiosk?: boolean }) {
   const { user, users, logout } = useAuth()
   const navigate = useNavigate()
   const allPasses = useMemo(() => [...gatePasses, ...getSubmittedPasses()], [])
-  const [entries, setEntries] = useState(() => (
+  const [entries, setEntries] = useState<GateLogEntry[]>(() => (
     [...getSubmittedGateEvents(), ...initialGateLog].sort((a, b) => eventTime(b) - eventTime(a))
   ))
-  const tagInputRef = useRef(null)
+  const tagInputRef = useRef<HTMLInputElement>(null)
   const [tag, setTag] = useState('')
-  const [active, setActive] = useState(null)
-  const [notice, setNotice] = useState(null)
+  const [active, setActive] = useState<ActivePass | null>(null)
+  const [notice, setNotice] = useState<GateNotice | null>(null)
 
   const statusUpdates = getGatePassStatusUpdates()
   const today = new Date().toDateString()
@@ -117,13 +135,13 @@ export default function GateStationKiosk({ kiosk = false }) {
   const backCount = todayEntries.filter((entry) => entry.event === 'Back').length
   const stoppedCount = todayEntries.filter((entry) => entry.event === 'Stopped').length
 
-  function latestEventForTag(assetTag) {
+  function latestEventForTag(assetTag: string) {
     return entries
       .filter((entry) => tagForEvent(entry) === assetTag)
       .sort((a, b) => eventTime(b) - eventTime(a))[0]
   }
 
-  function scanTag(rawTag) {
+  function scanTag(rawTag: string) {
     const scannedTag = rawTag.trim().toUpperCase()
     if (!scannedTag) return
 
@@ -139,8 +157,8 @@ export default function GateStationKiosk({ kiosk = false }) {
     const latest = latestEventForTag(scannedTag)
     const device = deviceByTag(scannedTag)
     const checkedOut = latest ? latest.event === 'Out' : device?.status === 'Off-site'
-    let pass
-    let direction
+    let pass: GatePass | undefined
+    let direction: 'Out' | 'Back'
 
     if (checkedOut) {
       direction = 'Back'
@@ -179,7 +197,7 @@ export default function GateStationKiosk({ kiosk = false }) {
     setTag('')
   }
 
-  function toggleItem(itemTag) {
+  function toggleItem(itemTag: string) {
     if (!active) return
     const verified = new Set(active.verifiedTags)
     if (verified.has(itemTag)) verified.delete(itemTag)
@@ -187,8 +205,8 @@ export default function GateStationKiosk({ kiosk = false }) {
     setActive({ ...active, verifiedTags: [...verified] })
   }
 
-  function finishMovement(eventType = active?.direction) {
-    if (!active || !eventType) return
+  function finishMovement(eventType: GateEventType | undefined = active?.direction) {
+    if (!active || !eventType || !user) return
     const approved = (statusUpdates[active.pass.id] ?? active.pass.status) === 'Approved'
     if (eventType === 'Out' && !approved) {
       setNotice({ kind: 'error', text: 'This pass is not approved. Items cannot leave the site.' })

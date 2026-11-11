@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, Package, Printer, Search, Truck } from 'lucide-react'
 import { stock as initialStock } from '../lib/mockData'
+import type { FormEvent } from 'react'
 
 const MINIMUM_STOCK = 6
 const FILTERS = ['All items', 'Below minimum', 'Out with people']
@@ -25,7 +26,7 @@ export default function Stock() {
     return matchesSearch && matchesFilter
   }), [items, query, filter])
 
-  const receiveStock = (event) => {
+  const receiveStock = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const amount = Number(receiveQuantity)
     if (!Number.isInteger(amount) || amount < 1) return
@@ -115,7 +116,7 @@ export default function Stock() {
               step="1"
               type="number"
               value={receiveQuantity}
-              onChange={(event) => setReceiveQuantity(event.target.value)}
+              onChange={(event) => setReceiveQuantity(Number(event.target.value))}
               className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] px-3 py-2.5 text-sm font-normal text-slate-800"
             />
           </label>

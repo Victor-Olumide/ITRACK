@@ -1,7 +1,9 @@
 import { Printer, X } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { deviceByTag, userById } from '../lib/mockData'
+import type { GatePass, PublicUser } from '../lib/types'
 
-function formatDate(value) {
+function formatDate(value: string) {
   if (!value) return '—'
   const date = new Date(`${value}T00:00:00`)
   return Number.isNaN(date.getTime())
@@ -9,7 +11,7 @@ function formatDate(value) {
     : new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
 }
 
-function Field({ label, value, className = '' }) {
+function Field({ label, value, className = '' }: { label: string; value: ReactNode; className?: string }) {
   return (
     <div className={`grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] border-b border-r border-slate-300 last:border-r-0 ${className}`}>
       <dt className="bg-slate-50 px-2 py-1.5 text-[10px] font-semibold text-slate-700">{label}</dt>
@@ -18,7 +20,13 @@ function Field({ label, value, className = '' }) {
   )
 }
 
-function GatePassSlip({ pass, viewer, onClose }) {
+interface GatePassSlipProps {
+  pass: GatePass
+  viewer: PublicUser
+  onClose: () => void
+}
+
+function GatePassSlip({ pass, viewer, onClose }: GatePassSlipProps) {
   const requester = userById(pass.requesterId)
   const items = pass.items ?? []
   const mainDeviceItem = items.find((item) => deviceByTag(item.tag))
@@ -127,7 +135,7 @@ function GatePassSlip({ pass, viewer, onClose }) {
                   )
                 })}
                 {items.length === 0 && (
-                  <tr><td colSpan="7" className="px-2 py-4 text-center text-slate-500">No items recorded on this pass.</td></tr>
+                  <tr><td colSpan={7} className="px-2 py-4 text-center text-slate-500">No items recorded on this pass.</td></tr>
                 )}
               </tbody>
             </table>

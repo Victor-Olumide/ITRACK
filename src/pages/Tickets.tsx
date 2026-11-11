@@ -11,9 +11,19 @@ import {
 import { tickets as mockTickets, userById, deviceById } from "../lib/mockData";
 import { getSubmittedTickets } from "../lib/sessionData";
 import { useAuth } from "../contexts/AuthContext";
+import type { PublicUser, Ticket, TicketTimeState } from "../lib/types";
+
+interface TicketView extends Ticket {
+  department: string
+  requester: string
+  assignee: string
+  device: string
+  deviceName: string
+  group: TicketTimeState
+}
 
 // Resolve relational mockData into the shape this view consumes.
-function toView(t, users) {
+function toView(t: Ticket, users: PublicUser[]): TicketView {
   const requester = users.find((user) => user.id === t.requesterId) ?? userById(t.requesterId);
   const assignee = users.find((user) => user.id === t.assigneeId) ?? userById(t.assigneeId);
   const device = deviceById(t.deviceId);
@@ -29,7 +39,7 @@ function toView(t, users) {
   };
 }
 
-const groupStyles = {
+const groupStyles: Record<string, { dot: string; color: string }> = {
   Breached: { dot: "bg-red-600", color: "text-red-600" },
   "At risk": { dot: "bg-amber-500", color: "text-amber-700" },
   "On track": { dot: "bg-emerald-500", color: "text-emerald-600" },
@@ -53,7 +63,12 @@ const slaStyles = {
 const initials = (name = "") =>
   name.split(" ").map(part => part[0]).join("").slice(0, 2).toUpperCase();
 
-function Filter({ label, value, onChange, options }) {
+function Filter({ label, value, onChange, options }: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: string[]
+}) {
   return (
     <select
       value={value}
@@ -68,7 +83,11 @@ function Filter({ label, value, onChange, options }) {
   );
 }
 
-function TicketRow({ ticket, selected, onClick }) {
+function TicketRow({ ticket, selected, onClick }: {
+  ticket: TicketView
+  selected: boolean
+  onClick: () => void
+}) {
   return (
     <button
       onClick={onClick}
@@ -130,7 +149,10 @@ function TicketRow({ ticket, selected, onClick }) {
   );
 }
 
-function TicketDetails({ ticket, onUpdate }) {
+function TicketDetails({ ticket, onUpdate }: {
+  ticket: TicketView | undefined
+  onUpdate: (id: string, changes: Partial<TicketView>) => void
+}) {
   const [mode, setMode] = useState("reply");
   const [message, setMessage] = useState("");
 
@@ -296,16 +318,16 @@ function TicketDetails({ ticket, onUpdate }) {
   );
 }
 
-export default function TicketPage({ technicianView = false }) {
+export default function TicketPage({ technicianView = false }: { technicianView?: boolean }) {
   const { user, users } = useAuth()
-  const assigneeId = user.id
+  const assigneeId = user?.id ?? ''
   const availableTickets = useMemo(
     () => [...mockTickets, ...getSubmittedTickets()].map((ticket) => toView(ticket, users)),
     [users]
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTicketId = searchParams.get("ticket");
-  const [tickets, setTickets] = useState(availableTickets);
+  const [tickets, setTickets] = useState<TicketView[]>(availableTickets);
   const [selectedId, setSelectedId] = useState(() => (
     requestedTicketId ?? availableTickets.find(ticket => ticket.assigneeId === assigneeId)?.id ?? availableTickets[0]?.id ?? ''
   ));
@@ -322,7 +344,7 @@ export default function TicketPage({ technicianView = false }) {
   const selectedTicket = scopedTickets.find(t => t.id === requestedTicketId)
     ?? scopedTickets.find(t => t.id === selectedId);
 
-  const updateTicket = (id, changes) => {
+  const updateTicket = (id: string, changes: Partial<TicketView>) => {
     setTickets(prev =>
       prev.map(t => t.id === id ? { ...t, ...changes } : t)
     );

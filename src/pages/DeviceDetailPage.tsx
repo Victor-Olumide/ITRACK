@@ -6,8 +6,10 @@ import {
   ChevronLeft, HelpCircle, RotateCcw, ZoomOut, ZoomIn,
   Rotate3D, Maximize, MapPin, Monitor, Laptop, Smartphone, Printer
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react'
+import type { Device, DeviceStatus } from '../lib/types'
 
-const statusStyles = {
+const statusStyles: Record<DeviceStatus, string> = {
   Assigned:   'bg-blue-100   text-blue-800',
   'In store': 'bg-lime-100   text-lime-800',
   'Off-site': 'bg-purple-100 text-purple-700',
@@ -16,20 +18,34 @@ const statusStyles = {
 }
 
 // Fallback icon per category
-function CategoryIcon({ category, size = 65 }) {
-  const map = {
+function CategoryIcon({ category, size = 65 }: { category?: string; size?: number }) {
+  const map: Record<string, LucideIcon> = {
     Laptop:           Laptop,
     'Desktop tower':  Monitor,
     Monitor:          Monitor,
     'Laser printer':  Printer,
     'Work phone':     Smartphone,
   }
-  const Icon = map[category] ?? Monitor
+  const Icon = map[category ?? ''] ?? Monitor
   return <Icon size={size} strokeWidth={1} />
 }
 
 // Device image with fallback
-function DeviceImage({ device }) {
+interface DeviceView {
+  id: string
+  name: string
+  tag: string
+  category: string
+  specs: string
+  status: DeviceStatus
+  assignedTo: string
+  initials: string
+  location: string
+  warranty: string
+  image: string
+}
+
+function DeviceImage({ device }: { device: DeviceView | null }) {
   const [failed, setFailed] = useState(false)
 
   return (
@@ -51,15 +67,15 @@ function DeviceImage({ device }) {
   )
 }
 
-function fromAssetRecord(record) {
+function fromAssetRecord(record: Device | undefined): DeviceView | null {
   if (!record) return null
   const owner = userById(record.assigneeId)
-  const category = {
+  const category = ({
     Laptops: 'Laptop',
     Desktops: 'Desktop tower',
     Monitors: 'Monitor',
     Phones: 'Work phone',
-  }[record.category] ?? record.category
+  } as Record<string, string>)[record.category] ?? record.category
   const warranty = new Date(record.warrantyEnds)
 
   return {
@@ -79,16 +95,16 @@ function fromAssetRecord(record) {
   }
 }
 
-export default function DeviceDetailsPage({ basePath = '/devices' }) {
+export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?: string }) {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { tag } = useParams()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('Overview')
 
-  const assetRecord = deviceByTag(tag)
-  const hasAccess = user.role !== 'Employee' || assetRecord?.assigneeId === user.id
-  const device = hasAccess ? location.state?.device ?? fromAssetRecord(assetRecord) : null
+  const assetRecord = deviceByTag(tag ?? '')
+  const hasAccess = user !== null && (user.role !== 'Employee' || assetRecord?.assigneeId === user.id)
+  const device: DeviceView | null = hasAccess ? location.state?.device ?? fromAssetRecord(assetRecord) : null
 
   if (!device) {
     return (

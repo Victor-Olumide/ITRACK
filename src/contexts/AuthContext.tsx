@@ -1,47 +1,86 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { ROLES, users as seedUsers } from '../lib/mockData'
+import type { Account, PublicUser, UserRole } from '../lib/types'
 
-const AuthContext = createContext(null)
+interface CreateUserInput {
+  name: string
+  email: string
+  department: string
+  staffId: string
+  password: string
+  role: UserRole
+}
+
+interface AuthContextValue {
+  user: PublicUser | null
+  users: PublicUser[]
+  login: (email: string, password: string) => boolean
+  logout: () => void
+  createUser: (input: CreateUserInput) => PublicUser
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
 const CURRENT_USER_KEY = 'itrack.auth.user'
 const ACCOUNTS_KEY = 'itrack.auth.accounts'
 export const DEMO_PASSWORD = 'ITrackDemo2026!'
 
-function readAccounts() {
+function isAccount(value: unknown): value is Account {
+  if (!value || typeof value !== 'object') return false
+  const account = value as Record<string, unknown>
+  return typeof account.id === 'string'
+    && typeof account.name === 'string'
+    && typeof account.email === 'string'
+    && typeof account.role === 'string'
+    && ROLES.some(({ value: role }) => role === account.role)
+    && typeof account.department === 'string'
+    && typeof account.staffId === 'string'
+    && typeof account.password === 'string'
+}
+
+function readAccounts(): Account[] {
   const raw = window.sessionStorage.getItem(ACCOUNTS_KEY)
   if (raw === null) return seedUsers.map((user) => ({ ...user, password: DEMO_PASSWORD }))
 
-  const accounts = JSON.parse(raw)
-  if (!Array.isArray(accounts)) {
+  const accounts: unknown = JSON.parse(raw)
+  if (!Array.isArray(accounts) || !accounts.every(isAccount)) {
     throw new Error('Invalid demo accounts in browser session storage.')
   }
   return accounts
 }
 
-function readCurrentUser(accounts) {
+function readCurrentUser(accounts: Account[]): PublicUser | null {
   const id = window.sessionStorage.getItem(CURRENT_USER_KEY)
-  return accounts.find((account) => account.id === id) ?? null
+  const account = accounts.find((item) => item.id === id)
+  return account ? toPublicUser(account) : null
 }
 
-function toPublicUser(account) {
-  const publicUser = { ...account }
-  delete publicUser.password
-  return publicUser
+function toPublicUser(account: Account): PublicUser {
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    role: account.role,
+    department: account.department,
+    staffId: account.staffId,
+    ...(account.phone ? { phone: account.phone } : {}),
+  }
 }
 
-export function homePathForRole(role) {
+export function homePathForRole(role: UserRole) {
   if (role === 'Technician') return '/technician'
   if (role === 'Employee') return '/employee'
   if (role === 'Security') return '/security'
   return '/'
 }
 
-export function AuthProvider({ children }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState(readAccounts)
   const [user, setUser] = useState(() => readCurrentUser(accounts))
   const publicUsers = useMemo(() => accounts.map(toPublicUser), [accounts])
 
-  const login = (email, password) => {
+  const login = (email: string, password: string) => {
     const account = accounts.find((item) => item.email.toLowerCase() === email.trim().toLowerCase())
     if (!account || account.password !== password) return false
     window.sessionStorage.setItem(CURRENT_USER_KEY, account.id)
@@ -54,7 +93,7 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  const createUser = (input) => {
+  const createUser = (input: CreateUserInput) => {
     if (user?.role !== 'IT Admin') {
       throw new Error('Only IT Admins can create user accounts.')
     }
@@ -89,7 +128,7 @@ export function AuthProvider({ children }) {
     return toPublicUser(account)
   }
 
-  const value = { user, users: publicUsers, login, logout, createUser }
+  const value: AuthContextValue = { user, users: publicUsers, login, logout, createUser }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

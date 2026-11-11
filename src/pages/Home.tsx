@@ -18,9 +18,10 @@ import {
   todayQueue,
 } from '../lib/mockData'
 import { useAuth } from '../contexts/AuthContext'
+import type { ReactNode } from 'react'
 
 const ACTION_ICONS = [AlertCircle, CircleHelp, Clock3, Wrench]
-const ACTION_ROUTES = {
+const ACTION_ROUTES: Record<string, string> = {
   'Review passes': '/passes',
   'View devices': '/devices',
   'View repairs': '/devices?status=In%20repair',
@@ -28,7 +29,7 @@ const ACTION_ROUTES = {
 const MAX_CATEGORY_VALUE = Math.max(1, ...ticketsByCategory.map(({ value }) => value))
 const CHART_TICKS = [3, 2, 1, 0].map((step) => Math.ceil(MAX_CATEGORY_VALUE / 3) * step)
 
-function Card({ className = '', children }) {
+function Card({ className = '', children }: { className?: string; children: ReactNode }) {
   return (
     <section
       className={`rounded-[18px] border border-[#e9edf6] bg-white shadow-[0_1px_3px_rgba(16,28,82,0.04)] ${className}`}
@@ -38,7 +39,12 @@ function Card({ className = '', children }) {
   )
 }
 
-function StatCard({ label, value, note, noteColor = 'text-slate-500' }) {
+function StatCard({ label, value, note, noteColor = 'text-slate-500' }: {
+  label: string
+  value: string | number
+  note: string
+  noteColor?: string
+}) {
   return (
     <Card className="relative flex min-h-28 flex-col justify-center gap-1 px-4 py-4 sm:px-5">
       <ArrowUpRight
@@ -314,7 +320,7 @@ export default function Home() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-[22px] font-bold tracking-tight text-[#111a3b] sm:text-2xl">
-            Good morning, {user.name.split(' ')[0]}
+            Good morning, {user?.name.split(' ')[0] ?? 'there'}
           </h1>
           <p className="mt-1 text-xs text-slate-500 sm:text-sm">
             {today} · {metrics.unassignedTickets} tickets are waiting for someone

@@ -1,11 +1,30 @@
 // Profile, account security, and notification preferences.
 
 import { useState } from 'react'
+import { Navigate } from 'react-router'
 import { Bell, Check, Shield, UserRound } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import type { PublicUser } from '../lib/types'
 
 const PROFILE_KEY = 'itrack.profile'
-const defaultProfile = (user) => ({
+interface Profile {
+  name: string
+  email: string
+  phone: string
+  office: string
+  language: string
+  timezone: string
+}
+
+interface NotificationPreferences {
+  ticketAtRisk: boolean
+  ticketBreaches: boolean
+  newGatePass: boolean
+  stockMinimum: boolean
+  weeklyReport: boolean
+}
+
+const defaultProfile = (user: PublicUser): Profile => ({
   name: user.name,
   email: user.email,
   phone: '+234 803 555 0182',
@@ -14,7 +33,7 @@ const defaultProfile = (user) => ({
   timezone: 'Africa/Lagos',
 })
 
-function readProfile(user) {
+function readProfile(user: PublicUser): Profile {
   const key = `${PROFILE_KEY}.${user.id}`
   const raw = window.sessionStorage.getItem(key)
   if (raw === null) return defaultProfile(user)
@@ -32,7 +51,13 @@ const TABS = [
   { label: 'Notifications', Icon: Bell },
 ]
 
-function ToggleRow({ title, description, checked, onChange, isLast }) {
+function ToggleRow({ title, description, checked, onChange, isLast }: {
+  title: string
+  description: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+  isLast: boolean
+}) {
   return (
     <div className={`flex items-center justify-between gap-5 py-4 ${isLast ? '' : 'border-b border-slate-100'}`}>
       <div>
@@ -55,10 +80,10 @@ function ToggleRow({ title, description, checked, onChange, isLast }) {
   )
 }
 
-function ProfileSettings({ user }) {
+function ProfileSettings({ user }: { user: PublicUser }) {
   const [saved, setSaved] = useState(false)
   const [profile, setProfile] = useState(() => readProfile(user))
-  const update = (key, value) => {
+  const update = <K extends keyof Profile>(key: K, value: Profile[K]) => {
     setSaved(false)
     setProfile((current) => ({ ...current, [key]: value }))
   }
@@ -179,15 +204,15 @@ function SecuritySettings() {
 }
 
 function NotificationSettings() {
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<NotificationPreferences>({
     ticketAtRisk: true,
     ticketBreaches: true,
     newGatePass: true,
     stockMinimum: true,
     weeklyReport: false,
   })
-  const toggle = (key, value) => setSettings((current) => ({ ...current, [key]: value }))
-  const options = [
+  const toggle = (key: keyof NotificationPreferences, value: boolean) => setSettings((current) => ({ ...current, [key]: value }))
+  const options: Array<[keyof NotificationPreferences, string, string]> = [
     ['ticketAtRisk', 'A ticket of mine is at risk', 'At 75% of its time target · toast and email'],
     ['ticketBreaches', 'Any ticket breaches its target', 'IT Admin and the assignee'],
     ['newGatePass', 'New gate pass requests', 'IT Admin only · toast'],
@@ -218,6 +243,7 @@ export default function Settings() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('Profile')
   const ActiveIcon = TABS.find((tab) => tab.label === activeTab)?.Icon ?? UserRound
+  if (!user) return <Navigate to="/login" replace />
 
   return (
     <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">

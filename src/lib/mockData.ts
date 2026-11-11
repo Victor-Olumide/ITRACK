@@ -15,8 +15,22 @@
 // REST/GraphQL backend would return. The `*ById` / `*ByTag` lookups at the
 // bottom are the only helpers pages should need.
 
+import type {
+  Account,
+  Device,
+  DeviceModel,
+  DeviceStatus,
+  GateLogEntry,
+  GatePass,
+  RoleOption,
+  StockItem,
+  Ticket,
+  TicketTimeState,
+  UserRole,
+} from './types'
+
 // ── Roles ──────────────────────────────────────────────────────
-export const ROLES = [
+export const ROLES: RoleOption[] = [
   { value: 'IT Admin',   label: 'IT Admin' },
   { value: 'Technician', label: 'Technician' },
   { value: 'Employee',   label: 'Employee' },
@@ -25,7 +39,7 @@ export const ROLES = [
 
 // ── Users (covers all four roles) ──────────────────────────────
 // Fields: id, name, role, department, staffId
-const seedUsers = [
+const seedUsers: Array<Omit<Account, 'email' | 'password'>> = [
   { id: 'u01', name: 'Ngozi Eze',      role: 'IT Admin',   department: 'IT',          staffId: 'IT-A-001' },
   { id: 'u02', name: 'Tunde Adeyemi',  role: 'Technician', department: 'IT',          staffId: 'IT-T-014' },
   { id: 'u03', name: 'Ifeanyi Okafor', role: 'Technician', department: 'IT',          staffId: 'IT-T-021' },
@@ -48,7 +62,7 @@ export const users = seedUsers.map((user) => ({
 //         assigneeId, location, ipAddress, warrantyEnds
 // category: Laptops | Desktops | Phones | Monitors
 // status:   Assigned | In store | Off-site | In repair | Retired
-export const devices = [
+export const devices: Device[] = [
   { id: 'd01', tag: 'IT-LAP-0042', category: 'Laptops',   make: 'Dell',    model: 'Latitude 5440',      serialNumber: 'DLLA5440X42',  status: 'Assigned',  assigneeId: 'u05', location: 'Finance · HQ 2nd floor',    ipAddress: '10.0.12.42', warrantyEnds: '2027-03-15' },
   { id: 'd02', tag: 'IT-LAP-0043', category: 'Laptops',   make: 'HP',      model: 'EliteBook 840 G11',  serialNumber: 'HPEB840G11Y',  status: 'Assigned',  assigneeId: 'u06', location: 'Operations · HQ 1st floor', ipAddress: '10.0.12.43', warrantyEnds: '2027-06-20' },
   { id: 'd03', tag: 'IT-DSK-0017', category: 'Desktops',  make: 'Lenovo',  model: 'ThinkCentre M75q',   serialNumber: 'LNM75Q017',    status: 'Assigned',  assigneeId: 'u05', location: 'Finance · HQ 2nd floor',    ipAddress: '10.0.12.17', warrantyEnds: '2026-12-01' },
@@ -77,7 +91,7 @@ export const devices = [
 //
 // `category`, `description`, `response`, `resolution` and `sla` are extra
 // UI convenience fields kept alongside the relational IDs.
-export const tickets = [
+export const tickets: Ticket[] = [
   {
     id: 'IT-0181', title: 'PC switches off during work', type: 'Problem', category: 'PC hardware',
     priority: 'Critical', status: 'In progress', timeState: 'Breached',
@@ -192,7 +206,7 @@ export const tickets = [
 // Fields: id, requesterId, destination, outDate, returnDate, status, items
 // status: Waiting | Approved | Overdue
 // items: [{ tag, make, serial, condition }]
-export const gatePasses = [
+export const gatePasses: GatePass[] = [
   {
     id: 'GP-0034', requesterId: 'u06', destination: 'Client office, Ring Road, Ibadan',
     outDate: '2026-11-10', returnDate: '2026-11-14', status: 'Waiting',
@@ -244,7 +258,7 @@ export const gatePasses = [
 // ── Stock (accessories / consumables) ──────────────────────────
 // Fields: id, name, make, category, inStock, total, location, serials
 // category: Mouse | Keyboard | Cable
-export const stock = [
+export const stock: StockItem[] = [
   { id: 'STK-001', name: 'Wireless Mouse',  make: 'Logitech', category: 'Mouse',   inStock: 12, total: 20, location: 'IT storeroom', serials: ['LM185-0001', 'LM185-0002', 'LM185-0003', 'LM185-0004', 'LM185-0005'] },
   { id: 'STK-002', name: 'Mechanical Keyboard', make: 'Keychron', category: 'Keyboard', inStock: 4, total: 6, location: 'IT storeroom', serials: ['KC-K8-001', 'KC-K8-002', 'KC-K8-003', 'KC-K8-004'] },
   { id: 'STK-003', name: 'USB-C Cable 1m', make: 'Anker',   category: 'Cable',    inStock: 18, total: 24, location: 'IT storeroom', serials: ['AK-USBC-01', 'AK-USBC-02', 'AK-USBC-03', 'AK-USBC-04', 'AK-USBC-05', 'AK-USBC-06'] },
@@ -257,7 +271,7 @@ export const stock = [
 // ── Gate Log ────────────────────────────────────────────────────
 // Fields: id, time, event, deviceId, personId, gate, passId, loggedById
 // event: Out | Back | Stopped
-export const gateLog = [
+export const gateLog: GateLogEntry[] = [
   { id: 'GL-001', time: '2026-11-07 08:42', event: 'Out',     deviceId: 'd07', personId: 'u01', gate: 'Gate A', passId: 'GP-0031', loggedById: 'u09' },
   { id: 'GL-002', time: '2026-11-07 17:55', event: 'Back',    deviceId: 'd07', personId: 'u01', gate: 'Gate A', passId: 'GP-0031', loggedById: 'u09' },
   { id: 'GL-003', time: '2026-11-03 09:10', event: 'Out',     deviceId: 'd15', personId: 'u07', gate: 'Gate B', passId: 'GP-0029', loggedById: 'u09' },
@@ -270,7 +284,7 @@ export const gateLog = [
 
 // Dashboard summaries are derived from the same records used by the pages.
 const activeTickets = tickets.filter((ticket) => ticket.status !== 'Resolved')
-const deviceStatuses = ['Assigned', 'In store', 'Off-site', 'In repair', 'Retired']
+const deviceStatuses: DeviceStatus[] = ['Assigned', 'In store', 'Off-site', 'In repair', 'Retired']
 const deviceCounts = Object.fromEntries(
   deviceStatuses.map((status) => [status, devices.filter((device) => device.status === status).length]),
 )
@@ -279,7 +293,7 @@ const warrantyCutoff = new Date(now)
 warrantyCutoff.setDate(warrantyCutoff.getDate() + 30)
 const resolvedDurations = tickets
   .filter((ticket) => ticket.status === 'Resolved' && Number.isFinite(ticket.resolutionHours))
-  .map((ticket) => ticket.resolutionHours)
+  .map((ticket) => ticket.resolutionHours ?? 0)
 const onTrackCount = tickets.filter((ticket) => ticket.timeState === 'On track').length
 
 export const metrics = {
@@ -346,7 +360,7 @@ export const needsAction = [
   }] : []),
 ]
 
-const timeStateColors = {
+const timeStateColors: Record<TicketTimeState, string> = {
   Breached: 'bg-red-50 text-red-600 border border-red-200',
   'At risk': 'bg-orange-50 text-orange-600 border border-orange-200',
   'On track': 'bg-green-50 text-green-700 border border-green-200',
@@ -385,7 +399,7 @@ export const technicianWorkload = technicianRecords.map((technician, index) => (
   max: workloadMax,
 }))
 
-const deviceStatusColors = {
+const deviceStatusColors: Record<DeviceStatus, string> = {
   Assigned: 'bg-blue-600',
   'In store': 'bg-[#CCFF00]',
   'Off-site': 'bg-violet-500',
@@ -398,15 +412,15 @@ export const deviceRegisterSegments = deviceStatuses.map((status) => ({
 }))
 
 // ── Lookups ─────────────────────────────────────────────────────
-export const userById        = (id)  => users.find((u) => u.id === id)
-export const deviceById      = (id)  => devices.find((d) => d.id === id)
-export const deviceByTag      = (tag) => devices.find((d) => d.tag === tag)
-export const ticketById       = (id)  => tickets.find((t) => t.id === id)
-export const gatePassById     = (id)  => gatePasses.find((g) => g.id === id)
-export const stockById        = (id)  => stock.find((s) => s.id === id)
-export const usersByRole      = (role) => users.filter((u) => u.role === role)
-export const gateLogByDevice  = (id)  => gateLog.filter((g) => g.deviceId === id)
-export const gateLogByPass    = (id)  => gateLog.filter((g) => g.passId === id)
+export const userById = (id: string | null | undefined) => users.find((user) => user.id === id)
+export const deviceById = (id: string | null | undefined) => devices.find((device) => device.id === id)
+export const deviceByTag = (tag: string) => devices.find((device) => device.tag === tag)
+export const ticketById = (id: string) => tickets.find((ticket) => ticket.id === id)
+export const gatePassById = (id: string) => gatePasses.find((pass) => pass.id === id)
+export const stockById = (id: string) => stock.find((item) => item.id === id)
+export const usersByRole = (role: UserRole) => users.filter((user) => user.role === role)
+export const gateLogByDevice = (id: string) => gateLog.filter((entry) => entry.deviceId === id)
+export const gateLogByPass = (id: string) => gateLog.filter((entry) => entry.passId === id)
 
 // Short display name, e.g. "Ngozi E." — used across the UI.
 export const shortName = (name = '') => {
@@ -415,7 +429,7 @@ export const shortName = (name = '') => {
 }
 
 // ── Device model catalogue (used by the register-device form) ──
-export const deviceModels = [
+export const deviceModels: DeviceModel[] = [
   { id: 'm01', name: 'Dell Latitude 5440', count: 12 },
   { id: 'm02', name: 'Dell P2422H',         count: 31 },
   { id: 'm03', name: 'HP LaserJet M404',   count: 6  },

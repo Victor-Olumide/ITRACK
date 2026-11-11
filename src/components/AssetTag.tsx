@@ -7,7 +7,13 @@
  * @param {string} [size]   "sm" | "md" (default) — controls padding/text size.
  * @param {string} [className] Extra classes appended to the tag.
  */
-export default function AssetTag({ tag, size = 'md', className = '' }) {
+interface AssetTagProps {
+  tag: string
+  size?: 'sm' | 'md'
+  className?: string
+}
+
+export default function AssetTag({ tag, size = 'md', className = '' }: AssetTagProps) {
   const sizes = {
     sm: 'px-1.5 py-0.5 text-[10px]',
     md: 'px-2 py-1 text-xs',

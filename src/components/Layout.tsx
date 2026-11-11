@@ -1,7 +1,7 @@
 // App shell: full-width topbar, sidebar navigation, and the active route.
 
 import { useState } from 'react'
-import { Outlet } from 'react-router'
+import { Navigate, Outlet } from 'react-router'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext'
 export default function Layout() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
 
   return (
     <div className="flex min-h-screen flex-col bg-[#101c52]">

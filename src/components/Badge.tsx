@@ -21,7 +21,7 @@ const TONES = {
 }
 
 // Maps known status / priority / type / time-state strings to a tone.
-const VALUE_TONE = {
+const VALUE_TONE: Record<string, keyof typeof TONES> = {
   // Priorities
   Critical: 'red', High: 'orange', Medium: 'blue', Low: 'slate',
   // Ticket types
@@ -36,7 +36,13 @@ const VALUE_TONE = {
   Waiting: 'amber', Approved: 'green', Rejected: 'red', Overdue: 'red',
 }
 
-export default function Badge({ label, tone, className = '' }) {
+interface BadgeProps {
+  label: string
+  tone?: keyof typeof TONES
+  className?: string
+}
+
+export default function Badge({ label, tone, className = '' }: BadgeProps) {
   const resolved = tone ?? VALUE_TONE[label] ?? 'slate'
   return (
     <span

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/apiClient.js'
+import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/apiClient.ts'
 
 test('sends same-origin JSON requests with session credentials', async () => {
   const originalFetch = globalThis.fetch
-  let request
-  globalThis.fetch = async (url, options) => {
+  let request: { url: RequestInfo | URL; options: RequestInit } | undefined
+  globalThis.fetch = async (url, options = {}) => {
     request = { url, options }
     return new Response(JSON.stringify({ id: 'ticket-1' }), {
       status: 201,
@@ -20,11 +20,13 @@ test('sends same-origin JSON requests with session credentials', async () => {
     })
 
     assert.deepEqual(result, { id: 'ticket-1' })
+    assert.ok(request)
     assert.equal(request.url, `${API_BASE_URL}/tickets`)
     assert.equal(request.options.method, 'POST')
     assert.equal(request.options.credentials, 'include')
-    assert.equal(request.options.headers.get('Accept'), 'application/json')
-    assert.equal(request.options.headers.get('Content-Type'), 'application/json')
+    const requestHeaders = new Headers(request.options.headers)
+    assert.equal(requestHeaders.get('Accept'), 'application/json')
+    assert.equal(requestHeaders.get('Content-Type'), 'application/json')
     assert.equal(request.options.body, JSON.stringify({ title: 'Cannot sign in' }))
   } finally {
     globalThis.fetch = originalFetch
@@ -61,6 +63,9 @@ test('preserves server error details and request IDs', async () => {
       error instanceof ApiError
       && error.status === 422
       && error.code === 'VALIDATION_ERROR'
+      && typeof error.details === 'object'
+      && error.details !== null
+      && 'title' in error.details
       && error.details.title === 'Required'
       && error.requestId === 'request-123'
     ))

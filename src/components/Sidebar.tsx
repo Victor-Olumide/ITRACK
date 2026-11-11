@@ -17,13 +17,28 @@ import {
   X,
 } from 'lucide-react'
 import { gatePasses, metrics, tickets } from '../lib/mockData'
+import type { LucideIcon } from 'lucide-react'
+import type { UserRole } from '../lib/types'
 import {
   getGatePassStatusUpdates,
   getSubmittedPasses,
   getSubmittedTickets,
 } from '../lib/sessionData'
 
-const ADMIN_NAV_GROUPS = [
+interface NavigationLink {
+  to: string
+  label: string
+  Icon: LucideIcon
+  end?: boolean
+  badge?: number
+}
+
+interface NavigationGroup {
+  label: string
+  links: NavigationLink[]
+}
+
+const ADMIN_NAV_GROUPS: NavigationGroup[] = [
   {
     label: 'WORKSPACE',
     links: [
@@ -54,7 +69,7 @@ const ADMIN_NAV_GROUPS = [
   },
 ]
 
-const ROLE_NAV_GROUPS = {
+const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
   Employee: [
     {
       label: 'YOUR WORKSPACE',
@@ -87,7 +102,7 @@ const ROLE_NAV_GROUPS = {
   ],
 }
 
-function Navigation({ onNavigate, role }) {
+function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserRole }) {
   const passStatusUpdates = getGatePassStatusUpdates()
   const waitingPasses = [...gatePasses, ...getSubmittedPasses()]
     .filter((pass) => (passStatusUpdates[pass.id] ?? pass.status) === 'Waiting').length
@@ -129,7 +144,7 @@ function Navigation({ onNavigate, role }) {
               >
                 <Icon size={17} strokeWidth={1.8} />
                 <span className="min-w-0 flex-1">{linkLabel}</span>
-                {badge > 0 && (
+                {(badge ?? 0) > 0 && (
                   <span className="rounded-full bg-[#d2f54a] px-1.5 py-0.5 text-[10px] font-bold leading-none text-[#16214b]">
                     {badge}
                   </span>
@@ -143,7 +158,7 @@ function Navigation({ onNavigate, role }) {
   )
 }
 
-function SidebarContent({ onNavigate, role }) {
+function SidebarContent({ onNavigate, role }: { onNavigate?: () => void; role: UserRole }) {
   const isEmployee = role === 'Employee'
   const isSecurity = role === 'Security'
   return (
@@ -182,7 +197,13 @@ function SidebarContent({ onNavigate, role }) {
   )
 }
 
-export default function Sidebar({ mobileOpen, onClose, role = 'IT Admin' }) {
+interface SidebarProps {
+  mobileOpen?: boolean
+  onClose?: () => void
+  role?: UserRole
+}
+
+export default function Sidebar({ mobileOpen = false, onClose, role = 'IT Admin' }: SidebarProps) {
   return (
     <>
       <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 flex-col overflow-y-auto md:flex">
