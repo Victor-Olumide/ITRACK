@@ -4,10 +4,10 @@ import type { ReactNode } from 'react'
 import { users } from '../lib/data/mockData'
 import { useAppDispatch, useAppSelector } from '@/lib/stores/hooks'
 import { appApi } from '@/lib/api/app-api'
-import { useLoginMutation, useLogoutMutation } from '@/lib/api/auth-api-slice'
+import { useLoginMutation, useLogoutMutation } from '@/lib/api/auth'
 import { clearAuth, setAuthenticatedUser } from '@/lib/stores/auth-slice'
-import { useAuthSession } from '@/hooks/use-auth-session'
-import type { AuthenticatedUser } from '@/lib/types/api-types'
+import { useAuthSession } from '@/features/auth/hooks'
+import type { AuthenticatedUser } from '@/lib/api/auth'
 import type { PublicUser, UserRole } from '../lib/types/types'
 
 interface CreateUserInput {

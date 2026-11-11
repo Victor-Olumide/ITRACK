@@ -1,6 +1,6 @@
-import { useAppDispatch } from "@/lib/stores/hooks";
-import { setAuthenticatedUser } from "../lib/stores/auth-slice";
-import type { LoginResponse } from "../lib/types/api-types";
+import { useAppDispatch } from '@/lib/stores/hooks';
+import { setAuthenticatedUser } from '@/lib/stores/auth-slice';
+import type { LoginResponse } from '@/lib/api/auth';
 
 export const useCompleteLogin = () => {
   const dispatch = useAppDispatch();

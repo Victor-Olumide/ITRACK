@@ -1,7 +1,7 @@
-import { useAppDispatch } from "@/lib/stores/hooks";
-import { appApi } from "@/lib/api/app-api";
-import { clearAuth } from "../lib/stores/auth-slice";
-import { useLogoutMutation } from "../lib/api/auth-api-slice";
+import { useAppDispatch } from '@/lib/stores/hooks';
+import { appApi } from '@/lib/api/app-api';
+import { clearAuth } from '@/lib/stores/auth-slice';
+import { useLogoutMutation } from '@/lib/api/auth';
 
 export function useLogout() {
   const dispatch = useAppDispatch();
@@ -11,7 +11,7 @@ export function useLogout() {
     try {
       await logoutTrigger().unwrap();
     } catch (error) {
-      console.error("Logout request failed:", error);
+      console.error('Logout request failed:', error);
     } finally {
       dispatch(clearAuth());
       dispatch(appApi.util.resetApiState());
