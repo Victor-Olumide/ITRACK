@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Monitor } from 'lucide-react'
 import Logo from '../components/Logo'
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
 import { metrics } from '../lib/data/mockData'
@@ -137,12 +136,6 @@ function LoginForm() {
         </p>
       )}
 
-      <div className="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100">
-        <Monitor className="mt-0.5 text-gray-400 shrink-0" size={18} />
-        <p className="text-xs text-gray-500">
-          Sign-in is verified by the ITrack server. Your session is stored in secure, HTTP-only cookies.
-        </p>
-      </div>
     </form>
   )
 }
