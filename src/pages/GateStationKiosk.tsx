@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
   ArrowRight,
@@ -11,15 +11,11 @@ import {
   ShieldAlert,
   X,
 } from 'lucide-react'
-import { devices, gateLog as initialGateLog, gatePasses, userById, deviceById, deviceByTag } from '../lib/mockData'
-import {
-  getGatePassStatusUpdates,
-  getSubmittedGateEvents,
-  getSubmittedPasses,
-  saveGateEvent,
-} from '../lib/sessionData'
+import { devices, gateLog as initialGateLog, gatePasses, userById, deviceById, deviceByTag } from '../lib/data/mockData'
+import { useAppDispatch, useAppSelector } from '../lib/stores/hooks'
+import { addGateEvents } from '../lib/stores/demo-data-slice'
 import { useAuth } from '../contexts/AuthContext'
-import type { GateEventType, GateLogEntry, GatePass, GatePassItem, PublicUser } from '../lib/types'
+import type { GateEventType, GateLogEntry, GatePass, GatePassItem, PublicUser } from '../lib/types/types'
 
 interface ActivePass {
   pass: GatePass
@@ -119,16 +115,15 @@ function PassItem({ item, checked, onToggle, isMain }: {
 export default function GateStationKiosk({ kiosk = false }: { kiosk?: boolean }) {
   const { user, users, logout } = useAuth()
   const navigate = useNavigate()
-  const allPasses = useMemo(() => [...gatePasses, ...getSubmittedPasses()], [])
-  const [entries, setEntries] = useState<GateLogEntry[]>(() => (
-    [...getSubmittedGateEvents(), ...initialGateLog].sort((a, b) => eventTime(b) - eventTime(a))
-  ))
+  const dispatch = useAppDispatch()
+  const { submittedPasses, gatePassStatusUpdates: statusUpdates, gateEvents } = useAppSelector((state) => state.demoData)
+  const allPasses = [...gatePasses, ...submittedPasses]
+  const entries = [...gateEvents, ...initialGateLog].sort((a, b) => eventTime(b) - eventTime(a))
   const tagInputRef = useRef<HTMLInputElement>(null)
   const [tag, setTag] = useState('')
   const [active, setActive] = useState<ActivePass | null>(null)
   const [notice, setNotice] = useState<GateNotice | null>(null)
 
-  const statusUpdates = getGatePassStatusUpdates()
   const today = new Date().toDateString()
   const todayEntries = entries.filter((entry) => new Date(eventTime(entry)).toDateString() === today)
   const outCount = todayEntries.filter((entry) => entry.event === 'Out').length
@@ -239,8 +234,7 @@ export default function GateStationKiosk({ kiosk = false }: { kiosk?: boolean })
         loggedById: user.id,
       }
     })
-    newEntries.forEach(saveGateEvent)
-    setEntries((current) => [...newEntries, ...current].sort((a, b) => eventTime(b) - eventTime(a)))
+    dispatch(addGateEvents(newEntries))
     setNotice({
       kind: eventType === 'Stopped' ? 'error' : 'success',
       text: eventType === 'Out'
@@ -252,10 +246,14 @@ export default function GateStationKiosk({ kiosk = false }: { kiosk?: boolean })
     setActive(null)
   }
 
-  function exitKiosk() {
+  async function exitKiosk() {
     if (kiosk) {
-      logout()
-      navigate('/login', { replace: true })
+      try {
+        await logout()
+        navigate('/login', { replace: true })
+      } catch {
+        setNotice({ kind: 'error', text: 'Could not sign out. Check your connection and try again.' })
+      }
     } else {
       navigate('/')
     }

@@ -1,7 +1,7 @@
 import { Printer, X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { deviceByTag, userById } from '../lib/mockData'
-import type { GatePass, PublicUser } from '../lib/types'
+import { deviceByTag, userById } from '../lib/data/mockData'
+import type { GatePass, PublicUser } from '../lib/types/types'
 
 function formatDate(value: string) {
   if (!value) return '—'

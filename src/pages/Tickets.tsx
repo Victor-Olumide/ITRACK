@@ -8,10 +8,10 @@ import { useSearchParams } from "react-router";
 import {
   Search, Check, Circle, Send
 } from "lucide-react";
-import { tickets as mockTickets, userById, deviceById } from "../lib/mockData";
-import { getSubmittedTickets } from "../lib/sessionData";
+import { tickets as mockTickets, userById, deviceById } from "../lib/data/mockData";
 import { useAuth } from "../contexts/AuthContext";
-import type { PublicUser, Ticket, TicketTimeState } from "../lib/types";
+import { useAppSelector } from "../lib/stores/hooks";
+import type { PublicUser, Ticket, TicketTimeState } from "../lib/types/types";
 
 interface TicketView extends Ticket {
   department: string
@@ -320,10 +320,11 @@ function TicketDetails({ ticket, onUpdate }: {
 
 export default function TicketPage({ technicianView = false }: { technicianView?: boolean }) {
   const { user, users } = useAuth()
+  const submittedTickets = useAppSelector((state) => state.demoData.submittedTickets)
   const assigneeId = user?.id ?? ''
   const availableTickets = useMemo(
-    () => [...mockTickets, ...getSubmittedTickets()].map((ticket) => toView(ticket, users)),
-    [users]
+    () => [...mockTickets, ...submittedTickets].map((ticket) => toView(ticket, users)),
+    [submittedTickets, users]
   );
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTicketId = searchParams.get("ticket");

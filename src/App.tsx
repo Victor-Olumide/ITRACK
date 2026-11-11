@@ -37,7 +37,16 @@ export default function App() {
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f3f5fc] text-sm text-slate-500">
+        Checking your session…
+      </main>
+    )
+  }
+
   return (
       <Routes>
         {/* Auth — full-screen, no chrome */}

@@ -9,15 +9,11 @@ import {
   Ticket as TicketIcon,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { devices, gatePasses, tickets, userById } from '../lib/mockData'
-import {
-  getGatePassStatusUpdates,
-  getSubmittedPasses,
-  getSubmittedTickets,
-} from '../lib/sessionData'
+import { devices, gatePasses, tickets, userById } from '../lib/data/mockData'
+import { useAppSelector } from '../lib/stores/hooks'
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import type { Ticket as TicketRecord } from '../lib/types'
+import type { Ticket as TicketRecord } from '../lib/types/types'
 
 const TICKET_STATES = [
   { label: 'In progress', color: '#3155ff' },
@@ -163,9 +159,9 @@ function TicketAttention({ items }: { items: TicketRecord[] }) {
 
 export default function Reports() {
   const { users } = useAuth()
-  const allTickets = [...tickets, ...getSubmittedTickets()]
-  const allPasses = [...gatePasses, ...getSubmittedPasses()]
-  const passUpdates = getGatePassStatusUpdates()
+  const { submittedTickets, submittedPasses, gatePassStatusUpdates: passUpdates } = useAppSelector((state) => state.demoData)
+  const allTickets = [...tickets, ...submittedTickets]
+  const allPasses = [...gatePasses, ...submittedPasses]
   const openTickets = allTickets.filter((ticket) => ticket.status !== 'Resolved')
   const attentionTickets = openTickets
     .filter((ticket) => ['Breached', 'At risk'].includes(ticket.timeState))

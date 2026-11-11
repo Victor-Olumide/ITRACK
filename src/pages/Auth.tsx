@@ -3,8 +3,8 @@ import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Monitor } from 'lucide-react'
 import Logo from '../components/Logo'
-import { DEMO_PASSWORD, homePathForRole, useAuth } from '../contexts/AuthContext'
-import { metrics } from '../lib/mockData'
+import { homePathForRole, useAuth } from '../contexts/AuthContext'
+import { metrics } from '../lib/data/mockData'
 
 // ── reusable input ─────────────────────────────────────────────
 interface FieldProps {
@@ -30,7 +30,7 @@ function Field({ label, id, type = 'text', placeholder, value, onChange, right }
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          autoComplete="off"
+          autoComplete={type === 'password' ? 'current-password' : 'username'}
           className="w-full px-3 py-2.5 rounded-lg border border-gray-200 bg-white text-sm
                      text-gray-800 placeholder:text-gray-400
                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
@@ -46,26 +46,38 @@ function Field({ label, id, type = 'text', placeholder, value, onChange, right }
 
 // ── Login form ────────────────────────────────────────────────
 function LoginForm() {
-  const { users, login } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
-  const [email,    setEmail]    = useState(users[0]?.email ?? '')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [show,     setShow]     = useState(false)
-  const [remember, setRemember] = useState(true)
   const [error,    setError]    = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!login(email, password)) {
-      setError('Email or password is incorrect.')
-      return
+    setError('')
+    setIsSubmitting(true)
+    try {
+      const user = await login(email, password)
+      navigate(homePathForRole(user.role), { replace: true })
+    } catch (loginError) {
+      if (
+        loginError &&
+        typeof loginError === 'object' &&
+        'data' in loginError &&
+        loginError.data &&
+        typeof loginError.data === 'object' &&
+        'message' in loginError.data &&
+        typeof loginError.data.message === 'string'
+      ) {
+        setError(loginError.data.message)
+      } else {
+        setError('Unable to sign in. Check your connection and try again.')
+      }
+    } finally {
+      setIsSubmitting(false)
     }
-    const user = users.find((item) => item.email.toLowerCase() === email.trim().toLowerCase())
-    if (!user) {
-      setError('Email or password is incorrect.')
-      return
-    }
-    navigate(homePathForRole(user.role), { replace: true })
   }
 
   return (
@@ -76,20 +88,6 @@ function LoginForm() {
             Sign in with an account provided by your IT Admin.
         </p>
       </div>
-
-        <label htmlFor="demo-user" className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-          Demo account
-          <select
-            id="demo-user"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800"
-          >
-            {users.map((user) => (
-              <option key={user.id} value={user.email}>{user.name} · {user.role}</option>
-            ))}
-          </select>
-        </label>
 
         <Field
           label="Work email"
@@ -118,17 +116,8 @@ function LoginForm() {
         }
       />
 
-      {/* Remember + Forgot */}
+      {/* Forgot password */}
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={e => setRemember(e.target.checked)}
-            className="w-4 h-4 rounded accent-blue-600"
-          />
-          Remember this workstation
-        </label>
         <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
           Forgot password?
         </Link>
@@ -136,10 +125,11 @@ function LoginForm() {
 
       <button
         type="submit"
+        disabled={isSubmitting}
         className="w-full py-3 rounded-full bg-blue-600 hover:bg-blue-700 active:scale-95
-                   text-white font-semibold text-sm tracking-wide transition-all"
+                   text-white font-semibold text-sm tracking-wide transition-all disabled:cursor-wait disabled:opacity-60"
       >
-        Sign in
+        {isSubmitting ? 'Signing in…' : 'Sign in'}
       </button>
       {error && (
         <p role="alert" className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
@@ -150,8 +140,7 @@ function LoginForm() {
       <div className="flex items-start gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100">
         <Monitor className="mt-0.5 text-gray-400 shrink-0" size={18} />
         <p className="text-xs text-gray-500">
-          Demo mode only: seeded accounts use <span className="font-semibold text-gray-700">{DEMO_PASSWORD}</span>.
-          Created accounts use the password set by the admin.
+          Sign-in is verified by the ITrack server. Your session is stored in secure, HTTP-only cookies.
         </p>
       </div>
     </form>

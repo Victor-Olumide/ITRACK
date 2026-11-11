@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { loadEnv } from 'vite'
 import { cwd } from 'node:process'
+import path from 'node:path'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, cwd(), '')
@@ -13,6 +14,11 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
     ],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
     ...(proxyTarget ? {
       server: {
         proxy: {

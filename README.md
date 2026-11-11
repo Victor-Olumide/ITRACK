@@ -51,15 +51,15 @@ npm run preview
 | Employee | `/employee` |
 | Security gate station | `/security` |
 | Sign in | `/login` |
-| Create accounts (IT Admin only) | `/signup` or `/people` |
+| Account management (client integration pending) | `/signup` or `/people` |
 
-The UI requires a signed-in user and checks role access for each workspace. The frontend demo has seeded accounts for each role; all seeded accounts use `ITrackDemo2026!`. IT Admins can create browser-session accounts from `/people` or `/signup`.
+The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, and sign-out use the server's `/api/v1/auth` endpoints and HTTP-only cookies. The server exposes IT-admin user and department endpoints, but the client directory/invite screens are not wired to them yet. Password recovery is not available; contact an IT administrator for password resets.
 
-Authentication and account creation are demo-only: credentials and role checks run in the browser and are not secure against tampering. Use a backend or identity provider with server-enforced authorization before deploying. Employee ticket/gate-pass submissions and gate-pass status changes are also stored in browser session storage; they are not sent to a backend.
+Most non-authentication pages are still prototypes backed by seeded data. Demo ticket/pass submissions and gate-pass changes live in Redux memory only: they are shared across pages in the current app session, reset on reload, and are not sent to the backend.
 
 ## Backend handoff
 
-The app is still a frontend prototype; setting `VITE_API_BASE_URL` does not switch the pages to backend data. A configurable JSON API transport and optional Vite proxy are provided as integration scaffolding. See [docs/BACKEND_HANDOFF.md](./docs/BACKEND_HANDOFF.md) for the current data boundaries, proposed API map, domain/security rules, and frontend work remaining. Copy `.env.example` to `.env.local` for local API configuration. The backend developer should agree the contract and authentication model before implementing those proposed routes.
+Most application data is still mocked; configuring `VITE_API_BASE_URL` does not switch those pages to backend data. See [docs/BACKEND_HANDOFF.md](./docs/BACKEND_HANDOFF.md) for the current data boundaries and missing endpoints. Copy `.env.example` to `.env.local` for local API configuration. Cross-origin deployments also require the backend to allow the exact client origin with credentials and issue cookies usable by that client.
 
 IT Admins and Technicians can preview and print an A4 gate-pass slip from the pass review dialog. Printed pass details come from the available demo records; signatures, gate release, and return checks are left for the relevant staff to complete.
 
@@ -71,48 +71,22 @@ The Security route opens a full-screen gate kiosk. It accepts tags typed by hand
 
 ```
 src/
-├── App.jsx                  # Route definitions
-├── main.jsx                 # React entry point
-├── index.css                # Tailwind import
-├── contexts/
-│   └── AuthContext.jsx      # Demo session and account state
-│
 ├── lib/
-│   ├── mockData.js          # Relational dummy data (users, tickets,
-│   │                        # devices, gate passes, stock, gate log)
-│   └── sessionData.js       # Employee demo submissions in browser session storage
-│
-├── components/
-│   ├── Layout.jsx           # App shell: Sidebar + Topbar + <Outlet />
-│   ├── Sidebar.jsx          # Dark navy nav with live badge counts
-│   ├── Topbar.jsx           # Search bar, notifications, user avatar
-│   ├── Badge.jsx            # Status / priority pills (auto-toned)
-│   └── AssetTag.jsx         # Lime-green device tag (e.g. IT-LAP-0042)
-│
-└── pages/
-    ├── Auth.jsx             # Sign in (full-screen, no shell)
-    ├── ResetPassword.jsx    # Password reset request (demo state)
-    ├── Home.jsx             # Dashboard — KPIs, SLA, ticket queue
-    ├── TechnicianHome.jsx   # Technician queue and SLA summary
-    ├── EmployeePortal.jsx   # Employee home, report, tickets, and gate passes
-    ├── AdminWorkspace.jsx   # Locations, categories, audit, models, notifications
-    ├── Tickets.jsx          # Split-pane: queue list + ticket detail
-    ├── Devices.jsx          # Grid/list asset view with status filters
-    ├── DeviceDetailPage.jsx # 3D viewer + device info tabs
-    ├── RegisterDevice.jsx   # Register a new device (form + 3D model pick)
-    ├── GatePasses.jsx       # Approvals list + inline review modal
-    ├── GateStation.jsx      # Kiosk: scan items in/out + gate log
-    ├── Stock.jsx            # Accessories / consumables table
-    ├── Reports.jsx          # SLA and ticket category charts
-    ├── Settings.jsx         # Profile, security, and notification preferences
-    └── NotFound.jsx         # 404 page
+│   ├── api/                 # API transport and RTK Query endpoints
+│   ├── data/mockData.ts     # Relational seed data for the demo UI
+│   ├── stores/              # Redux store, auth, and in-memory demo state
+│   └── types/               # Domain and API types
+├── components/              # Shared application components
+├── contexts/                # Auth context adapter over Redux/API auth
+├── hooks/                   # Shared application hooks
+└── pages/                   # Route-level screens
 ```
 
 ---
 
 ## Mock data
 
-All UI is driven by `src/lib/mockData.js` — no backend required during development. The file exports relational arrays whose IDs cross-reference each other:
+Most UI demo records come from `src/lib/data/mockData.ts` — these are in-memory seed records, not cloud data. The file exports relational arrays whose IDs cross-reference each other:
 
 | Export | Records | Description |
 |---|---|---|

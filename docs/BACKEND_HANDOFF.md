@@ -2,26 +2,30 @@
 
 ## Current integration status
 
-This repository is a frontend prototype. It is **not connected to a backend or database**.
+Authentication and basic IT-admin user/department management are connected to the ITrack server. Most operational workflows remain prototypes and are **not yet backed by server data**.
 
-- Pages import seed records directly from `src/lib/mockData.js`; several dashboards aggregate those arrays in the browser.
-- Ticket/pass submissions, pass decisions, gate events, demo accounts, and profile preferences use `sessionStorage`.
-- `src/lib/apiClient.js` is transport scaffolding only. No page calls it yet, and no API endpoint names or payloads are frozen.
-- `VITE_API_BASE_URL` and the optional Vite development proxy are configuration points, not proof that the app is using a live API.
+- Pages still import seed records directly from `src/lib/data/mockData.ts`; several dashboards aggregate those arrays in the browser.
+- Ticket/pass submissions, pass decisions, gate events, and profile/notification preferences are demo-only Redux state and reset on reload.
+- Authentication uses RTK Query and the server's `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, and `GET /api/v1/auth/me` endpoints. The server sets HTTP-only session and refresh cookies; the client includes credentials and refreshes the session after an authorized request receives `401`.
+- IT Admin user and department operations use `GET /api/v1/auth/users`, `POST /api/v1/auth/users`, and `GET /api/v1/auth/departments`. Create-user requests use server fields such as `fullName`, `departmentId`, and uppercase role enum values; use the live DTO and response types rather than the mock UI shape.
+- These user/department endpoints are not wired into the client yet: the people directory still reads fixture users and the invite action remains intentionally unavailable.
+- Password reset is not currently available.
+- `src/lib/api/` contains the RTK Query auth endpoints and shared transport; `src/lib/api/apiClient.ts` is generic transport scaffolding for other resources.
+- The server uses PostgreSQL/Prisma support, but operational resources are not yet API-backed. Confirm the configured server data source and deployed database before describing any data as persistent.
 - Browser route guards are for UI navigation only. Every authentication, role, ownership, approval, and data-access rule must be enforced by the server.
 
-Agree the API contract and authentication model with the backend developer before wiring live data. The REST routes below are a proposal derived from the current UI, not an existing server contract.
+Agree the remaining API contracts with the backend developer before wiring live data. Routes below are proposals unless specifically identified as existing.
 
 ## Frontend connection setup
 
 1. Copy `.env.example` to `.env.local`.
-2. Set `VITE_API_BASE_URL` to the API prefix the backend serves, such as `/api`.
+2. Set `VITE_API_BASE_URL` to the API prefix the backend serves, currently `/api/v1`.
 3. If the API runs on a separate local origin, set `VITE_API_PROXY_TARGET` to that local origin. Vite proxies `/api` during development.
 4. Restart Vite after changing environment variables.
 
 Only public configuration belongs in `VITE_*` variables. Never put database credentials, signing keys, or other secrets in frontend environment variables.
 
-`apiRequest('/resource')` sends JSON by default, includes same-site/session cookies, returns `null` for `204`, and throws `ApiError` for network, HTTP, or invalid-JSON errors. It supports `FormData` and `AbortSignal`. It does not store bearer tokens, refresh sessions, retry requests, or silently fall back to mock data.
+Authentication requests use RTK Query's `appBaseQuery`, which sends cookies, refreshes expired sessions, and retries authorized requests. `apiRequest('/resource')` is a separate transport helper for future resource integration; it sends JSON by default, includes same-site/session cookies, returns `null` for `204`, and throws `ApiError` for network, HTTP, or invalid-JSON errors.
 
 ## Suggested resource and endpoint map
 
@@ -29,8 +33,9 @@ Use the backend team's established naming and versioning if already decided. Pre
 
 | UI capability | Suggested API |
 |---|---|
-| Current user / sign in / sign out | `GET /auth/session`, `POST /auth/login`, `POST /auth/logout` |
-| People directory / admin invite | `GET /users`, `POST /users` |
+| Current user / sign in / refresh / sign out (existing) | `GET /auth/me`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
+| Password recovery (missing) | `POST /auth/forgot-password`, `POST /auth/reset-password` |
+| People directory / admin invite (server exists; client wiring pending) | `GET /auth/users`, `POST /auth/users`; department lookup: `GET /auth/departments` |
 | Ticket queue and employee requests | `GET /tickets`, `POST /tickets`, `GET /tickets/:id`, `PATCH /tickets/:id` |
 | Device register and registration | `GET /devices`, `POST /devices`, `GET /devices/:id`, `PATCH /devices/:id` |
 | Gate-pass list/request | `GET /gate-passes`, `POST /gate-passes`, `GET /gate-passes/:id` |
@@ -89,19 +94,19 @@ The current UI has demo-only PIN/signature affordances and does not provide real
 
 The backend connection is not complete until these changes are made:
 
-1. Replace `AuthContext` seed-password/session-account logic with `GET /auth/session`, login, logout, and server-provided current-user data. Remove the demo selector/password disclosure from the live login experience.
-2. Add async data hooks/services for users, tickets, devices, passes, stock, notifications, reports, and gate events. Replace direct imports from `mockData.js` in pages and navigation.
-3. Replace `sessionData.js` reads/writes and profile `sessionStorage` mutations with server queries and mutations. Refresh/invalidate the related UI after successful writes; show loading, empty, validation, expired-session, and server-error states.
+1. Password recovery still needs a server contract and delivery/security design. Wire the existing user directory and admin user-creation endpoints to the client using their server DTOs and response types.
+2. Add async RTK Query endpoints for tickets, devices, passes, stock, notifications, reports, and gate events. Replace direct imports from `src/lib/data/mockData.ts` in pages and navigation as each resource API becomes available.
+3. Replace the current Redux-only demo ticket/pass/event/profile state with server queries and mutations when those endpoints are available. Refresh/invalidate the related UI after successful writes; show loading, empty, validation, expired-session, and server-error states.
 4. Make page mutations wait for the server response; do not show a success state or update the gate log optimistically unless rollback/error behavior is implemented.
 5. Add pagination/filter query parameters to large lists and abort stale requests when the route/filter changes.
-6. Configure production API origin, CORS, cookie attributes, CSRF, HTTPS, and deployment rewrites with the backend/operations team.
+6. Configure production API origin, CORS, cookie attributes, CSRF, HTTPS, and deployment rewrites with the backend/operations team. Cross-origin web clients require an exact allowed origin with credentials; production cookies must also be usable in the client's site context.
 7. Add integration tests for each role and protected mutation, including cross-user access denial, pass approval/scan/return, and session expiry.
 
-Primary files currently coupled to mock/session data include `src/contexts/AuthContext.jsx`, `src/lib/mockData.js`, `src/lib/sessionData.js`, `src/components/Sidebar.jsx`, and pages `Home.jsx`, `Tickets.jsx`, `Devices.jsx`, `DeviceDetailPage.jsx`, `GatePasses.jsx`, `GateStationKiosk.jsx`, `EmployeePortal.jsx`, `Team.jsx`, `Stock.jsx`, `Reports.jsx`, `AdminWorkspace.jsx`, `Settings.jsx`, `TechnicianHome.jsx`, and `RegisterDevice.jsx`.
+Primary files currently coupled to mock/demo data include `src/lib/data/mockData.ts`, `src/lib/stores/demo-data-slice.ts`, `src/components/Sidebar.tsx`, and pages `Home.tsx`, `Tickets.tsx`, `Devices.tsx`, `DeviceDetailPage.tsx`, `GatePasses.tsx`, `GateStationKiosk.tsx`, `EmployeePortal.tsx`, `Team.tsx`, `Stock.tsx`, `Reports.tsx`, `AdminWorkspace.tsx`, `Settings.tsx`, `TechnicianHome.tsx`, and `RegisterDevice.tsx`.
 
 ## Open decisions for the backend handoff
 
-- Backend language/framework, database, hosting, API versioning, and final endpoint/payload conventions.
+- Hosting, production database configuration, API versioning, and final endpoint/payload conventions for operational resources.
 - Identity provider versus application-managed accounts; cookie session and CSRF strategy.
 - Whether device tags and staff IDs are globally unique, and how asset accessories are represented.
 - Ticket status/SLA transition rules, working calendar/timezone, and reporting-period definitions.

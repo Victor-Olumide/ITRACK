@@ -8,8 +8,8 @@ import {
   Smartphone, Rotate3D
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
-import { devices as mockDevices, userById } from "../lib/mockData";
-import type { Device, DeviceStatus } from "../lib/types";
+import { devices as mockDevices, userById } from "../lib/data/mockData";
+import type { Device, DeviceStatus } from "../lib/types/types";
 import type { LucideIcon } from "lucide-react";
 
 const initials = (name = "") =>

@@ -2,9 +2,10 @@
 
 import { Bell, LogOut, Menu, Plus, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router'
+import { useState } from 'react'
 import Logo from './Logo'
 import { useAuth } from '../contexts/AuthContext'
-import type { PublicUser, UserRole } from '../lib/types'
+import type { PublicUser, UserRole } from '../lib/types/types'
 
 const initials = (name = '') =>
   name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
@@ -18,6 +19,7 @@ interface TopbarProps {
 export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const [logoutError, setLogoutError] = useState('')
   const isSecurity = role === 'Security'
   const newTicketPath = role === 'Employee'
     ? '/employee/report'
@@ -101,9 +103,14 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
       </Link>
       <button
         type="button"
-        onClick={() => {
-          logout()
-          navigate('/login', { replace: true })
+        onClick={async () => {
+          setLogoutError('')
+          try {
+            await logout()
+            navigate('/login', { replace: true })
+          } catch {
+            setLogoutError('Could not sign out. Check your connection and try again.')
+          }
         }}
         className="rounded-lg p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
         aria-label="Sign out"
@@ -111,6 +118,11 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
       >
         <LogOut size={17} />
       </button>
+      {logoutError && (
+        <p role="alert" className="absolute right-4 top-full mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 shadow">
+          {logoutError}
+        </p>
+      )}
     </header>
   )
 }

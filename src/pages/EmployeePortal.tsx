@@ -19,23 +19,19 @@ import {
   gatePasses,
   tickets,
   userById,
-} from '../lib/mockData'
-import {
-  getSubmittedPasses,
-  getSubmittedTickets,
-  saveSubmittedPass,
-  saveSubmittedTicket,
-} from '../lib/sessionData'
+} from '../lib/data/mockData'
+import { useAppDispatch, useAppSelector } from '../lib/stores/hooks'
+import { addSubmittedPass, addSubmittedTicket } from '../lib/stores/demo-data-slice'
 import { useAuth } from '../contexts/AuthContext'
-import type { PublicUser } from '../lib/types'
+import type { GatePass, PublicUser, Ticket as TicketRecord } from '../lib/types/types'
 
-const getEmployeeTickets = (userId: string) => [
+const getEmployeeTickets = (userId: string, submittedTickets: TicketRecord[]) => [
   ...tickets.filter((ticket) => ticket.requesterId === userId),
-  ...getSubmittedTickets().filter((ticket) => ticket.requesterId === userId),
+  ...submittedTickets.filter((ticket) => ticket.requesterId === userId),
 ]
-const getEmployeePasses = (userId: string) => [
+const getEmployeePasses = (userId: string, submittedPasses: GatePass[]) => [
   ...gatePasses.filter((pass) => pass.requesterId === userId),
-  ...getSubmittedPasses().filter((pass) => pass.requesterId === userId),
+  ...submittedPasses.filter((pass) => pass.requesterId === userId),
 ]
 
 function PageTitle({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
@@ -51,8 +47,12 @@ function PageTitle({ title, description, children }: { title: string; descriptio
 }
 
 function Home({ viewer }: { viewer: PublicUser }) {
-  const myTickets = useMemo(() => getEmployeeTickets(viewer.id), [viewer.id])
-  const myPasses = getEmployeePasses(viewer.id)
+  const { submittedTickets, submittedPasses } = useAppSelector((state) => state.demoData)
+  const myTickets = useMemo(
+    () => getEmployeeTickets(viewer.id, submittedTickets),
+    [viewer.id, submittedTickets],
+  )
+  const myPasses = getEmployeePasses(viewer.id, submittedPasses)
   const employeeDevices = devices.filter((device) => device.assigneeId === viewer.id)
   const activeTickets = myTickets.filter((ticket) => ticket.status !== 'Resolved')
   const today = new Date().toLocaleDateString('en-GB', {
@@ -185,7 +185,9 @@ function Home({ viewer }: { viewer: PublicUser }) {
 }
 
 function ReportProblem({ viewer }: { viewer: PublicUser }) {
+  const dispatch = useAppDispatch()
   const [submitted, setSubmitted] = useState(false)
+  const [submittedTicketId, setSubmittedTicketId] = useState('')
   const reportDevices = devices.filter((device) => device.assigneeId === viewer.id)
   const [deviceId, setDeviceId] = useState('')
   const [category, setCategory] = useState('')
@@ -202,10 +204,10 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
         </span>
         <h1 className="mt-5 text-2xl font-bold text-[#111a3b]">Your report is with IT</h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Ticket {getSubmittedTickets().at(-1)?.id} is saved in this browser session. Follow updates from My tickets.
+          Ticket {submittedTicketId} is in this session’s Redux state. Follow updates from My tickets.
         </p>
         <Link
-          to={`${viewer.role === 'Employee' ? '/employee/tickets' : '/tickets'}?ticket=${getSubmittedTickets().at(-1)?.id}`}
+          to={`${viewer.role === 'Employee' ? '/employee/tickets' : '/tickets'}?ticket=${submittedTicketId}`}
           className="mt-6 inline-flex rounded-full bg-[#3155ff] px-5 py-2.5 text-sm font-semibold text-white"
         >
           View tickets
@@ -223,7 +225,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
             event.preventDefault()
             const device = reportDevices.find((item) => item.id === deviceId)
             const now = new Date()
-            saveSubmittedTicket({
+            const ticket: TicketRecord = {
               id: `IT-${String(now.getTime()).slice(-6)}`,
               title: title.trim(),
               type: category === 'Request something' ? 'Request' : 'Problem',
@@ -244,7 +246,9 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
                 text: `${viewer.name} submitted the ticket`,
               }],
               createdAt: now.toISOString(),
-            })
+            }
+            dispatch(addSubmittedTicket(ticket))
+            setSubmittedTicketId(ticket.id)
             setSubmitted(true)
           }}
           className="space-y-4"
@@ -378,10 +382,14 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
 function MyTickets({ viewer }: { viewer: PublicUser }) {
   const [status, setStatus] = useState('Open')
   const [searchParams, setSearchParams] = useSearchParams()
+  const submittedTickets = useAppSelector((state) => state.demoData.submittedTickets)
   const requestedTicketId = searchParams.get('ticket')
-  const [selectedId, setSelectedId] = useState(() => requestedTicketId ?? getEmployeeTickets(viewer.id)[0]?.id)
+  const [selectedId, setSelectedId] = useState(() => requestedTicketId ?? getEmployeeTickets(viewer.id, submittedTickets)[0]?.id)
   const [query, setQuery] = useState('')
-  const myTickets = useMemo(() => getEmployeeTickets(viewer.id), [viewer.id])
+  const myTickets = useMemo(
+    () => getEmployeeTickets(viewer.id, submittedTickets),
+    [viewer.id, submittedTickets],
+  )
   const selected = myTickets.find((ticket) => ticket.id === requestedTicketId)
     ?? myTickets.find((ticket) => ticket.id === selectedId)
   const filtered = useMemo(() => myTickets.filter((ticket) => {
@@ -493,12 +501,14 @@ function MyTickets({ viewer }: { viewer: PublicUser }) {
 }
 
 function Passes({ request = false, viewer }: { request?: boolean; viewer: PublicUser }) {
+  const dispatch = useAppDispatch()
+  const submittedPasses = useAppSelector((state) => state.demoData.submittedPasses)
   const employeeDevices = devices.filter((device) => device.assigneeId === viewer.id)
   const [selectedDevices, setSelectedDevices] = useState(() => employeeDevices.slice(0, 1).map((device) => device.id))
   const [destination, setDestination] = useState('')
   const [returnDate, setReturnDate] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const myPasses = getEmployeePasses(viewer.id)
+  const myPasses = getEmployeePasses(viewer.id, submittedPasses)
 
   if (request) {
     return (
@@ -508,7 +518,7 @@ function Passes({ request = false, viewer }: { request?: boolean; viewer: Public
           <section className="mx-auto mt-8 max-w-xl rounded-2xl border border-emerald-100 bg-white p-7 text-center">
             <Check size={28} className="mx-auto text-emerald-600" />
             <h2 className="mt-3 text-lg font-bold text-[#202844]">Request saved</h2>
-            <p className="mt-2 text-sm text-slate-500">Your request is saved in this browser session. IT usually reviews within one working day.</p>
+            <p className="mt-2 text-sm text-slate-500">Your request is in this session’s Redux state. IT usually reviews within one working day.</p>
             <Link to="/employee/passes" className="mt-5 inline-flex rounded-full bg-[#3155ff] px-4 py-2.5 text-sm font-semibold text-white">View gate passes</Link>
           </section>
         ) : (
@@ -516,7 +526,7 @@ function Passes({ request = false, viewer }: { request?: boolean; viewer: Public
             onSubmit={(event) => {
               event.preventDefault()
               const now = new Date()
-              saveSubmittedPass({
+              dispatch(addSubmittedPass({
                 id: `GP-${String(now.getTime()).slice(-6)}`,
                 requesterId: viewer.id,
                 destination: destination.trim(),
@@ -533,7 +543,7 @@ function Passes({ request = false, viewer }: { request?: boolean; viewer: Public
                     condition: 'Not recorded',
                   }
                 }),
-              })
+              }))
               setSubmitted(true)
             }}
             className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.7fr)]"

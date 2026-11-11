@@ -3,7 +3,7 @@
 import { Link } from 'react-router'
 import { ArrowRight, Clock3, Ticket, TriangleAlert } from 'lucide-react'
 import Badge from '../components/Badge'
-import { tickets, userById } from '../lib/mockData'
+import { tickets, userById } from '../lib/data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function TechnicianHome() {

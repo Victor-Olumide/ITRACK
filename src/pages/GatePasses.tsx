@@ -4,17 +4,14 @@
 
 import { useState } from 'react'
 import { X, ClipboardCheck } from 'lucide-react'
-import { gatePasses, userById, deviceByTag } from '../lib/mockData'
+import { gatePasses, userById, deviceByTag } from '../lib/data/mockData'
 import Badge from '../components/Badge'
 import AssetTag from '../components/AssetTag'
 import { useAuth } from '../contexts/AuthContext'
-import {
-  getGatePassStatusUpdates,
-  getSubmittedPasses,
-  saveGatePassStatus,
-} from '../lib/sessionData'
+import { useAppDispatch, useAppSelector } from '../lib/stores/hooks'
+import { setGatePassStatus } from '../lib/stores/demo-data-slice'
 import GatePassSlip from './GatePassSlip'
-import type { GatePass, GatePassItem, GatePassStatus, PublicUser } from '../lib/types'
+import type { GatePass, GatePassItem, GatePassStatus, PublicUser } from '../lib/types/types'
 
 // ── helpers ──────────────────────────────────────────────────
 const CLASS_BY_PREFIX: Record<string, string> = {
@@ -301,13 +298,12 @@ const STATUSES: GatePassStatus[] = ['Waiting', 'Approved', 'Overdue', 'Rejected'
 
 export default function GatePasses() {
   const { user, users } = useAuth()
-  const [passes, setPasses] = useState<GatePass[]>(() => {
-    const updates = getGatePassStatusUpdates()
-    return [...gatePasses, ...getSubmittedPasses()].map((pass) => ({
-      ...pass,
-      status: updates[pass.id] ?? pass.status,
-    }))
-  })
+  const dispatch = useAppDispatch()
+  const { submittedPasses, gatePassStatusUpdates } = useAppSelector((state) => state.demoData)
+  const passes = [...gatePasses, ...submittedPasses].map((pass) => ({
+    ...pass,
+    status: gatePassStatusUpdates[pass.id] ?? pass.status,
+  }))
   const [reviewPass, setReviewPass] = useState<GatePass | null>(null)
   const [previewPass, setPreviewPass] = useState<GatePass | null>(null)
 
@@ -318,10 +314,7 @@ export default function GatePasses() {
 
   const resolvePass = (status: GatePassStatus) => {
     if (!reviewPass) return
-    saveGatePassStatus(reviewPass.id, status)
-    setPasses((current) => current.map((pass) => (
-      pass.id === reviewPass.id ? { ...pass, status } : pass
-    )))
+    dispatch(setGatePassStatus({ passId: reviewPass.id, status }))
     setReviewPass(null)
   }
 

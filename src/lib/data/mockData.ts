@@ -27,7 +27,7 @@ import type {
   Ticket,
   TicketTimeState,
   UserRole,
-} from './types'
+} from '../types/types'
 
 // ── Roles ──────────────────────────────────────────────────────
 export const ROLES: RoleOption[] = [

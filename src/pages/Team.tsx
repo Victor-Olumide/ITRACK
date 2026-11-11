@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Search, UserPlus, Users } from 'lucide-react'
-import { ROLES } from '../lib/mockData'
+import { ROLES } from '../lib/data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 
 const ROLE_TONES = {
@@ -55,6 +55,10 @@ export default function Team({ showCreateForm = false }) {
         </button>
       </div>
 
+      <p role="status" className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+        The people directory below is demo data. The server does not yet provide an endpoint to load or manage users.
+      </p>
+
       {showInvite && (
         <form
           className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-[#e9edf6] bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_180px_auto]"
@@ -83,6 +87,9 @@ export default function Team({ showCreateForm = false }) {
             }
           }}
         >
+          <p role="status" className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900 sm:col-span-2 lg:col-span-4">
+            Account creation is unavailable because the server does not yet provide a user-management endpoint.
+          </p>
           <label className="text-xs font-semibold text-slate-600">
             Full name
             <input
@@ -144,7 +151,7 @@ export default function Team({ showCreateForm = false }) {
               className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-blue-400"
             />
           </label>
-          <button type="submit" className="self-end rounded-xl bg-[#3155ff] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+          <button type="submit" disabled className="self-end rounded-xl bg-[#3155ff] px-4 py-2.5 text-sm font-semibold text-white opacity-50">
             Create account
           </button>
           {formError && <p role="alert" className="text-xs text-red-700 sm:col-span-2">{formError}</p>}

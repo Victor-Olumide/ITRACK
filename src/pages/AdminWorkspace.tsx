@@ -23,11 +23,11 @@ import {
   tickets,
   ticketsByCategory,
   userById,
-} from '../lib/mockData'
+} from '../lib/data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import type { PublicUser } from '../lib/types'
+import type { PublicUser } from '../lib/types/types'
 
 interface PageHeadingProps {
   icon: LucideIcon

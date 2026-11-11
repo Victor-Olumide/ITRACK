@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/apiClient.ts'
+import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/api/apiClient.ts'
 
 test('sends same-origin JSON requests with session credentials', async () => {
   const originalFetch = globalThis.fetch

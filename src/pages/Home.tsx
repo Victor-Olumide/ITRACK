@@ -16,7 +16,7 @@ import {
   technicianWorkload,
   ticketsByCategory,
   todayQueue,
-} from '../lib/mockData'
+} from '../lib/data/mockData'
 import { useAuth } from '../contexts/AuthContext'
 import type { ReactNode } from 'react'
 

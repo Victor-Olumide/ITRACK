@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { AlertTriangle, Package, Printer, Search, Truck } from 'lucide-react'
-import { stock as initialStock } from '../lib/mockData'
+import { stock as initialStock } from '../lib/data/mockData'
 import type { FormEvent } from 'react'
 
 const MINIMUM_STOCK = 6

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router';
-import { deviceByTag, userById } from '../lib/mockData';
+import { deviceByTag, userById } from '../lib/data/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import {
   ChevronLeft, HelpCircle, RotateCcw, ZoomOut, ZoomIn,
   Rotate3D, Maximize, MapPin, Monitor, Laptop, Smartphone, Printer
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react'
-import type { Device, DeviceStatus } from '../lib/types'
+import type { Device, DeviceStatus } from '../lib/types/types'
 
 const statusStyles: Record<DeviceStatus, string> = {
   Assigned:   'bg-blue-100   text-blue-800',

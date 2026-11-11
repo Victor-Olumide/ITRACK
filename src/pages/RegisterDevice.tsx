@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router";
 import { ChevronLeft, Search, Upload, Box } from "lucide-react";
-import { deviceModels as existingModels } from "../lib/mockData";
+import { deviceModels as existingModels } from "../lib/data/mockData";
 
 export default function RegisterDevicePage({ basePath = '/devices' }) {
   const navigate = useNavigate();

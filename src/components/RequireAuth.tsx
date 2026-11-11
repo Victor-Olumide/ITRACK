@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router'
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
 import type { ReactNode } from 'react'
-import type { UserRole } from '../lib/types'
+import type { UserRole } from '../lib/types/types'
 
 interface RequireAuthProps {
   roles: UserRole[]

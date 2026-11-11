@@ -4,27 +4,18 @@ import { useState } from 'react'
 import { Navigate } from 'react-router'
 import { Bell, Check, Shield, UserRound } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import type { PublicUser } from '../lib/types'
+import { useAppDispatch, useAppSelector } from '../lib/stores/hooks'
+import {
+  saveProfilePreferences,
+  setNotificationPreference,
+} from '../lib/stores/demo-data-slice'
+import type {
+  NotificationPreferences,
+  ProfilePreferences,
+} from '../lib/stores/demo-data-slice'
+import type { PublicUser } from '../lib/types/types'
 
-const PROFILE_KEY = 'itrack.profile'
-interface Profile {
-  name: string
-  email: string
-  phone: string
-  office: string
-  language: string
-  timezone: string
-}
-
-interface NotificationPreferences {
-  ticketAtRisk: boolean
-  ticketBreaches: boolean
-  newGatePass: boolean
-  stockMinimum: boolean
-  weeklyReport: boolean
-}
-
-const defaultProfile = (user: PublicUser): Profile => ({
+const defaultProfile = (user: PublicUser): ProfilePreferences => ({
   name: user.name,
   email: user.email,
   phone: '+234 803 555 0182',
@@ -32,18 +23,6 @@ const defaultProfile = (user: PublicUser): Profile => ({
   language: 'English',
   timezone: 'Africa/Lagos',
 })
-
-function readProfile(user: PublicUser): Profile {
-  const key = `${PROFILE_KEY}.${user.id}`
-  const raw = window.sessionStorage.getItem(key)
-  if (raw === null) return defaultProfile(user)
-
-  const profile = JSON.parse(raw)
-  if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
-    throw new Error('Invalid profile preferences in browser session storage.')
-  }
-  return { ...defaultProfile(user), ...profile }
-}
 
 const TABS = [
   { label: 'Profile', Icon: UserRound },
@@ -81,9 +60,11 @@ function ToggleRow({ title, description, checked, onChange, isLast }: {
 }
 
 function ProfileSettings({ user }: { user: PublicUser }) {
+  const dispatch = useAppDispatch()
+  const savedProfile = useAppSelector((state) => state.demoData.profiles[user.id])
   const [saved, setSaved] = useState(false)
-  const [profile, setProfile] = useState(() => readProfile(user))
-  const update = <K extends keyof Profile>(key: K, value: Profile[K]) => {
+  const [profile, setProfile] = useState(() => savedProfile ?? defaultProfile(user))
+  const update = <K extends keyof ProfilePreferences>(key: K, value: ProfilePreferences[K]) => {
     setSaved(false)
     setProfile((current) => ({ ...current, [key]: value }))
   }
@@ -92,7 +73,7 @@ function ProfileSettings({ user }: { user: PublicUser }) {
     <form
       onSubmit={(event) => {
         event.preventDefault()
-        window.sessionStorage.setItem(`${PROFILE_KEY}.${user.id}`, JSON.stringify(profile))
+        dispatch(saveProfilePreferences({ userId: user.id, profile }))
         setSaved(true)
       }}
       className="space-y-4"
@@ -134,7 +115,7 @@ function ProfileSettings({ user }: { user: PublicUser }) {
           <button type="submit" className="rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700">
             Save profile
           </button>
-          {saved && <span role="status" className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><Check size={14} /> Saved for this session</span>}
+          {saved && <span role="status" className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700"><Check size={14} /> Saved in this session’s Redux state</span>}
         </div>
       </section>
       <section className="rounded-2xl border border-[#e9edf6] bg-white p-5 sm:p-6">
@@ -204,14 +185,11 @@ function SecuritySettings() {
 }
 
 function NotificationSettings() {
-  const [settings, setSettings] = useState<NotificationPreferences>({
-    ticketAtRisk: true,
-    ticketBreaches: true,
-    newGatePass: true,
-    stockMinimum: true,
-    weeklyReport: false,
-  })
-  const toggle = (key: keyof NotificationPreferences, value: boolean) => setSettings((current) => ({ ...current, [key]: value }))
+  const dispatch = useAppDispatch()
+  const settings = useAppSelector((state) => state.demoData.notificationPreferences)
+  const toggle = (key: keyof NotificationPreferences, value: boolean) => {
+    dispatch(setNotificationPreference({ key, value }))
+  }
   const options: Array<[keyof NotificationPreferences, string, string]> = [
     ['ticketAtRisk', 'A ticket of mine is at risk', 'At 75% of its time target · toast and email'],
     ['ticketBreaches', 'Any ticket breaches its target', 'IT Admin and the assignee'],
