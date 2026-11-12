@@ -79,6 +79,17 @@ export interface TicketListResponse {
   total: number;
 }
 
+export interface TicketSuggestionRequest {
+  title: string;
+  description?: string;
+}
+
+export interface TicketSuggestionResponse {
+  category: string | null;
+  priority: string;
+  confidence: number;
+}
+
 export interface TicketListArgs {
   q?: string;
   status?: ApiTicketStatus;

@@ -15,4 +15,4 @@ Ticket workflows use the server REST API through `src/lib/api/tickets/` and are 
 
 The server also provides IT-admin-only `GET /api/v1/auth/users`, `POST /api/v1/auth/users`, and `GET /api/v1/auth/departments`. The client people directory and invite form still use demo users and are not connected to those endpoints. User API fields differ from the mock UI model (for example `fullName`, `departmentId`, and uppercase role values); map them at the API boundary.
 
-There is **no active cloud database** connected to the application. Until a production database is configured and connected on the server, data must not be treated as cloud-persisted or shared across server restarts.
+The Neon production branch now contains the Prisma schema, and the server's local `.env` is configured with its connection. The database currently has no user or demo rows, and the deployed server runtime has not yet been verified against Neon. Treat auth and ticket data as database-backed only when requests go through a server process configured with that connection; remaining demo fixtures and Redux interactions are not shared or durable.

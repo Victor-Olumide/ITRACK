@@ -5,17 +5,17 @@
 Authentication and ticket workflows are connected to the ITrack server REST API. Basic IT-admin user/department endpoints also exist. Most other operational workflows remain prototypes and are **not yet backed by server data**.
 
 - Pages still import seed records directly from `src/lib/data/mockData.ts`; several dashboards aggregate those arrays in the browser.
-- Ticket submissions, list/detail views, assignment, comments, and status changes use server endpoints and RTK Query. Verify the server data source and deployed database before describing records as persistent across restarts.
+- Ticket submissions, list/detail views, assignment, comments, and status changes use server endpoints and RTK Query. The Neon production branch has the schema, but it currently has no user/demo rows and the deployed server runtime has not yet been verified against Neon.
 - Pass decisions, gate events, and profile/notification preferences remain demo-only Redux state and reset on reload.
 - Authentication uses RTK Query and the server's `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, and `GET /api/v1/auth/me` endpoints. The server sets HTTP-only session and refresh cookies; the client includes credentials and refreshes the session after an authorized request receives `401`.
 - IT Admin user and department operations use `GET /api/v1/auth/users`, `POST /api/v1/auth/users`, and `GET /api/v1/auth/departments`. Create-user requests use server fields such as `fullName`, `departmentId`, and uppercase role enum values; use the live DTO and response types rather than the mock UI shape.
 - These user/department endpoints are not wired into the client yet: the people directory still reads fixture users and the invite action remains intentionally unavailable.
 - Password reset is not currently available.
 - `src/lib/api/` contains the RTK Query auth endpoints and shared transport; `src/lib/api/apiClient.ts` is generic transport scaffolding for other resources.
-- The server uses PostgreSQL/Prisma support, but operational resources are not yet API-backed. Confirm the configured server data source and deployed database before describing any data as persistent.
+- The server uses Prisma directly with PostgreSQL; the Neon schema is present. Verify that the running deployment uses the configured Neon connection before describing runtime records as persistent.
 - Browser route guards are for UI navigation only. Every authentication, role, ownership, approval, and data-access rule must be enforced by the server.
 
-Agree the remaining API contracts with the backend developer before wiring live data. Routes below are proposals unless specifically identified as existing.
+The ticket routes below are implemented; other routes remain proposals unless specifically identified as existing. Agree remaining API contracts before wiring other resources.
 
 ## Frontend connection setup
 
