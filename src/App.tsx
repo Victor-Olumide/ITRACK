@@ -10,6 +10,7 @@ import Layout from './components/Layout'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
 import Tickets from './pages/Tickets'
+import TicketQueue from './pages/TicketQueue'
 import Devices from './pages/Devices'
 import RegisterDevice from './pages/RegisterDevice'
 import DeviceDetailPage from './pages/DeviceDetailPage'
@@ -57,6 +58,7 @@ function AppRoutes() {
         <Route element={<RequireAuth roles={['IT Admin']}><Layout /></RequireAuth>}>
           <Route path="/"                  element={<Home />} />
           <Route path="/tickets"           element={<Tickets />} />
+          <Route path="/tickets/queue"     element={<TicketQueue />} />
           <Route path="/tickets/new"       element={<NewTicket />} />
           <Route path="/devices"           element={<Devices />} />
           <Route path="/devices/register"  element={<RegisterDevice />} />
@@ -80,6 +82,7 @@ function AppRoutes() {
         <Route element={<RequireAuth roles={['Technician']}><Layout /></RequireAuth>}>
           <Route path="/technician" element={<TechnicianHome />} />
           <Route path="/technician/tickets" element={<Tickets technicianView />} />
+          <Route path="/technician/tickets/queue" element={<TicketQueue />} />
           <Route path="/technician/notifications" element={<AdminWorkspace section="notifications" />} />
           <Route path="/technician/devices" element={<Devices basePath="/technician/devices" />} />
           <Route path="/technician/devices/register" element={<RegisterDevice basePath="/technician/devices" />} />
@@ -92,6 +95,7 @@ function AppRoutes() {
           <Route path="/employee" element={<EmployeePortal section="home" />} />
           <Route path="/employee/report" element={<EmployeePortal section="report" />} />
           <Route path="/employee/tickets" element={<EmployeePortal section="tickets" />} />
+          <Route path="/employee/tickets/queue" element={<TicketQueue />} />
           <Route path="/employee/passes" element={<EmployeePortal section="passes" />} />
           <Route path="/employee/passes/new" element={<EmployeePortal section="pass-form" />} />
           <Route path="/employee/devices/:tag" element={<DeviceDetailPage basePath="/employee" />} />

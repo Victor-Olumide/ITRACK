@@ -2,10 +2,11 @@
 
 ## Current integration status
 
-Authentication and basic IT-admin user/department management are connected to the ITrack server. Most operational workflows remain prototypes and are **not yet backed by server data**.
+Authentication and ticket workflows are connected to the ITrack server REST API. Basic IT-admin user/department endpoints also exist. Most other operational workflows remain prototypes and are **not yet backed by server data**.
 
 - Pages still import seed records directly from `src/lib/data/mockData.ts`; several dashboards aggregate those arrays in the browser.
-- Ticket/pass submissions, pass decisions, gate events, and profile/notification preferences are demo-only Redux state and reset on reload.
+- Ticket submissions, list/detail views, assignment, comments, and status changes use server endpoints and RTK Query. Verify the server data source and deployed database before describing records as persistent across restarts.
+- Pass decisions, gate events, and profile/notification preferences remain demo-only Redux state and reset on reload.
 - Authentication uses RTK Query and the server's `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout`, and `GET /api/v1/auth/me` endpoints. The server sets HTTP-only session and refresh cookies; the client includes credentials and refreshes the session after an authorized request receives `401`.
 - IT Admin user and department operations use `GET /api/v1/auth/users`, `POST /api/v1/auth/users`, and `GET /api/v1/auth/departments`. Create-user requests use server fields such as `fullName`, `departmentId`, and uppercase role enum values; use the live DTO and response types rather than the mock UI shape.
 - These user/department endpoints are not wired into the client yet: the people directory still reads fixture users and the invite action remains intentionally unavailable.
@@ -36,7 +37,7 @@ Use the backend team's established naming and versioning if already decided. Pre
 | Current user / sign in / refresh / sign out (existing) | `GET /auth/me`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
 | Password recovery (missing) | `POST /auth/forgot-password`, `POST /auth/reset-password` |
 | People directory / admin invite (server exists; client wiring pending) | `GET /auth/users`, `POST /auth/users`; department lookup: `GET /auth/departments` |
-| Ticket queue and employee requests | `GET /tickets`, `POST /tickets`, `GET /tickets/:id`, `PATCH /tickets/:id` |
+| Ticket queue and employee requests (implemented REST) | `GET /tickets`, `POST /tickets`, `GET /tickets/:id`, `PATCH /tickets/:id`, `POST /tickets/:id/status`, `POST /tickets/:id/assign`, `POST /tickets/:id/comments`, `DELETE /tickets/:id` |
 | Device register and registration | `GET /devices`, `POST /devices`, `GET /devices/:id`, `PATCH /devices/:id` |
 | Gate-pass list/request | `GET /gate-passes`, `POST /gate-passes`, `GET /gate-passes/:id` |
 | Pass approval/rejection | `POST /gate-passes/:id/decision` |
@@ -95,8 +96,8 @@ The current UI has demo-only PIN/signature affordances and does not provide real
 The backend connection is not complete until these changes are made:
 
 1. Password recovery still needs a server contract and delivery/security design. Wire the existing user directory and admin user-creation endpoints to the client using their server DTOs and response types.
-2. Add async RTK Query endpoints for tickets, devices, passes, stock, notifications, reports, and gate events. Replace direct imports from `src/lib/data/mockData.ts` in pages and navigation as each resource API becomes available.
-3. Replace the current Redux-only demo ticket/pass/event/profile state with server queries and mutations when those endpoints are available. Refresh/invalidate the related UI after successful writes; show loading, empty, validation, expired-session, and server-error states.
+2. Ticket RTK Query endpoints are implemented under `src/lib/api/tickets/`; continue with devices, passes, stock, notifications, reports, and gate events as their server endpoints become available. Replace remaining direct ticket fixture reads from `src/lib/data/mockData.ts`, especially demo analytics.
+3. Keep ticket state server-owned. Replace demo pass/event/profile state only when the corresponding server endpoints are available. Refresh/invalidate related UI after successful writes; show loading, empty, validation, expired-session, and server-error states.
 4. Make page mutations wait for the server response; do not show a success state or update the gate log optimistically unless rollback/error behavior is implemented.
 5. Add pagination/filter query parameters to large lists and abort stale requests when the route/filter changes.
 6. Configure production API origin, CORS, cookie attributes, CSRF, HTTPS, and deployment rewrites with the backend/operations team. Cross-origin web clients require an exact allowed origin with credentials; production cookies must also be usable in the client's site context.
