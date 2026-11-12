@@ -4,6 +4,10 @@ import { useMemo, useState } from 'react'
 import { Search, UserPlus, Users } from 'lucide-react'
 import { ROLES } from '../lib/data/mockData'
 import { useAuth } from '../contexts/AuthContext'
+import { useGetDepartmentsQuery } from '@/lib/api/auth/auth-api'
+import { useCreateUserMutation, useGetUsersQuery } from '@/lib/api/users/users-api'
+import type { UserRole as ApiUserRole } from '@/lib/api/auth/types'
+import type { UserRole as DisplayUserRole } from '../lib/types/types'
 
 const ROLE_TONES = {
   'IT Admin': 'bg-violet-50 text-violet-700',
@@ -13,7 +17,10 @@ const ROLE_TONES = {
 }
 
 export default function Team({ showCreateForm = false }) {
-  const { users, createUser } = useAuth()
+  const { users: demoUsers } = useAuth()
+  const { data: usersResponse, isLoading, error: usersError } = useGetUsersQuery()
+  const { data: departmentsResponse } = useGetDepartmentsQuery()
+  const [createUser, { isLoading: isCreating }] = useCreateUserMutation()
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('All roles')
   const [showInvite, setShowInvite] = useState(showCreateForm)
@@ -25,7 +32,17 @@ export default function Team({ showCreateForm = false }) {
   const [inviteRole, setInviteRole] = useState(ROLES.find(({ value }) => value === 'Employee')?.value ?? ROLES[0].value)
   const [formError, setFormError] = useState('')
   const [createdMessage, setCreatedMessage] = useState('')
-  const allUsers = users
+  const apiRoleLabels: Record<ApiUserRole, DisplayUserRole> = { EMPLOYEE: 'Employee', TECHNICIAN: 'Technician', IT_ADMIN: 'IT Admin', SECURITY: 'Security' }
+  const apiRoleValues: Record<DisplayUserRole, ApiUserRole> = { Employee: 'EMPLOYEE', Technician: 'TECHNICIAN', 'IT Admin': 'IT_ADMIN', Security: 'SECURITY' }
+  const allUsers = usersResponse?.users.map((user) => ({
+    id: user.id,
+    name: user.fullName,
+    email: user.email,
+    staffId: user.staffId,
+    department: user.department.name,
+    role: apiRoleLabels[user.role],
+    isActive: user.isActive,
+  })) ?? demoUsers
   const filteredUsers = useMemo(() => allUsers.filter((user) => {
     const matchesQuery = `${user.name} ${user.department} ${user.staffId}`
       .toLowerCase().includes(query.trim().toLowerCase())
@@ -62,20 +79,20 @@ export default function Team({ showCreateForm = false }) {
       {showInvite && (
         <form
           className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-[#e9edf6] bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_180px_auto]"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
             setFormError('')
             setCreatedMessage('')
             try {
-              const created = createUser({
-                name: inviteName,
+              const created = await createUser({
+                fullName: inviteName,
                 email: inviteEmail,
-                department: inviteDepartment,
+                departmentId: inviteDepartment,
                 staffId: inviteStaffId,
                 password: invitePassword,
-                role: inviteRole,
-              })
-              setCreatedMessage(`Account created for ${created.name}. They can now sign in with their email and password.`)
+                role: apiRoleValues[inviteRole],
+              }).unwrap()
+              setCreatedMessage(`Account created for ${created.user.fullName}. They can now sign in with their email and password.`)
               setInviteName('')
               setInviteEmail('')
               setInviteDepartment('')
@@ -87,9 +104,6 @@ export default function Team({ showCreateForm = false }) {
             }
           }}
         >
-          <p role="status" className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900 sm:col-span-2 lg:col-span-4">
-            Account creation is unavailable because the server does not yet provide a user-management endpoint.
-          </p>
           <label className="text-xs font-semibold text-slate-600">
             Full name
             <input
@@ -111,12 +125,15 @@ export default function Team({ showCreateForm = false }) {
           </label>
           <label className="text-xs font-semibold text-slate-600">
             Department
-            <input
+            <select
               required
               value={inviteDepartment}
               onChange={(event) => setInviteDepartment(event.target.value)}
               className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-blue-400"
-            />
+            >
+              <option value="">Select a department</option>
+              {departmentsResponse?.departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+            </select>
           </label>
           <label className="text-xs font-semibold text-slate-600">
             Staff ID (optional)
@@ -151,7 +168,7 @@ export default function Team({ showCreateForm = false }) {
               className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-blue-400"
             />
           </label>
-          <button type="submit" disabled className="self-end rounded-xl bg-[#3155ff] px-4 py-2.5 text-sm font-semibold text-white opacity-50">
+          <button type="submit" disabled={isCreating} className="self-end rounded-xl bg-[#3155ff] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
             Create account
           </button>
           {formError && <p role="alert" className="text-xs text-red-700 sm:col-span-2">{formError}</p>}
@@ -195,7 +212,9 @@ export default function Team({ showCreateForm = false }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edf0f7]">
-              {filteredUsers.map((user) => (
+              {isLoading && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">Loading people…</td></tr>}
+              {usersError && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-red-700">Unable to load people from the server.</td></tr>}
+              {!isLoading && !usersError && filteredUsers.map((user) => (
                 <tr key={user.id} className="transition hover:bg-[#f8faff]">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -217,11 +236,11 @@ export default function Team({ showCreateForm = false }) {
                     </span>
                   </td>
                   <td className="px-5 py-3.5 text-xs font-medium text-emerald-700">
-                    Active
+                    {'isActive' in user && user.isActive === false ? 'Inactive' : 'Active'}
                   </td>
                 </tr>
               ))}
-              {filteredUsers.length === 0 && (
+              {!isLoading && !usersError && filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">
                     No people match those filters.

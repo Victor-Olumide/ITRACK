@@ -5,6 +5,7 @@ import type {
   RefreshResponse,
   LogoutResponse,
   MeResponse,
+  DepartmentListResponse,
 } from './types';
 
 export const authApi = appApi.injectEndpoints({
@@ -41,6 +42,10 @@ export const authApi = appApi.injectEndpoints({
       }),
       providesTags: ['Auth'],
     }),
+    getDepartments: builder.query<DepartmentListResponse, void>({
+      query: () => ({ url: '/auth/departments', method: 'GET' }),
+      providesTags: ['User'],
+    }),
   }),
 });
 
@@ -49,4 +54,5 @@ export const {
   useRefreshMutation,
   useLogoutMutation,
   useGetMeQuery,
+  useGetDepartmentsQuery,
 } = authApi;

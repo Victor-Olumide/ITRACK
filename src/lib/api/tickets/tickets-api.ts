@@ -6,6 +6,8 @@ import type {
   TicketListArgs,
   TicketListResponse,
   UpdateTicketRequest,
+  TicketSuggestionRequest,
+  TicketSuggestionResponse,
 } from './types';
 
 function ticketListUrl(args: TicketListArgs = {}) {
@@ -33,6 +35,9 @@ export const ticketsApi = appApi.injectEndpoints({
     createTicket: builder.mutation<TicketApiRecord, CreateTicketRequest>({
       query: (body) => ({ url: '/tickets', method: 'POST', body }),
       invalidatesTags: [{ type: 'Ticket', id: 'LIST' }],
+    }),
+    suggestTicket: builder.mutation<TicketSuggestionResponse, TicketSuggestionRequest>({
+      query: (body) => ({ url: '/tickets/suggest', method: 'POST', body }),
     }),
     updateTicket: builder.mutation<
       TicketApiRecord,
@@ -104,6 +109,7 @@ export const {
   useGetTicketsQuery,
   useGetTicketQuery,
   useCreateTicketMutation,
+  useSuggestTicketMutation,
   useUpdateTicketMutation,
   useChangeTicketStatusMutation,
   useAssignTicketMutation,

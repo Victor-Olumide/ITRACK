@@ -12,6 +12,10 @@ export interface DepartmentInfo {
   code: string;
 }
 
+export interface DepartmentListResponse {
+  departments: DepartmentInfo[];
+}
+
 export interface AuthenticatedUser {
   id: string;
   staffId: string;
