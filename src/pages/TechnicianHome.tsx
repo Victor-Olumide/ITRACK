@@ -3,12 +3,18 @@
 import { Link } from 'react-router'
 import { ArrowRight, Clock3, Ticket, TriangleAlert } from 'lucide-react'
 import Badge from '../components/Badge'
-import { tickets, userById } from '../lib/data/mockData'
+import { userById } from '../lib/data/mockData'
 import { useAuth } from '../contexts/AuthContext'
+import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
+import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
 
 export default function TechnicianHome() {
   const { user } = useAuth()
-  const myTickets = tickets.filter((ticket) => ticket.assigneeId === user?.id)
+  const ticketsQuery = useGetTicketsQuery(
+    { assigneeId: user?.id, page: 1, pageSize: 100 },
+    { skip: !user?.id },
+  )
+  const myTickets = (ticketsQuery.data?.data ?? []).map(toClientTicket)
   const activeTickets = myTickets.filter((ticket) => ticket.status !== 'Resolved')
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -61,6 +67,7 @@ export default function TechnicianHome() {
             See all
           </Link>
         </div>
+        {ticketsQuery.isError && <p role="alert" className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">Your queue could not be loaded.</p>}
         <div className="divide-y divide-[#edf0f7]">
           {activeTickets.map((ticket) => {
             const requester = userById(ticket.requesterId)
@@ -76,8 +83,8 @@ export default function TechnicianHome() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-[#202844]">{ticket.title}</span>
                   <span className="mt-1 block text-xs text-slate-500">
-                    {ticket.id} · {ticket.category} · {requester?.name ?? 'Requester'}
-                    {requester?.department ? ` · ${requester.department}` : ''}
+                    {ticket.id} · {ticket.category} · {ticket.requesterName ?? requester?.name ?? 'Requester'}
+                    {ticket.requesterDepartment || requester?.department ? ` · ${ticket.requesterDepartment ?? requester?.department}` : ''}
                   </span>
                 </span>
                 <Badge label={ticket.priority} />
@@ -87,7 +94,7 @@ export default function TechnicianHome() {
             )
           })}
           {activeTickets.length === 0 && (
-            <p className="px-5 py-12 text-center text-sm text-slate-500">Your queue is clear.</p>
+            <p className="px-5 py-12 text-center text-sm text-slate-500">{ticketsQuery.isLoading ? 'Loading your queue…' : 'Your queue is clear.'}</p>
           )}
         </div>
       </section>

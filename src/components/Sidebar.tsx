@@ -16,10 +16,11 @@ import {
   Activity,
   X,
 } from 'lucide-react'
-import { gatePasses, metrics, tickets } from '../lib/data/mockData'
+import { gatePasses, metrics } from '../lib/data/mockData'
 import type { LucideIcon } from 'lucide-react'
 import type { UserRole } from '../lib/types/types'
 import { useAppSelector } from '../lib/stores/hooks'
+import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 
 interface NavigationLink {
   to: string
@@ -99,11 +100,14 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
 }
 
 function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserRole }) {
-  const { submittedTickets, submittedPasses, gatePassStatusUpdates } = useAppSelector((state) => state.demoData)
+  const { submittedPasses, gatePassStatusUpdates } = useAppSelector((state) => state.demoData)
   const waitingPasses = [...gatePasses, ...submittedPasses]
     .filter((pass) => (gatePassStatusUpdates[pass.id] ?? pass.status) === 'Waiting').length
-  const unassignedTickets = [...tickets, ...submittedTickets]
-    .filter((ticket) => ticket.status !== 'Resolved' && !ticket.assigneeId).length
+  const unassignedTicketsQuery = useGetTicketsQuery(
+    { assigneeId: 'unassigned', page: 1, pageSize: 1 },
+    { skip: role === 'Employee' || role === 'Security' },
+  )
+  const unassignedTickets = unassignedTicketsQuery.data?.total ?? 0
   const adminGroups = ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
     links: group.links.map((link) => (

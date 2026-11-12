@@ -1,17 +1,20 @@
-// src/pages/Tickets.jsx
-// Split-pane view: ticket queue on the left, ticket detail on the right.
-// Tickets are sourced from mockData and resolved into a view shape here —
-// no inline dummy data lives in this file.
-
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   Search, Check, Circle, Send
 } from "lucide-react";
-import { tickets as mockTickets, userById, deviceById } from "../lib/data/mockData";
+import { userById } from "../lib/data/mockData";
 import { useAuth } from "../contexts/AuthContext";
-import { useAppSelector } from "../lib/stores/hooks";
 import type { PublicUser, Ticket, TicketTimeState } from "../lib/types/types";
+import {
+  useAddTicketCommentMutation,
+  useAssignTicketMutation,
+  useChangeTicketStatusMutation,
+  useGetTicketQuery,
+  useGetTicketsQuery,
+} from "../lib/api/tickets/tickets-api";
+import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
+import type { ApiTicketStatus } from "../lib/api/tickets/types";
 
 interface TicketView extends Ticket {
   department: string
@@ -26,15 +29,14 @@ interface TicketView extends Ticket {
 function toView(t: Ticket, users: PublicUser[]): TicketView {
   const requester = users.find((user) => user.id === t.requesterId) ?? userById(t.requesterId);
   const assignee = users.find((user) => user.id === t.assigneeId) ?? userById(t.assigneeId);
-  const device = deviceById(t.deviceId);
   return {
     ...t,
-    department: requester?.department ?? "—",
-    requester: requester ? requester.name : "Unknown",
-    assignee: assignee ? assignee.name : "Unassigned",
+    department: t.requesterDepartment ?? requester?.department ?? "—",
+    requester: t.requesterName ?? (requester ? requester.name : "Unknown"),
+    assignee: t.assigneeName ?? (assignee ? assignee.name : "Unassigned"),
     assigneeId: t.assigneeId,
-    device: device?.tag ?? "—",
-    deviceName: device ? `${device.make} ${device.model}` : "—",
+    device: t.deviceTag ?? "—",
+    deviceName: t.deviceName ?? "—",
     group: t.timeState,
   };
 }
@@ -50,8 +52,17 @@ const priorityStyles = {
   Critical: "text-red-600",
   High: "text-orange-600",
   Medium: "text-blue-600",
-  Low: "text-slate-500"
+  Low: "text-slate-500",
+  Planning: "text-slate-500"
 };
+
+const priorityMap = {
+  Critical: 'P1_CRITICAL',
+  High: 'P2_HIGH',
+  Medium: 'P3_MEDIUM',
+  Low: 'P4_LOW',
+  Planning: 'P5_PLANNING',
+} as const;
 
 const slaStyles = {
   Breached: "bg-red-100 text-red-700",
@@ -149,32 +160,23 @@ function TicketRow({ ticket, selected, onClick }: {
   );
 }
 
-function TicketDetails({ ticket, onUpdate }: {
+function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, error }: {
   ticket: TicketView | undefined
-  onUpdate: (id: string, changes: Partial<TicketView>) => void
+  onComment: (body: string, isInternal: boolean) => Promise<void>
+  onStatusChange: (status: ApiTicketStatus, resolutionNote?: string) => Promise<void>
+  onAssign: () => Promise<void>
+  isSaving: boolean
+  error?: string
 }) {
   const [mode, setMode] = useState("reply");
   const [message, setMessage] = useState("");
+  const [resolutionNote, setResolutionNote] = useState("");
 
   if (!ticket) return null;
 
-  const addMessage = () => {
+  const addMessage = async () => {
     if (!message.trim()) return;
-
-    onUpdate(ticket.id, {
-      history: [
-        ...ticket.history,
-        {
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit"
-          }),
-          text: `${mode === "note" ? "Internal note" : "Reply"}: ${message}`,
-          note: mode === "note"
-        }
-      ]
-    });
-
+    await onComment(message.trim(), mode === "note");
     setMessage("");
   };
 
@@ -283,8 +285,8 @@ function TicketDetails({ ticket, onUpdate }: {
         />
 
         <button
-          onClick={addMessage}
-          disabled={!message.trim()}
+          onClick={() => void addMessage()}
+          disabled={!message.trim() || isSaving}
           className="mt-2 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send size={15} />
@@ -292,27 +294,47 @@ function TicketDetails({ ticket, onUpdate }: {
         </button>
       </div>
 
+      {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-6">
-        <button
-          onClick={() => onUpdate(ticket.id, { status: "Resolved", group: "On track" })}
-          className="flex items-center gap-2 rounded-full bg-lime-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-lime-500"
-        >
-          <Check size={17} /> Resolve
-        </button>
-
-        <button
-          onClick={() => onUpdate(ticket.id, { status: "Waiting on user", group: "Paused", sla: "Paused · waiting on user" })}
-          className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50"
-        >
-          Waiting on user
-        </button>
-
-        <button
-          onClick={() => onUpdate(ticket.id, { assignee: "Unassigned", assigneeId: null })}
-          className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50"
-        >
-          Reassign
-        </button>
+        {ticket.status === "Assigned" && (
+          <button onClick={() => void onStatusChange("IN_PROGRESS")} disabled={isSaving} className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50">
+            Start work
+          </button>
+        )}
+        {ticket.status === "In progress" && (
+          <>
+            <button
+              onClick={() => void onStatusChange("WAITING_ON_USER")}
+              disabled={isSaving}
+              className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+            >
+              Waiting on user
+            </button>
+            <input
+              value={resolutionNote}
+              onChange={(event) => setResolutionNote(event.target.value)}
+              placeholder="Resolution note required"
+              aria-label="Resolution note"
+              className="min-w-48 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
+            />
+            <button
+              onClick={() => void onStatusChange("RESOLVED", resolutionNote.trim())}
+              disabled={!resolutionNote.trim() || isSaving}
+              className="flex items-center gap-2 rounded-full bg-lime-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-lime-500 disabled:opacity-50"
+            >
+              <Check size={17} /> Resolve
+            </button>
+          </>
+        )}
+        {ticket.status === "Unassigned" && (
+          <button onClick={() => void onAssign()} disabled={isSaving} className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+            Take ticket
+          </button>
+        )}
+        {ticket.status === "Resolved" && (
+          <p className="text-sm text-slate-500">Waiting for the requester to confirm or reopen.</p>
+        )}
       </div>
     </section>
   );
@@ -320,18 +342,10 @@ function TicketDetails({ ticket, onUpdate }: {
 
 export default function TicketPage({ technicianView = false }: { technicianView?: boolean }) {
   const { user, users } = useAuth()
-  const submittedTickets = useAppSelector((state) => state.demoData.submittedTickets)
   const assigneeId = user?.id ?? ''
-  const availableTickets = useMemo(
-    () => [...mockTickets, ...submittedTickets].map((ticket) => toView(ticket, users)),
-    [submittedTickets, users]
-  );
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTicketId = searchParams.get("ticket");
-  const [tickets, setTickets] = useState<TicketView[]>(availableTickets);
-  const [selectedId, setSelectedId] = useState(() => (
-    requestedTicketId ?? availableTickets.find(ticket => ticket.assigneeId === assigneeId)?.id ?? availableTickets[0]?.id ?? ''
-  ));
+  const [selectedId, setSelectedId] = useState(requestedTicketId ?? '');
   const [tab, setTab] = useState(technicianView ? "Mine" : "All open");
   const [department, setDepartment] = useState(technicianView ? "" : "Finance");
   const [priority, setPriority] = useState("");
@@ -339,17 +353,37 @@ export default function TicketPage({ technicianView = false }: { technicianView?
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
 
-  const scopedTickets = technicianView
-    ? tickets.filter((ticket) => ticket.assigneeId === assigneeId)
-    : tickets
-  const selectedTicket = scopedTickets.find(t => t.id === requestedTicketId)
-    ?? scopedTickets.find(t => t.id === selectedId);
-
-  const updateTicket = (id: string, changes: Partial<TicketView>) => {
-    setTickets(prev =>
-      prev.map(t => t.id === id ? { ...t, ...changes } : t)
-    );
+  const listArgs = {
+    page: 1,
+    pageSize: 100,
+    ...(search ? { q: search } : {}),
+    ...(priority && priority in priorityMap
+      ? { priority: priorityMap[priority as keyof typeof priorityMap] }
+      : {}),
+    ...(category ? { category } : {}),
+    ...(technicianView && tab === 'Mine' ? { assigneeId } : {}),
+    ...(technicianView && tab === 'Unassigned' ? { assigneeId: 'unassigned' as const } : {}),
   };
+  const listQuery = useGetTicketsQuery(listArgs);
+  const availableTickets = useMemo(
+    () => (listQuery.data?.data ?? []).map(toClientTicket).map((ticket) => toView(ticket, users)),
+    [listQuery.data, users],
+  );
+  const activeTicketId = requestedTicketId ?? (selectedId || availableTickets[0]?.id || '');
+  const detailQuery = useGetTicketQuery(activeTicketId, { skip: !activeTicketId });
+  const [addComment, commentState] = useAddTicketCommentMutation();
+  const [changeStatus, statusState] = useChangeTicketStatusMutation();
+  const [assignTicket, assignState] = useAssignTicketMutation();
+  const isSaving = commentState.isLoading || statusState.isLoading || assignState.isLoading;
+  const mutationError = commentState.error ?? statusState.error ?? assignState.error;
+  const errorMessage = mutationError && 'data' in mutationError && mutationError.data && typeof mutationError.data === 'object' && 'error' in mutationError.data
+    ? String((mutationError.data as { error?: { message?: string } }).error?.message ?? 'Ticket action failed.')
+    : mutationError ? 'Ticket action failed. Try again.' : undefined;
+
+  const scopedTickets = availableTickets;
+  const selectedTicket = detailQuery.data
+    ? toView(toClientTicket(detailQuery.data), users)
+    : scopedTickets.find(t => t.id === activeTicketId);
 
   const filteredTickets = useMemo(() => {
     return scopedTickets.filter(ticket => {
@@ -384,7 +418,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                 {technicianView ? "My tickets" : "Tickets"}
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                {tickets.filter(t => t.status !== "Resolved").length} open · {tickets.filter(t => !t.assigneeId).length} unassigned · sorted by time left
+                {availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length} open · {availableTickets.filter(ticket => !ticket.assigneeId).length} unassigned · sorted by time left
               </p>
             </div>
 
@@ -402,10 +436,10 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                   {item}
                   <span className="ml-1 opacity-70">
                     {item === "Unassigned"
-                      ? tickets.filter(t => !t.assigneeId).length
+                      ? availableTickets.filter(ticket => !ticket.assigneeId).length
                       : item === "Mine"
-                      ? tickets.filter(t => t.assigneeId === assigneeId).length
-                      : tickets.filter(t => t.status !== "Resolved").length}
+                      ? availableTickets.filter(ticket => ticket.assigneeId === assigneeId).length
+                      : availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length}
                   </span>
                 </button>
               ))}
@@ -462,7 +496,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                       <TicketRow
                         key={ticket.id}
                         ticket={ticket}
-                        selected={selectedId === ticket.id}
+                        selected={activeTicketId === ticket.id}
                         onClick={() => {
                           setSelectedId(ticket.id);
                           setSearchParams({ ticket: ticket.id });
@@ -488,7 +522,20 @@ export default function TicketPage({ technicianView = false }: { technicianView?
             <TicketDetails
               key={selectedTicket.id}
               ticket={selectedTicket}
-              onUpdate={updateTicket}
+              onComment={async (body, isInternal) => {
+                await addComment({ id: selectedTicket.serverId ?? selectedTicket.id, body, isInternal }).unwrap();
+              }}
+              onStatusChange={async (status, resolutionNote) => {
+                await changeStatus({
+                  id: selectedTicket.serverId ?? selectedTicket.id,
+                  body: { to: status, ...(resolutionNote ? { resolutionNote } : {}) },
+                }).unwrap();
+              }}
+              onAssign={async () => {
+                await assignTicket({ id: selectedTicket.serverId ?? selectedTicket.id }).unwrap();
+              }}
+              isSaving={isSaving}
+              error={errorMessage}
             />
           ) : (
             <div className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500">

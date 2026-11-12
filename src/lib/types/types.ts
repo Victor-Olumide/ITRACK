@@ -1,7 +1,7 @@
 export type UserRole = 'IT Admin' | 'Technician' | 'Employee' | 'Security'
 export type DeviceStatus = 'Assigned' | 'In store' | 'Off-site' | 'In repair' | 'Retired'
-export type TicketStatus = 'Unassigned' | 'In progress' | 'Waiting on user' | 'Resolved' | 'Closed'
-export type TicketPriority = 'Critical' | 'High' | 'Medium' | 'Low'
+export type TicketStatus = 'Unassigned' | 'Assigned' | 'In progress' | 'Waiting on user' | 'Resolved' | 'Closed'
+export type TicketPriority = 'Critical' | 'High' | 'Medium' | 'Low' | 'Planning'
 export type TicketTimeState = 'Breached' | 'At risk' | 'On track' | 'Paused'
 export type GatePassStatus = 'Waiting' | 'Approved' | 'Rejected' | 'Overdue'
 export type GateEventType = 'Out' | 'Back' | 'Stopped'
@@ -47,6 +47,7 @@ export interface TicketHistoryEntry {
 
 export interface Ticket {
   id: string
+  serverId?: string
   title: string
   type: 'Problem' | 'Request'
   category: string
@@ -55,7 +56,11 @@ export interface Ticket {
   timeState: TicketTimeState
   assigneeId: string | null
   requesterId: string
+  requesterName?: string
+  requesterDepartment?: string
+  assigneeName?: string | null
   deviceId: string | null
+  deviceName?: string | null
   description: string
   response: string
   resolution: string

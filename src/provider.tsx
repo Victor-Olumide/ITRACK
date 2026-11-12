@@ -1,3 +1,5 @@
+//provider for redux state management
+
 import type { ReactNode } from "react";
 import { Provider } from "react-redux";
 import { store } from "@/lib/stores/store";

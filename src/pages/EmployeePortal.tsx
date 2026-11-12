@@ -17,18 +17,21 @@ import AssetTag from '../components/AssetTag'
 import {
   devices,
   gatePasses,
-  tickets,
   userById,
 } from '../lib/data/mockData'
 import { useAppDispatch, useAppSelector } from '../lib/stores/hooks'
-import { addSubmittedPass, addSubmittedTicket } from '../lib/stores/demo-data-slice'
+import { addSubmittedPass } from '../lib/stores/demo-data-slice'
 import { useAuth } from '../contexts/AuthContext'
-import type { GatePass, PublicUser, Ticket as TicketRecord } from '../lib/types/types'
+import type { GatePass, PublicUser } from '../lib/types/types'
+import {
+  useAddTicketCommentMutation,
+  useChangeTicketStatusMutation,
+  useCreateTicketMutation,
+  useGetTicketQuery,
+  useGetTicketsQuery,
+} from '../lib/api/tickets/tickets-api'
+import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
 
-const getEmployeeTickets = (userId: string, submittedTickets: TicketRecord[]) => [
-  ...tickets.filter((ticket) => ticket.requesterId === userId),
-  ...submittedTickets.filter((ticket) => ticket.requesterId === userId),
-]
 const getEmployeePasses = (userId: string, submittedPasses: GatePass[]) => [
   ...gatePasses.filter((pass) => pass.requesterId === userId),
   ...submittedPasses.filter((pass) => pass.requesterId === userId),
@@ -47,10 +50,11 @@ function PageTitle({ title, description, children }: { title: string; descriptio
 }
 
 function Home({ viewer }: { viewer: PublicUser }) {
-  const { submittedTickets, submittedPasses } = useAppSelector((state) => state.demoData)
+  const { submittedPasses } = useAppSelector((state) => state.demoData)
+  const ticketsQuery = useGetTicketsQuery({ page: 1, pageSize: 100 })
   const myTickets = useMemo(
-    () => getEmployeeTickets(viewer.id, submittedTickets),
-    [viewer.id, submittedTickets],
+    () => (ticketsQuery.data?.data ?? []).map(toClientTicket),
+    [ticketsQuery.data],
   )
   const myPasses = getEmployeePasses(viewer.id, submittedPasses)
   const employeeDevices = devices.filter((device) => device.assigneeId === viewer.id)
@@ -185,11 +189,10 @@ function Home({ viewer }: { viewer: PublicUser }) {
 }
 
 function ReportProblem({ viewer }: { viewer: PublicUser }) {
-  const dispatch = useAppDispatch()
+  const [createTicket, createTicketState] = useCreateTicketMutation()
+  const [submitError, setSubmitError] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [submittedTicketId, setSubmittedTicketId] = useState('')
-  const reportDevices = devices.filter((device) => device.assigneeId === viewer.id)
-  const [deviceId, setDeviceId] = useState('')
   const [category, setCategory] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -204,7 +207,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
         </span>
         <h1 className="mt-5 text-2xl font-bold text-[#111a3b]">Your report is with IT</h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Ticket {submittedTicketId} is in this session’s Redux state. Follow updates from My tickets.
+          Ticket {submittedTicketId} was saved. Follow updates from My tickets.
         </p>
         <Link
           to={`${viewer.role === 'Employee' ? '/employee/tickets' : '/tickets'}?ticket=${submittedTicketId}`}
@@ -221,60 +224,39 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
       <PageTitle title="Report a problem" description="Three quick steps. IT sees it straight away." />
       <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(250px,0.7fr)]">
         <form
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
-            const device = reportDevices.find((item) => item.id === deviceId)
-            const now = new Date()
-            const ticket: TicketRecord = {
-              id: `IT-${String(now.getTime()).slice(-6)}`,
-              title: title.trim(),
-              type: category === 'Request something' ? 'Request' : 'Problem',
-              category,
-              priority: workState === 'I’m stopped' || impact === 'Everyone' ? 'High' : 'Medium',
-              status: 'Unassigned',
-              timeState: 'On track',
-              assigneeId: null,
-              requesterId: viewer.id,
-              deviceId: device?.id ?? null,
-              deviceTag: device?.tag ?? null,
-              description: description.trim(),
-              response: 'Pending',
-              resolution: 'New',
-              sla: 'New',
-              history: [{
-                time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                text: `${viewer.name} submitted the ticket`,
-              }],
-              createdAt: now.toISOString(),
+            setSubmitError('')
+            try {
+              const response = await createTicket({
+                title: title.trim(),
+                description: description.trim(),
+                category: category === 'Request something' ? 'Request' : category,
+                type: category === 'Request something' ? 'REQUEST' : 'PROBLEM',
+                impact: impact === 'Everyone' || impact === 'My team'
+                  ? 'HIGH'
+                  : impact === 'One person' ? 'MEDIUM' : 'LOW',
+                urgency: workState === 'I’m stopped'
+                  ? 'HIGH'
+                  : workState === 'Work is harder' ? 'MEDIUM' : 'LOW',
+              }).unwrap()
+              setSubmittedTicketId(response.number)
+              setSubmitted(true)
+            } catch (error) {
+              setSubmitError(
+                error && typeof error === 'object' && 'data' in error
+                  ? String((error as { data?: { error?: { message?: string } } }).data?.error?.message ?? 'Ticket could not be submitted. Try again.')
+                  : 'Ticket could not be submitted. Check your connection and try again.',
+              )
             }
-            dispatch(addSubmittedTicket(ticket))
-            setSubmittedTicketId(ticket.id)
-            setSubmitted(true)
           }}
           className="space-y-4"
         >
           <section className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
             <h2 className="text-sm font-bold text-[#202844]">1 · Which device?</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {reportDevices.map((device) => (
-                <button
-                  key={device.id}
-                  type="button"
-                  onClick={() => setDeviceId(device.id)}
-                  className={`rounded-xl border p-3 text-left ${deviceId === device.id ? 'border-[#3155ff] bg-[#f5f7ff]' : 'border-[#e8edf5]'}`}
-                >
-                  <span className="block text-xs font-semibold text-[#202844]">{device.make} {device.model}</span>
-                  <span className="mt-1 block"><AssetTag tag={device.tag} size="sm" /></span>
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setDeviceId('other')}
-                className={`rounded-xl border p-3 text-left text-xs font-semibold ${deviceId === 'other' ? 'border-[#3155ff] bg-[#f5f7ff]' : 'border-[#e8edf5] text-slate-600'}`}
-              >
-                Not a device / not sure
-              </button>
-            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Asset links will be available when the asset register API is connected.
+            </p>
           </section>
 
           <section className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
@@ -351,12 +333,13 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
             </label>
             <button
               type="submit"
-              disabled={!deviceId || !category}
+              disabled={!category || title.trim().length < 5 || description.trim().length < 10 || createTicketState.isLoading}
               className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#3155ff] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               <Send size={15} />
-              Send to IT
+              {createTicketState.isLoading ? 'Sending…' : 'Send to IT'}
             </button>
+            {submitError && <p role="alert" className="mt-3 text-sm text-red-700">{submitError}</p>}
           </section>
         </form>
 
@@ -379,36 +362,46 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
   )
 }
 
-function MyTickets({ viewer }: { viewer: PublicUser }) {
+function MyTickets() {
   const [status, setStatus] = useState('Open')
   const [searchParams, setSearchParams] = useSearchParams()
-  const submittedTickets = useAppSelector((state) => state.demoData.submittedTickets)
+  const ticketsQuery = useGetTicketsQuery({ page: 1, pageSize: 100 })
   const requestedTicketId = searchParams.get('ticket')
-  const [selectedId, setSelectedId] = useState(() => requestedTicketId ?? getEmployeeTickets(viewer.id, submittedTickets)[0]?.id)
+  const [selectedId, setSelectedId] = useState(requestedTicketId ?? '')
   const [query, setQuery] = useState('')
   const myTickets = useMemo(
-    () => getEmployeeTickets(viewer.id, submittedTickets),
-    [viewer.id, submittedTickets],
+    () => (ticketsQuery.data?.data ?? []).map(toClientTicket),
+    [ticketsQuery.data],
   )
+  const activeSelectedId = requestedTicketId ?? (selectedId || myTickets[0]?.id || '')
+  const detailQuery = useGetTicketQuery(activeSelectedId, {
+    skip: !activeSelectedId,
+  })
+  const [changeStatus, changeStatusState] = useChangeTicketStatusMutation()
+  const [addComment, addCommentState] = useAddTicketCommentMutation()
+  const [reply, setReply] = useState('')
+  const [actionError, setActionError] = useState('')
+
   const selected = myTickets.find((ticket) => ticket.id === requestedTicketId)
-    ?? myTickets.find((ticket) => ticket.id === selectedId)
+    ?? (detailQuery.data ? toClientTicket(detailQuery.data) : myTickets.find((ticket) => ticket.id === activeSelectedId))
   const filtered = useMemo(() => myTickets.filter((ticket) => {
     const statusMatches = status === 'All'
-      || (status === 'Open' ? ticket.status !== 'Resolved' : ticket.status === 'Resolved')
+      || (status === 'Open' ? !['Resolved', 'Closed'].includes(ticket.status) : ['Resolved', 'Closed'].includes(ticket.status))
     return statusMatches && `${ticket.title} ${ticket.id}`.toLowerCase().includes(query.toLowerCase())
   }), [myTickets, status, query])
-  const openCount = myTickets.filter((ticket) => ticket.status !== 'Resolved').length
+  const openCount = myTickets.filter((ticket) => !['Resolved', 'Closed'].includes(ticket.status)).length
 
   return (
     <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
       <PageTitle
         title="My tickets"
-        description={`${openCount} open · ${myTickets.length - openCount} closed this year`}
+        description={ticketsQuery.isLoading ? 'Loading tickets…' : `${openCount} open · ${myTickets.length - openCount} closed`}
       >
         <Link to="/employee/report" className="inline-flex items-center gap-1.5 rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700">
           <Plus size={14} /> Report a problem
         </Link>
       </PageTitle>
+      {ticketsQuery.isError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Tickets could not be loaded. Try refreshing.</p>}
       <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <section className="overflow-hidden rounded-2xl border border-[#e9edf6] bg-white">
           <div className="flex flex-wrap gap-1 border-b border-[#edf0f7] p-3">
@@ -439,7 +432,7 @@ function MyTickets({ viewer }: { viewer: PublicUser }) {
                   setSelectedId(ticket.id)
                   setSearchParams({ ticket: ticket.id })
                 }}
-                className={`w-full px-4 py-4 text-left transition hover:bg-[#f8faff] ${selectedId === ticket.id ? 'bg-[#f5f7ff]' : ''}`}
+                className={`w-full px-4 py-4 text-left transition hover:bg-[#f8faff] ${activeSelectedId === ticket.id ? 'bg-[#f5f7ff]' : ''}`}
               >
                 <span className="flex items-start justify-between gap-2">
                   <span className="text-sm font-semibold text-[#202844]">{ticket.title}</span>
@@ -490,6 +483,36 @@ function MyTickets({ viewer }: { viewer: PublicUser }) {
                   <p className="mt-1 text-xs text-[#202844]">{entry.text}</p>
                 </div>
               ))}
+            </div>
+            {selected.status === 'Resolved' && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={changeStatusState.isLoading}
+                  onClick={() => void changeStatus({ id: selected.serverId ?? selected.id, body: { to: 'CLOSED' } }).unwrap().catch(() => setActionError('Could not confirm ticket closure.'))}
+                  className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                >Confirm resolved
+                </button>
+                <button
+                  type="button"
+                  disabled={changeStatusState.isLoading || !reply.trim()}
+                  onClick={() => void changeStatus({ id: selected.serverId ?? selected.id, body: { to: 'IN_PROGRESS', comment: reply.trim() } }).unwrap().then(() => setReply('')).catch(() => setActionError('Could not reopen ticket.'))}
+                  className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                >Reopen
+                </button>
+              </div>
+            )}
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-slate-600" htmlFor="ticket-reply">Reply to IT</label>
+              <textarea id="ticket-reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm" />
+              <button
+                type="button"
+                disabled={!reply.trim() || addCommentState.isLoading}
+                onClick={() => void addComment({ id: selected.serverId ?? selected.id, body: reply.trim(), isInternal: false }).unwrap().then(() => setReply('')).catch(() => setActionError('Could not send reply.'))}
+                className="mt-2 rounded-full bg-[#3155ff] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              >Send reply
+              </button>
+              {actionError && <p role="alert" className="mt-2 text-xs text-red-700">{actionError}</p>}
             </div>
           </section>
         ) : (
@@ -663,7 +686,7 @@ export default function EmployeePortal({ section, viewer }: { section: string; v
   const activeViewer = viewer ?? user
   if (!activeViewer) return <Navigate to="/login" replace />
   if (section === 'report') return <ReportProblem viewer={activeViewer} />
-  if (section === 'tickets') return <MyTickets viewer={activeViewer} />
+  if (section === 'tickets') return <MyTickets />
   if (section === 'passes') return <Passes viewer={activeViewer} />
   if (section === 'pass-form') return <Passes request viewer={activeViewer} />
   return <Home viewer={activeViewer} />
