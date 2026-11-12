@@ -5,20 +5,32 @@ import {
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query";
 
-import { clearAuth } from "@/lib/stores/auth-slice";
+import { clearAuth } from "../stores/auth-slice.ts";
 
-// Base URL targeting the API prefix
+const API_PREFIX = '/api/v1';
+
+function withApiPrefix(url: string): string {
+  const normalized = url.replace(/\/+$/, '');
+  return normalized.endsWith(API_PREFIX) ? normalized : `${normalized}${API_PREFIX}`;
+}
+
+// VITE_API_BASE_URL may be either a complete API URL or a same-origin proxy
+// path. VITE_API_URL is the backend origin. Both forms resolve to /api/v1.
 const getBaseUrl = (): string => {
-  const url = import.meta.env.VITE_API_BASE_URL || `${import.meta.env.VITE_API_URL || "https://itrack-server-lr0h.onrender.com"}/api/v1`;
-  return url.replace(/\/+$/, "");
+  const configuredBaseUrl = import.meta.env?.VITE_API_BASE_URL;
+  const configuredApiOrigin = import.meta.env?.VITE_API_URL;
+  return withApiPrefix(configuredBaseUrl || configuredApiOrigin || 'https://itrack-server-lr0h.onrender.com');
 };
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: getBaseUrl(),
-  credentials: "include", // Ensures fixflow_session and fixflow_refresh cookies are sent
+  credentials: "include",
+  timeout: 10_000,
 });
 
-let refreshPromise: Promise<boolean> | null = null;
+type RefreshResult = Awaited<ReturnType<typeof rawBaseQuery>>;
+
+let refreshPromise: Promise<RefreshResult> | null = null;
 
 const nonRefreshableEndpoints = new Set([
   "login",
@@ -34,8 +46,8 @@ const clearSession = (api: Parameters<typeof rawBaseQuery>[1]) => {
 const refreshSession = async (
   api: Parameters<typeof rawBaseQuery>[1],
   extraOptions: Parameters<typeof rawBaseQuery>[2],
-): Promise<boolean> => {
-  const refreshResult = await rawBaseQuery(
+): Promise<RefreshResult> => {
+  return rawBaseQuery(
     {
       url: "/auth/refresh",
       method: "POST",
@@ -44,7 +56,6 @@ const refreshSession = async (
     extraOptions,
   );
 
-  return !refreshResult.error;
 };
 
 export const appBaseQuery: BaseQueryFn<
@@ -66,10 +77,14 @@ export const appBaseQuery: BaseQueryFn<
       refreshPromise = null;
     });
 
-    const success = await refreshPromise;
-    if (!success) {
+    const refreshResult = await refreshPromise;
+    if ("error" in refreshResult) {
       clearSession(api);
       return result;
+    }
+
+    if (api.endpoint === "getMe") {
+      return { data: refreshResult.data };
     }
 
     // Retry the original query

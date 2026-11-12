@@ -3,11 +3,14 @@ import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router";
 import { ChevronLeft, Search, Upload, Box } from "lucide-react";
 import { deviceModels as existingModels } from "../lib/data/mockData";
+import { useCreateAssetMutation } from '@/lib/api/assets/assets-api';
 
 export default function RegisterDevicePage({ basePath = '/devices' }) {
   const navigate = useNavigate();
   const [modelTab, setModelTab] = useState("existing"); // 'existing' | 'upload'
   const [selectedModel, setSelectedModel] = useState(existingModels[0].name);
+  const [createAsset, { isLoading: isSaving }] = useCreateAssetMutation();
+  const [saveError, setSaveError] = useState('');
   
   const [form, setForm] = useState({
     deviceType: "Laptop",
@@ -23,6 +26,30 @@ export default function RegisterDevicePage({ basePath = '/devices' }) {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const saveAsset = async () => {
+    setSaveError('');
+    if (!form.serialNumber.trim()) {
+      setSaveError('A serial number is required.');
+      return;
+    }
+    const typeMap = { Laptop: 'LAPTOP', Desktop: 'DESKTOP', Monitor: 'OTHER', Mobile: 'OTHER' } as const;
+    try {
+      const asset = await createAsset({
+        assetTag: `IT-${form.deviceType.slice(0, 3).toUpperCase()}-${Date.now()}`,
+        serialNumber: form.serialNumber.trim(),
+        type: typeMap[form.deviceType as keyof typeof typeMap],
+        make: form.make.trim(),
+        model: form.model.trim(),
+        purchaseDate: form.purchaseDate || null,
+        warrantyExpiry: form.warrantyEnds || null,
+        notes: form.location || null,
+      }).unwrap();
+      navigate(`${basePath}/${asset.id}`);
+    } catch {
+      setSaveError('Unable to register the device. Check the values and try again.');
+    }
   };
 
   return (
@@ -61,8 +88,8 @@ export default function RegisterDevicePage({ basePath = '/devices' }) {
               >
                 Cancel
               </button>
-              <button className="rounded-full bg-[#3155ff] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-600">
-                Save and print tag
+              <button type="button" onClick={saveAsset} disabled={isSaving} className="rounded-full bg-[#3155ff] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-600 disabled:opacity-50">
+                {isSaving ? 'Saving…' : 'Save and print tag'}
               </button>
             </div>
           </div>
@@ -71,6 +98,7 @@ export default function RegisterDevicePage({ basePath = '/devices' }) {
           {/* LEFT COLUMN: DEVICE DETAILS FORM */}
           <section className="rounded-[28px] bg-white p-7 sm:p-8">
             <h2 className="mb-6 text-xl font-bold text-[#111a38]">Device details</h2>
+            {saveError && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{saveError}</p>}
             
             <div className="space-y-5">
               {/* Type and Tag[cite: 4] */}

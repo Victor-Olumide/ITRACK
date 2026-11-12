@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react'
 import type { Device, DeviceStatus } from '../lib/types/types'
+import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from '@/lib/api/assets/assets-api'
+import type { AssetDetail } from '@/lib/api/assets/types'
 
 const statusStyles: Record<DeviceStatus, string> = {
   Assigned:   'bg-blue-100   text-blue-800',
@@ -95,16 +97,62 @@ function fromAssetRecord(record: Device | undefined): DeviceView | null {
   }
 }
 
+function fromApiAsset(record: AssetDetail | undefined): DeviceView | null {
+  if (!record) return null
+  const category = ({ LAPTOP: 'Laptop', DESKTOP: 'Desktop tower', PRINTER: 'Laser printer', NETWORK: 'Network device', OTHER: 'Device' } as Record<string, string>)[record.type]
+  const statusByCondition: Record<AssetDetail['condition'], DeviceStatus> = { NEW: 'In store', GOOD: 'In store', FAIR: 'In repair', FAULTY: 'In repair', RETIRED: 'Retired' }
+  const warranty = record.warrantyExpiry ? new Date(record.warrantyExpiry) : null
+  const name = record.assignedTo?.fullName
+  return {
+    id: record.id,
+    name: `${record.make} ${record.model}`,
+    tag: record.assetTag,
+    category,
+    specs: '',
+    status: record.assignedTo ? 'Assigned' : statusByCondition[record.condition],
+    assignedTo: name ?? 'Not assigned',
+    initials: name ? name.split(' ').map((part) => part[0]).join('').slice(0, 2) : '—',
+    location: record.notes ?? 'No location recorded',
+    warranty: warranty ? warranty.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '—',
+    image: '',
+  }
+}
+
 export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?: string }) {
   const navigate  = useNavigate()
   const location  = useLocation()
   const { tag } = useParams()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('Overview')
+  const { data: apiAsset, isLoading } = useGetAssetQuery(tag ?? '', { skip: !tag })
+  const [updateAsset] = useUpdateAssetMutation()
+  const [retireAsset] = useRetireAssetMutation()
+  const [actionError, setActionError] = useState('')
+  const device: DeviceView | null = fromApiAsset(apiAsset)
 
-  const assetRecord = deviceByTag(tag ?? '')
-  const hasAccess = user !== null && (user.role !== 'Employee' || assetRecord?.assigneeId === user.id)
-  const device: DeviceView | null = hasAccess ? location.state?.device ?? fromAssetRecord(assetRecord) : null
+  const sendToRepair = async () => {
+    if (!apiAsset) return
+    setActionError('')
+    try {
+      await updateAsset({ id: apiAsset.id, body: { condition: 'FAULTY' } }).unwrap()
+    } catch {
+      setActionError('Unable to update this device.')
+    }
+  }
+
+  const retire = async () => {
+    if (!apiAsset) return
+    setActionError('')
+    try {
+      await retireAsset(apiAsset.id).unwrap()
+    } catch {
+      setActionError('Unable to retire this device.')
+    }
+  }
+
+  if (isLoading) {
+    return <main className="min-h-screen bg-[#0B184C] flex items-center justify-center p-8 text-sm text-white">Loading device…</main>
+  }
 
   if (!device) {
     return (
@@ -242,10 +290,16 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
                   <button className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-semibold transition hover:bg-white/10">
                     Gate pass
                   </button>
-                  <button className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-semibold transition hover:bg-white/10">
+                  <button onClick={sendToRepair} className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-semibold transition hover:bg-white/10">
                     Send to repair
                   </button>
                 </div>
+                {user?.role === 'IT Admin' && (
+                  <button onClick={retire} className="mt-2 w-full rounded-xl border border-red-300/40 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/10">
+                    Retire asset
+                  </button>
+                )}
+                {actionError && <p role="alert" className="mt-3 text-xs text-red-200">{actionError}</p>}
               </div>
 
               {/* Tabs */}

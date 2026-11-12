@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/api/apiClient.ts'
+import { appBaseQuery } from '../src/lib/api/base-query.ts'
 
 test('sends same-origin JSON requests with session credentials', async () => {
   const originalFetch = globalThis.fetch
@@ -91,4 +92,47 @@ test('wraps network failures in ApiError', async () => {
 
 test('requires API paths to start with a slash', async () => {
   await assert.rejects(apiRequest('tickets'), TypeError)
+})
+
+test('uses the refresh response for getMe instead of sending a third request', async () => {
+  const originalFetch = globalThis.fetch
+  let requestCount = 0
+  const refreshedUser = { id: 'user-1', email: 'user@example.test' }
+  globalThis.fetch = async () => {
+    requestCount += 1
+    if (requestCount === 1) {
+      return new Response(JSON.stringify({ message: 'Expired session' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    return new Response(JSON.stringify({ user: refreshedUser }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  try {
+    const api = {
+      endpoint: 'getMe',
+      signal: new AbortController().signal,
+      abort: () => undefined,
+      dispatch: () => undefined,
+      getState: () => ({}),
+      extra: undefined,
+      type: 'query',
+      forced: false,
+      queryCacheKey: 'authApi|getMe(undefined)',
+    } as never
+    const result = await appBaseQuery(
+      { url: '/auth/me', method: 'GET' },
+      api,
+      {},
+    )
+
+    assert.deepEqual(result, { data: { user: refreshedUser } })
+    assert.equal(requestCount, 2)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })

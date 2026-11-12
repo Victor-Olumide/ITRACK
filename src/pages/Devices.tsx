@@ -8,9 +8,10 @@ import {
   Smartphone, Rotate3D
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
-import { devices as mockDevices, userById } from "../lib/data/mockData";
-import type { Device, DeviceStatus } from "../lib/types/types";
+import type { DeviceStatus } from "../lib/types/types";
 import type { LucideIcon } from "lucide-react";
+import { useGetAssetsQuery } from '@/lib/api/assets/assets-api';
+import type { AssetApiRecord } from '@/lib/api/assets/types';
 
 const initials = (name = "") =>
   name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
@@ -43,25 +44,30 @@ function formatWarranty(warrantyEnds: string) {
 }
 
 // Resolve a relational mockData device into the shape the cards consume.
-function toCard(d: Device): DeviceCardData {
-  const owner = userById(d.assigneeId);
+function toCard(d: AssetApiRecord): DeviceCardData {
+  const statusByCondition: Record<AssetApiRecord['condition'], DeviceStatus> = {
+    NEW: 'In store', GOOD: 'In store', FAIR: 'In repair', FAULTY: 'In repair', RETIRED: 'Retired',
+  };
+  const categoryByType: Record<AssetApiRecord['type'], string> = {
+    LAPTOP: 'Laptops', DESKTOP: 'Desktops', PRINTER: 'Monitors', NETWORK: 'Monitors', OTHER: 'Monitors',
+  };
+  const owner = d.assignedTo;
+  const status = d.assignedToId ? 'Assigned' : statusByCondition[d.condition];
   return {
     id: d.id,
     name: `${d.make} ${d.model}`,
-    tag: d.tag,
-    category: d.category,
+    tag: d.assetTag,
+    category: categoryByType[d.type],
     specs: "",
-    status: d.status,
-    assignedTo: owner ? owner.name : "Not assigned",
-    initials: owner ? initials(owner.name) : "—",
-    location: d.location,
-    warranty: formatWarranty(d.warrantyEnds),
+    status,
+    assignedTo: owner ? owner.fullName : "Not assigned",
+    initials: owner ? initials(owner.fullName) : "—",
+    location: d.notes ?? 'No location recorded',
+    warranty: d.warrantyExpiry ? formatWarranty(d.warrantyExpiry) : '—',
     image: "",
-    ready: d.status === "In store",
+    ready: status === "In store",
   };
 }
-
-const initialDevices = mockDevices.map(toCard);
 
 const statusStyles: Record<string, string> = {
   Assigned: "bg-blue-100 text-blue-800",
@@ -171,7 +177,8 @@ export default function DevicesPage({ basePath = "/devices" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedStatus = searchParams.get("status");
-  const [devices] = useState(initialDevices);
+  const { data: assets, isLoading, isError } = useGetAssetsQuery({ pageSize: 100 });
+  const devices = (assets?.data ?? []).map(toCard);
   const [activeTab, setActiveTab] = useState(
     requestedStatus && tabs.includes(requestedStatus) ? requestedStatus : "All"
   );
@@ -336,8 +343,11 @@ export default function DevicesPage({ basePath = "/devices" }) {
           </div>
         </section>
 
+        {isLoading && <div className="rounded-2xl bg-white p-12 text-center text-sm text-slate-500">Loading devices…</div>}
+        {isError && <div className="rounded-2xl bg-white p-12 text-center text-sm text-red-700">Unable to load devices from the server.</div>}
+
         {/* DEVICE CARDS */}
-        {view === "Grid" ? (
+        {!isLoading && !isError && (view === "Grid" ? (
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredDevices.map(device => (
               <DeviceCard
@@ -379,9 +389,9 @@ export default function DevicesPage({ basePath = "/devices" }) {
               </table>
             </div>
           </section>
-        )}
+        ))}
 
-        {filteredDevices.length === 0 && (
+        {!isLoading && !isError && filteredDevices.length === 0 && (
           <div className="rounded-2xl bg-white p-12 text-center">
             <Monitor className="mx-auto mb-3 text-slate-300" size={40} />
             <p className="font-semibold text-slate-700">No devices found</p>
