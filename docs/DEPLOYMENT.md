@@ -3,6 +3,10 @@
 Deploy the API before the browser client. The server routes are served under
 `/api/v1`, including `POST /api/v1/auth/login` and `GET /api/v1/health`.
 
+The client is a Vite single-page application using React Router. `vercel.json`
+rewrites browser routes such as `/login` to `index.html`; keep this rewrite for
+direct navigation and page refreshes on client-side routes.
+
 ## Server environment
 
 Set these values on the API host:
