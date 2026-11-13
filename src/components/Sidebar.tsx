@@ -174,6 +174,7 @@ export default function Sidebar({ mobileOpen = false, onClose, role = 'IT Admin'
               onClick={onClose}
               className="absolute right-3 top-3 z-10 rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"
               aria-label="Close navigation"
+              title="Close navigation"
             >
               <X size={18} />
             </button>

@@ -48,6 +48,7 @@ export default function Navbar() {
           <button
             className="md:hidden p-2 rounded-md hover:bg-white/10 focus:outline-none"
             aria-label="Toggle menu"
+            title="Toggle menu"
             onClick={() => setOpen(prev => !prev)}
           >
             <span className={`block w-5 h-0.5 bg-white transition-all ${open ? 'rotate-45 translate-y-1.5' : ''}`} />

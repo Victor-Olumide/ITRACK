@@ -34,7 +34,8 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
         type="button"
         onClick={onMenuClick}
         className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white md:hidden"
-        aria-label="Open navigation"
+        aria-label="Toggle navigation"
+        title="Toggle navigation"
       >
         <Menu size={20} />
       </button>
@@ -48,6 +49,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
         <Link
           to={newTicketPath}
           aria-label="Create a new ticket"
+          title="Create a new ticket"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d2f54a] text-[#16214b] transition hover:bg-[#e1ff72]"
         >
           <Plus size={20} />

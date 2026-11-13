@@ -52,6 +52,7 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
             type="button"
             onClick={onClose}
             aria-label="Close print preview"
+            title="Close print preview"
             className="rounded-full border border-slate-300 bg-white p-2 text-slate-600 hover:bg-slate-50"
           >
             <X size={18} />
