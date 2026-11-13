@@ -23,6 +23,7 @@ import {
   useGetTicketQuery,
   useGetTicketsQuery,
 } from '../lib/api/tickets/tickets-api'
+import { toCreateTicketRequest } from '../lib/api/tickets/ticket-form'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
 
 function PageTitle({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
@@ -162,14 +163,17 @@ function Home({ viewer }: { viewer: PublicUser }) {
 
 function ReportProblem({ viewer }: { viewer: PublicUser }) {
   const [createTicket, createTicketState] = useCreateTicketMutation()
+  const assetsQuery = useGetAssetsQuery({ page: 1, pageSize: 100 })
   const [submitError, setSubmitError] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [submittedTicketId, setSubmittedTicketId] = useState('')
+  const [selectedAssetId, setSelectedAssetId] = useState('')
   const [category, setCategory] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [impact, setImpact] = useState('Just me')
   const [workState, setWorkState] = useState('It’s annoying')
+  const availableAssets = assetsQuery.data?.data ?? []
 
   if (submitted) {
     return (
@@ -200,18 +204,22 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
             event.preventDefault()
             setSubmitError('')
             try {
-              const response = await createTicket({
-                title: title.trim(),
-                description: description.trim(),
-                category: category === 'Request something' ? 'Request' : category,
-                type: category === 'Request something' ? 'REQUEST' : 'PROBLEM',
-                impact: impact === 'Everyone' || impact === 'My team'
-                  ? 'HIGH'
-                  : impact === 'One person' ? 'MEDIUM' : 'LOW',
-                urgency: workState === 'I’m stopped'
-                  ? 'HIGH'
-                  : workState === 'Work is harder' ? 'MEDIUM' : 'LOW',
-              }).unwrap()
+              const request = toCreateTicketRequest(
+                {
+                  title: title.trim(),
+                  description: description.trim(),
+                  category: category === 'Request something' ? 'Request' : category,
+                  type: category === 'Request something' ? 'REQUEST' : 'PROBLEM',
+                  impact: impact === 'Everyone' || impact === 'My team'
+                    ? 'HIGH'
+                    : impact === 'One person' ? 'MEDIUM' : 'LOW',
+                  urgency: workState === 'I’m stopped'
+                    ? 'HIGH'
+                    : workState === 'Work is harder' ? 'MEDIUM' : 'LOW',
+                },
+                selectedAssetId,
+              )
+              const response = await createTicket(request).unwrap()
               setSubmittedTicketId(response.number)
               setSubmitted(true)
             } catch (error) {
@@ -226,9 +234,35 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
         >
           <section className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
             <h2 className="text-sm font-bold text-[#202844]">1 · Which device?</h2>
-            <p className="mt-2 text-xs text-slate-500">
-              Asset links will be available when the asset register API is connected.
-            </p>
+            <label className="mt-3 block text-xs font-semibold text-slate-600">
+              Link an asset (optional)
+              <select
+                value={selectedAssetId}
+                onChange={(event) => setSelectedAssetId(event.target.value)}
+                disabled={assetsQuery.isLoading || availableAssets.length === 0}
+                className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-blue-400 disabled:bg-slate-50"
+              >
+                <option value="">No specific device</option>
+                {availableAssets.map((asset) => (
+                  <option key={asset.id} value={asset.id}>
+                    {asset.assetTag} · {asset.make} {asset.model}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {assetsQuery.isLoading && (
+              <p role="status" className="mt-2 text-xs text-slate-500">Loading available assets…</p>
+            )}
+            {assetsQuery.isError && (
+              <p role="alert" className="mt-2 text-xs text-red-700">
+                Available assets could not be loaded. You can still submit without linking an asset.
+              </p>
+            )}
+            {!assetsQuery.isLoading && !assetsQuery.isError && availableAssets.length === 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                No assets are currently assigned or available to link. You can still submit your report.
+              </p>
+            )}
           </section>
 
           <section className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
@@ -424,7 +458,7 @@ function MyTickets() {
               <Badge label={selected.category} />
             </div>
             <h2 className="mt-3 text-xl font-bold text-[#18203e]">{selected.title}</h2>
-            <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-semibold">
+            <div className="mt-5 flex flex-wrap gap-2 text-[8px] font-semibold">
               {['Sent', 'Picked up', 'Being fixed', 'Fixed'].map((step, index) => (
                 <span
                   key={step}
@@ -436,11 +470,11 @@ function MyTickets() {
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-[#f8f9fc] p-3">
-                <p className="text-[10px] text-slate-500">Working on it</p>
+                <p className="text-[8px] text-slate-500">Working on it</p>
                 <p className="mt-1 text-sm font-semibold text-[#202844]">{selected.assigneeName ?? 'Waiting for someone'}</p>
               </div>
               <div className="rounded-xl bg-[#f8f9fc] p-3">
-                <p className="text-[10px] text-slate-500">Resolution target</p>
+                <p className="text-[8px] text-slate-500">Resolution target</p>
                 <p className="mt-1 text-sm font-semibold text-[#202844]">{selected.resolution}</p>
               </div>
             </div>
@@ -451,7 +485,7 @@ function MyTickets() {
             <div className="mt-2 space-y-2">
               {selected.history.map((entry, index) => (
                 <div key={`${entry.time}-${index}`} className="rounded-xl bg-[#f8f9fc] p-3">
-                  <p className="text-[10px] font-semibold text-slate-500">{entry.time}</p>
+                  <p className="text-[8px] font-semibold text-slate-500">{entry.time}</p>
                   <p className="mt-1 text-xs text-[#202844]">{entry.text}</p>
                 </div>
               ))}

@@ -6,7 +6,7 @@ import {
   ClipboardCheck,
   Home,
   Monitor,
-  Settings,
+  Tags,
   Ticket,
   Users,
   X,
@@ -38,16 +38,16 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
       { to: '/reports', label: 'Reports', Icon: BarChart3 },
     ],
   },
-  {
-    label: 'OPERATIONS',
-    links: [
-    ],
-  },
+  // {
+  //   label: 'OPERATIONS',
+  //   links: [
+  //   ],
+  // },
   {
     label: 'MANAGEMENT',
     links: [
       { to: '/people', label: 'People and roles', Icon: Users },
-      { to: '/categories', label: 'Categories', Icon: Settings },
+      { to: '/categories', label: 'Categories', Icon: Tags },
     ],
   },
 ]
@@ -96,7 +96,7 @@ function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserR
     <nav aria-label="Main navigation" className="flex-1 space-y-6 px-3 py-5">
       {groups.map(({ label, links }) => (
         <section key={label}>
-          <h2 className="mb-2 px-3 text-[10px] font-bold tracking-[0.14em] text-slate-500">
+          <h2 className="mb-2 px-3 text-[8px] font-bold tracking-[0.14em] text-slate-500">
             {label}
           </h2>
           <div className="space-y-1">
@@ -107,7 +107,7 @@ function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserR
                 end={end}
                 onClick={onNavigate}
                 className={({ isActive }) =>
-                  `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors ${
+                  `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[11px] font-medium transition-colors ${
                     isActive
                       ? 'bg-[#3155ff] text-white shadow-sm shadow-blue-950/20'
                       : 'text-slate-300 hover:bg-white/10 hover:text-white'
@@ -117,7 +117,7 @@ function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserR
                 <Icon size={17} strokeWidth={1.8} />
                 <span className="min-w-0 flex-1">{linkLabel}</span>
                 {(badge ?? 0) > 0 && (
-                  <span className="rounded-full bg-[#d2f54a] px-1.5 py-0.5 text-[10px] font-bold leading-none text-[#16214b]">
+                  <span className="rounded-full bg-[#d2f54a] px-1.5 py-0.5 text-[8px] font-bold leading-none text-[#16214b]">
                     {badge}
                   </span>
                 )}
@@ -137,10 +137,10 @@ function SidebarContent({ onNavigate, role }: { onNavigate?: () => void; role: U
       <Navigation onNavigate={onNavigate} role={role} />
       {/* TODO(v2): Restore the SLA summary panel when the server exposes an SLA reporting contract. */}
       {isEmployee && (
-        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/4 p-4">
           <p className="text-xs font-semibold text-white">Need help fast?</p>
           <p className="mt-2 text-xs text-slate-300">IT desk · ext. 2040</p>
-          <p className="mt-1 text-[10px] text-slate-400">Mon–Fri, 07:30–18:00</p>
+          <p className="mt-1 text-[8px] text-slate-400">Mon–Fri, 07:30–18:00</p>
         </div>
       )}
     </div>

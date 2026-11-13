@@ -11,7 +11,7 @@ import {
 } from "../stores/auth-slice.ts";
 
 const API_PREFIX = '/api/v1';
-export const API_REQUEST_TIMEOUT_MS = 30_000;
+export const API_REQUEST_TIMEOUT_MS = 180_000;
 
 function withApiPrefix(url: string): string {
   const normalized = url.replace(/\/+$/, '');

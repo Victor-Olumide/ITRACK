@@ -95,7 +95,7 @@ export default function NotFound() {
             <div className="relative flex h-[290px] w-full max-w-[440px] items-center justify-center sm:h-[380px]">
 
               {/* Large 404 */}
-              <span className="absolute select-none text-[150px] font-black tracking-tighter text-blue-100 sm:text-[210px]">
+              <span className="absolute select-none text-[148px] font-black tracking-tighter text-blue-100 sm:text-[208px]">
                 404
               </span>
 
@@ -124,7 +124,7 @@ export default function NotFound() {
                   <p className="text-xs font-bold text-[#101a3b]">
                     Page not found
                   </p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[8px] text-slate-400">
                     Error code: 404
                   </p>
                 </div>

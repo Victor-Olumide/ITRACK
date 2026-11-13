@@ -13,8 +13,8 @@ function formatDate(value: string) {
 function Field({ label, value, className = '' }: { label: string; value: ReactNode; className?: string }) {
   return (
     <div className={`grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] border-b border-r border-slate-300 last:border-r-0 ${className}`}>
-      <dt className="bg-slate-50 px-2 py-1.5 text-[10px] font-semibold text-slate-700">{label}</dt>
-      <dd className="min-w-0 px-2 py-1.5 text-[10px] text-slate-700">{value || '—'}</dd>
+      <dt className="bg-slate-50 px-2 py-1.5 text-[8px] font-semibold text-slate-700">{label}</dt>
+      <dd className="min-w-0 px-2 py-1.5 text-[8px] text-slate-700">{value || '—'}</dd>
     </div>
   )
 }
@@ -37,7 +37,7 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
   const status = pass.status ?? 'Waiting'
 
   return (
-    <div className="gate-pass-preview fixed inset-0 z-[70] overflow-y-auto bg-slate-100 p-3 sm:p-6">
+    <div className="gate-pass-preview fixed inset-0 z-70 overflow-y-auto bg-slate-100 p-3 sm:p-6">
       <div className="gate-pass-toolbar mx-auto mb-4 flex max-w-[210mm] items-center justify-between gap-3">
         <p className="text-sm font-semibold text-slate-700">Print preview · {pass.id}</p>
         <div className="flex gap-2">
@@ -66,13 +66,13 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
             <img src="/favicon.svg" alt="" className="h-10 w-10 object-contain" />
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-[#111a38]">Gate pass · {pass.isReturnable === false ? 'Non-returnable items' : 'Returnable items'}</h1>
-              <p className="mt-0.5 text-[10px] text-slate-500">IT Department · Afe Babalola University, Ado-Ekiti</p>
+              <p className="mt-0.5 text-[8px] text-slate-500">IT Department · Afe Babalola University, Ado-Ekiti</p>
             </div>
           </div>
           <div className="shrink-0 text-right">
             <p className="font-mono text-lg font-bold">{pass.id}</p>
-            <p className="text-[10px] text-slate-500">Issued {printDate}</p>
-            <span className={`mt-1 inline-block rounded border px-2 py-0.5 text-[9px] font-bold uppercase ${status === 'Approved' ? 'border-emerald-700 text-emerald-800' : 'border-amber-700 text-amber-800'}`}>
+            <p className="text-[8px] text-slate-500">Issued {printDate}</p>
+            <span className={`mt-1 inline-block rounded border px-2 py-0.5 text-[7px] font-bold uppercase ${status === 'Approved' ? 'border-emerald-700 text-emerald-800' : 'border-amber-700 text-amber-800'}`}>
               {status}
             </span>
           </div>
@@ -92,7 +92,7 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
         <section className="mt-4">
           <h2 className="mb-2 text-xs font-bold text-[#111a38]">All items leaving the site</h2>
           <div className="overflow-hidden border border-slate-300">
-            <table className="w-full table-fixed border-collapse text-left text-[9px]">
+            <table className="w-full table-fixed border-collapse text-left text-[7px]">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="w-[5%] border-b border-r border-slate-300 px-1.5 py-2">#</th>
@@ -109,14 +109,14 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
                   return (
                     <tr key={`${item.tag}-${index}`}>
                       <td className="border-b border-r border-slate-300 px-1.5 py-2 align-top">{index + 1}</td>
-                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top font-semibold">
+                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top font-semibold">
                         {item.name ?? item.type ?? 'Accessory'}
                       </td>
-                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.tag}</td>
-                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.make ?? '—'}</td>
-                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.serial ?? '—'}</td>
+                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.tag}</td>
+                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.make ?? '—'}</td>
+                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.serial ?? '—'}</td>
                       <td className="border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.qty ?? 1}</td>
-                      <td className="break-words border-b border-slate-300 px-1.5 py-2 align-top">{item.condition ?? 'Not recorded'}</td>
+                      <td className="wrap-break-word border-b border-slate-300 px-1.5 py-2 align-top">{item.condition ?? 'Not recorded'}</td>
                     </tr>
                   )
                 })}
@@ -126,7 +126,7 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
               </tbody>
             </table>
           </div>
-          <p className="mt-1 text-[9px] text-slate-500">
+          <p className="mt-1 text-[7px] text-slate-500">
             {items.length} {items.length === 1 ? 'item' : 'items'}, {pieces} {pieces === 1 ? 'piece' : 'pieces'}.
             {' '}Security must see every item before release. Any item not returned keeps this pass open.
           </p>
@@ -138,27 +138,27 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
             { title: 'Received by', name: `${requester?.name ?? 'Requester'}${requester?.staffId ? ` · ${requester.staffId}` : ''}` },
             { title: 'Security release', name: 'Officer name and signature' },
           ].map(({ title, name }) => (
-            <div key={title} className="min-h-[82px] rounded-md border border-slate-300 p-2">
-              <h3 className="text-[9px] font-bold">{title}</h3>
+            <div key={title} className="min-h-20.5 rounded-md border border-slate-300 p-2">
+              <h3 className="text-[7px] font-bold">{title}</h3>
               <div className="mt-7 border-b border-slate-400" />
-              <p className="mt-1 text-[8px] text-slate-600">{name}</p>
+              <p className="mt-1 text-[6px] text-slate-600">{name}</p>
             </div>
           ))}
         </section>
 
         {pass.isReturnable !== false && (
           <section className="mt-3 rounded-md border border-dashed border-slate-400 p-2">
-            <h2 className="text-[9px] font-bold">Return check</h2>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-[8px]">
+            <h2 className="text-[7px] font-bold">Return check</h2>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-[6px]">
               <p>Date and time back: __________________</p>
               <p>Items checked in: ____ of {pieces}</p>
               <p>Officer: __________________</p>
             </div>
-            <p className="mt-2 text-[8px]">Condition on return / notes: _________________________________________________</p>
+            <p className="mt-2 text-[6px]">Condition on return / notes: _________________________________________________</p>
           </section>
         )}
 
-        <footer className="mt-auto flex justify-between gap-4 border-t border-slate-200 pt-2 text-[8px] text-slate-500">
+        <footer className="mt-auto flex justify-between gap-4 border-t border-slate-200 pt-2 text-[6px] text-slate-500">
           <p>{status === 'Approved' ? 'Approved pass. Present this slip at the security gate for item verification.' : 'This request is not yet approved. Do not release items until approval is recorded.'}</p>
           <p className="shrink-0">Copy: Gate · IT · Holder</p>
         </footer>

@@ -110,7 +110,7 @@ function TicketRow({ ticket, selected, onClick }: {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-[15px] font-semibold text-slate-900">
+            <p className="truncate text-[13px] font-semibold text-slate-900">
               {ticket.title}
             </p>
           </div>

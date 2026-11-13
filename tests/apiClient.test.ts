@@ -3,6 +3,8 @@ import test from 'node:test'
 import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/api/apiClient.ts'
 import { appBaseQuery } from '../src/lib/api/base-query.ts'
 import { getLoginErrorMessage } from '../src/lib/api/auth/login-errors.ts'
+import { toCreateUserRequest } from '../src/lib/api/users/create-user-form.ts'
+import { toCreateTicketRequest } from '../src/lib/api/tickets/ticket-form.ts'
 
 test('sends same-origin JSON requests with session credentials', async () => {
   const originalFetch = globalThis.fetch
@@ -93,6 +95,44 @@ test('wraps network failures in ApiError', async () => {
 
 test('requires API paths to start with a slash', async () => {
   await assert.rejects(apiRequest('tickets'), TypeError)
+})
+
+test('omits a blank optional staff ID from the create-user request', () => {
+  assert.deepEqual(
+    toCreateUserRequest({
+      fullName: '  Test Employee  ',
+      email: '  employee@example.com ',
+      departmentId: 'c0a80101-0000-4000-8000-000000000002',
+      staffId: '   ',
+      password: 'valid-password',
+      role: 'EMPLOYEE',
+    }),
+    {
+      fullName: 'Test Employee',
+      email: 'employee@example.com',
+      departmentId: 'c0a80101-0000-4000-8000-000000000002',
+      password: 'valid-password',
+      role: 'EMPLOYEE',
+    },
+  )
+})
+
+test('links a selected asset to a report ticket and omits the link when none is selected', () => {
+  const fields = {
+    title: 'Printer is offline',
+    description: 'The printer in my office is not responding.',
+    category: 'Printer',
+    type: 'PROBLEM' as const,
+    impact: 'LOW' as const,
+    urgency: 'LOW' as const,
+  }
+
+  const assetId = 'c0a80101-0000-4000-8000-000000000003'
+  assert.deepEqual(toCreateTicketRequest(fields, assetId), {
+    ...fields,
+    assetId,
+  })
+  assert.deepEqual(toCreateTicketRequest(fields, ''), fields)
 })
 
 test('restores an expired access session using the refresh cookie', async () => {

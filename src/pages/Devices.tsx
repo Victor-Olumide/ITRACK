@@ -102,11 +102,11 @@ function DeviceCard({ device, onClick }: { device: DeviceCardData; onClick: (dev
 
       <div className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="min-w-0 flex-1 text-[15px] font-bold leading-5 text-[#111a38]">
+          <h3 className="min-w-0 flex-1 text-[13px] font-bold leading-5 text-[#111a38]">
             {device.name}
           </h3>
 
-          <span className="shrink-0 rounded-md bg-lime-300 px-2 py-1 font-mono text-[10px] font-bold text-slate-900">
+          <span className="shrink-0 rounded-md bg-lime-300 px-2 py-1 font-mono text-[8px] font-bold text-slate-900">
             {device.tag}
           </span>
         </div>
@@ -116,7 +116,7 @@ function DeviceCard({ device, onClick }: { device: DeviceCardData; onClick: (dev
         </p>
 
         <div className="mt-3 flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#edf1fa] text-[10px] font-bold text-slate-600">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#edf1fa] text-[8px] font-bold text-slate-600">
             {device.initials}
           </span>
 

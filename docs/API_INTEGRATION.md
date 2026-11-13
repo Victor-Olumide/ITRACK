@@ -18,6 +18,8 @@ All private access, role checks, organization scoping, ownership, validation, an
 
 Asset lists are server-filtered and paginated (`q`, `type`, `condition`, `assignedToId`, `warrantyExpiringWithinDays`, `includeRetired`, `page`, and `pageSize`). Retired assets are excluded by default; explicitly request `condition=RETIRED` or `includeRetired=true` to query them. Asset details include server-persisted assignment history.
 
+For Employees, `GET /assets` returns only assets assigned to the authenticated user. Ticket creation accepts an optional `assetId`; the server verifies organization and employee-assignment access before linking it.
+
 Asset assignment history uses the additive server `asset_assignments` table. The backend requires a reviewed, non-destructive schema sync before this code is deployed to an environment that does not yet have that table.
 
 The dashboard summary provides ticket counts by status, 30-day resolution/category metrics, server-calculated overdue tickets and technician workloads, asset counts by type/condition, and warranties expiring within 30 days. Do not calculate SLA progress or policy values in the client.
@@ -35,6 +37,8 @@ Dashboard and report screens may use only the implemented dashboard, ticket, and
 - Restore the current user once when a protected route is loaded in a new browser page; do not recheck on ordinary client-side navigation. If the access session has expired, try the refresh cookie once before requiring sign-in.
 - Represent loading, empty, validation, session-expired, and server-error states explicitly. Never fall back to demo data after a request fails.
 - Wait for mutation success before showing confirmation; invalidate/refetch affected tags.
+- The shared RTK Query request timeout is three minutes. This client-side limit cannot override a server, hosting, or proxy timeout.
+- Ticket attachments are not supported yet: the report-page file picker is not submitted, and the server has no upload endpoint or attachment storage.
 - Never put database URLs, passwords, signing keys, or other secrets in `VITE_*` variables, fixtures, tests, or agent instructions.
 - Configure exact credentialed CORS origins on the server/deployment environment, not in client code.
 

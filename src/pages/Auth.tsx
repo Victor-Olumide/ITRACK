@@ -133,21 +133,21 @@ export default function Auth() {
     <div className="min-h-screen flex">
 
       {/* ── Left panel ── */}
-      <div className="hidden md:flex md:w-5/12 lg:w-2/5 bg-linear-to-br from-[#0B184C] to-[#0A174B] flex-col gap-5 px-10 py-35 relative overflow-hidden">
+      <div className="relative hidden flex-col items-center justify-center gap-5 overflow-hidden bg-linear-to-br from-[#0B184C] to-[#0A174B] px-10 text-left md:flex md:w-5/12 lg:w-2/5">
         {/* Logo */}
-        <div className="flex items-center gap-3 relative z-10">
+        <div className="flex items-center text-left gap-3 relative z-10">
           <Logo size={42} />
-          <span className="text-white text-xl font-bold tracking-wide">ITrack</span>
+          <span className="text-white text-2xl font-bold tracking-wide">ITrack</span>
         </div>
 
         {/* Hero copy */}
-        <div className="relative z-10">
+        <div className="relative z-10 w-full max-w-xs text-left">
           <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
             Report it.<br />
             Track it.<br />
             <span className="text-[#CCF326]">Get it fixed.</span>
           </h1>
-          <p className="mt-4 text-md text-gray-400 leading-relaxed max-w-xs">
+          <p className="mt-4 text-md text-gray-400 leading-relaxed">
             One place to report IT problems, track devices, and follow support requests.
           </p>
         </div>

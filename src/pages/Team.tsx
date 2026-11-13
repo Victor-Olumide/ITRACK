@@ -9,8 +9,31 @@ const ROLES = [
 ] as const
 import { useGetDepartmentsQuery } from '@/lib/api/auth/auth-api'
 import { useCreateUserMutation, useGetUsersQuery } from '@/lib/api/users/users-api'
+import { toCreateUserRequest } from '@/lib/api/users/create-user-form'
 import type { UserRole as ApiUserRole } from '@/lib/api/auth/types'
 import type { UserRole as DisplayUserRole } from '../types/types'
+
+function getCreateUserErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'data' in error) {
+    const data = error.data
+    if (typeof data === 'object' && data !== null) {
+      if (
+        'error' in data &&
+        typeof data.error === 'object' &&
+        data.error !== null &&
+        'message' in data.error &&
+        typeof data.error.message === 'string'
+      ) {
+        return data.error.message
+      }
+      if ('message' in data && typeof data.message === 'string') {
+        return data.message
+      }
+    }
+  }
+  if (error instanceof Error) return error.message
+  return 'Unable to create the account. Please try again.'
+}
 
 const ROLE_TONES = {
   'IT Admin': 'bg-violet-50 text-violet-700',
@@ -82,14 +105,14 @@ export default function Team({ showCreateForm = false }) {
             setFormError('')
             setCreatedMessage('')
             try {
-              const created = await createUser({
+              const created = await createUser(toCreateUserRequest({
                 fullName: inviteName,
                 email: inviteEmail,
                 departmentId: inviteDepartment,
                 staffId: inviteStaffId,
                 password: invitePassword,
                 role: apiRoleValues[inviteRole],
-              }).unwrap()
+              })).unwrap()
               setCreatedMessage(`Account created for ${created.user.fullName}. They can now sign in with their email and password.`)
               setInviteName('')
               setInviteEmail('')
@@ -98,7 +121,7 @@ export default function Team({ showCreateForm = false }) {
               setInvitePassword('')
               setShowInvite(false)
             } catch (error) {
-              setFormError(error instanceof Error ? error.message : 'Unable to create the account.')
+              setFormError(getCreateUserErrorMessage(error))
             }
           }}
         >
@@ -199,7 +222,7 @@ export default function Team({ showCreateForm = false }) {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left">
-            <thead className="bg-[#f8f9fc] text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <thead className="bg-[#f8f9fc] text-[8px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-5 py-3">Person</th>
                 <th className="px-5 py-3">Email</th>
@@ -229,7 +252,7 @@ export default function Team({ showCreateForm = false }) {
                   <td className="px-5 py-3.5 font-mono text-xs text-slate-600">{user.staffId}</td>
                   <td className="px-5 py-3.5 text-sm text-slate-600">{user.department}</td>
                   <td className="px-5 py-3.5">
-                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${ROLE_TONES[user.role] ?? ROLE_TONES.Employee}`}>
+                    <span className={`rounded-full px-2.5 py-1 text-[9px] font-semibold ${ROLE_TONES[user.role] ?? ROLE_TONES.Employee}`}>
                       {user.role}
                     </span>
                   </td>
