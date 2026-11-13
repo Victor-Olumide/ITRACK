@@ -24,7 +24,6 @@ const priorities: { value: ApiTicketPriority; label: string }[] = [
   { value: 'P2_HIGH', label: 'High' },
   { value: 'P3_MEDIUM', label: 'Medium' },
   { value: 'P4_LOW', label: 'Low' },
-  { value: 'P5_PLANNING', label: 'Planning' },
 ]
 
 const statusStyles: Record<ApiTicketStatus, string> = {
@@ -51,7 +50,9 @@ function formatDate(value: string) {
 }
 
 function TicketRow({ ticket }: { ticket: TicketApiRecord }) {
-  const priorityLabel = priorities.find(({ value }) => value === ticket.priority)?.label
+  const priorityLabel = ticket.priority === 'P5_PLANNING'
+    ? 'Legacy'
+    : priorities.find(({ value }) => value === ticket.priority)?.label ?? 'Unknown'
   const statusLabel = statuses.find(({ value }) => value === ticket.status)?.label
 
   return (

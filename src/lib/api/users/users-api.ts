@@ -4,14 +4,14 @@ import type { CreateUserRequest, ListUsersResponse, UpdateUserRequest, UserRespo
 export const usersApi = appApi.injectEndpoints({
   endpoints: (builder) => ({
     getUsers: builder.query<ListUsersResponse, void>({
-      query: () => '/users',
+      query: () => '/auth/users',
       providesTags: (result) => [
         { type: 'User', id: 'LIST' },
         ...(result?.users.map((user) => ({ type: 'User' as const, id: user.id })) ?? []),
       ],
     }),
     createUser: builder.mutation<UserResponse, CreateUserRequest>({
-      query: (body) => ({ url: '/users', method: 'POST', body }),
+      query: (body) => ({ url: '/auth/users', method: 'POST', body }),
       invalidatesTags: [{ type: 'User', id: 'LIST' }],
     }),
     updateUser: builder.mutation<UserResponse, { id: string; body: UpdateUserRequest }>({

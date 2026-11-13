@@ -1,7 +1,6 @@
 import { Printer, X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { deviceByTag, userById } from '../lib/data/mockData'
-import type { GatePass, PublicUser } from '../lib/types/types'
+import type { GatePass, PublicUser } from '../types/types'
 
 function formatDate(value: string) {
   if (!value) return '—'
@@ -20,17 +19,16 @@ function Field({ label, value, className = '' }: { label: string; value: ReactNo
   )
 }
 
+// TODO(v2): Re-enable this prototype only after pass records come from the server API.
 interface GatePassSlipProps {
   pass: GatePass
   viewer: PublicUser
+  requester: PublicUser
   onClose: () => void
 }
 
-function GatePassSlip({ pass, viewer, onClose }: GatePassSlipProps) {
-  const requester = userById(pass.requesterId)
+function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
   const items = pass.items ?? []
-  const mainDeviceItem = items.find((item) => deviceByTag(item.tag))
-  const mainDevice = mainDeviceItem ? deviceByTag(mainDeviceItem.tag) : null
   const printDate = new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -90,18 +88,6 @@ function GatePassSlip({ pass, viewer, onClose }: GatePassSlipProps) {
           </dl>
         </section>
 
-        {mainDevice && (
-          <section className="mt-4">
-            <h2 className="mb-2 text-xs font-bold text-[#111a38]">Main device</h2>
-            <dl className="grid grid-cols-2 border-l border-t border-slate-300">
-              <Field label="Device name" value={`${mainDevice.make} ${mainDevice.model}`} />
-              <Field label="Asset tag" value={mainDevice.tag} />
-              <Field label="Serial number" value={mainDevice.serialNumber} />
-              <Field label="Location" value={mainDevice.location} />
-            </dl>
-          </section>
-        )}
-
         <section className="mt-4">
           <h2 className="mb-2 text-xs font-bold text-[#111a38]">All items leaving the site</h2>
           <div className="overflow-hidden border border-slate-300">
@@ -119,16 +105,15 @@ function GatePassSlip({ pass, viewer, onClose }: GatePassSlipProps) {
               </thead>
               <tbody>
                 {items.map((item, index) => {
-                  const device = deviceByTag(item.tag)
                   return (
                     <tr key={`${item.tag}-${index}`}>
                       <td className="border-b border-r border-slate-300 px-1.5 py-2 align-top">{index + 1}</td>
                       <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top font-semibold">
-                        {item.name ?? item.type ?? (device ? device.category.replace(/s$/, '') : 'Accessory')}
+                        {item.name ?? item.type ?? 'Accessory'}
                       </td>
                       <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.tag}</td>
-                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.make ?? `${device?.make ?? ''} ${device?.model ?? ''}`}</td>
-                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.serial ?? device?.serialNumber ?? '—'}</td>
+                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.make ?? '—'}</td>
+                      <td className="break-words border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.serial ?? '—'}</td>
                       <td className="border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.qty ?? 1}</td>
                       <td className="break-words border-b border-slate-300 px-1.5 py-2 align-top">{item.condition ?? 'Not recorded'}</td>
                     </tr>

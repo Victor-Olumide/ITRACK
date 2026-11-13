@@ -27,6 +27,15 @@ export interface AssetApiRecord {
 }
 
 export interface AssetDetail extends AssetApiRecord {
+  assignmentHistory: Array<{
+    id: string;
+    previousAssigneeId: string | null;
+    previousAssigneeName: string | null;
+    newAssigneeId: string | null;
+    newAssigneeName: string | null;
+    createdAt: string;
+    changedBy: { id: string; fullName: string };
+  }>;
   tickets: Array<{
     id: string;
     number: number;
@@ -41,7 +50,9 @@ export interface AssetListArgs {
   q?: string;
   type?: AssetType;
   condition?: AssetCondition;
-  assignedToId?: string | 'unassigned';
+  assignedToId?: string | 'assigned' | 'unassigned';
+  warrantyExpiringWithinDays?: number;
+  includeRetired?: boolean;
   page?: number;
   pageSize?: number;
 }

@@ -3,9 +3,9 @@ import { useSearchParams } from "react-router";
 import {
   Search, Check, Circle, Send
 } from "lucide-react";
-import { userById } from "../lib/data/mockData";
+// userById removed; all user lookups now use API data only
 import { useAuth } from "../contexts/AuthContext";
-import type { PublicUser, Ticket, TicketTimeState } from "../lib/types/types";
+import type {Ticket, TicketTimeState } from "../types/types";
 import {
   useAddTicketCommentMutation,
   useAssignTicketMutation,
@@ -16,6 +16,7 @@ import {
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
 import type { ApiTicketStatus } from "../lib/api/tickets/types";
 
+
 interface TicketView extends Ticket {
   department: string
   requester: string
@@ -25,15 +26,12 @@ interface TicketView extends Ticket {
   group: TicketTimeState
 }
 
-// Resolve relational mockData into the shape this view consumes.
-function toView(t: Ticket, users: PublicUser[]): TicketView {
-  const requester = users.find((user) => user.id === t.requesterId) ?? userById(t.requesterId);
-  const assignee = users.find((user) => user.id === t.assigneeId) ?? userById(t.assigneeId);
+function toView(t: Ticket): TicketView {
   return {
     ...t,
-    department: t.requesterDepartment ?? requester?.department ?? "—",
-    requester: t.requesterName ?? (requester ? requester.name : "Unknown"),
-    assignee: t.assigneeName ?? (assignee ? assignee.name : "Unassigned"),
+    department: t.requesterDepartment ?? "—",
+    requester: t.requesterName ?? "Unknown",
+    assignee: t.assigneeName ?? "Unassigned",
     assigneeId: t.assigneeId,
     device: t.deviceTag ?? "—",
     deviceName: t.deviceName ?? "—",
@@ -43,9 +41,7 @@ function toView(t: Ticket, users: PublicUser[]): TicketView {
 
 const groupStyles: Record<string, { dot: string; color: string }> = {
   Breached: { dot: "bg-red-600", color: "text-red-600" },
-  "At risk": { dot: "bg-amber-500", color: "text-amber-700" },
-  "On track": { dot: "bg-emerald-500", color: "text-emerald-600" },
-  Paused: { dot: "bg-slate-400", color: "text-slate-500" }
+  "Not overdue": { dot: "bg-slate-400", color: "text-slate-500" },
 };
 
 const priorityStyles = {
@@ -53,7 +49,7 @@ const priorityStyles = {
   High: "text-orange-600",
   Medium: "text-blue-600",
   Low: "text-slate-500",
-  Planning: "text-slate-500"
+  Legacy: "text-slate-500"
 };
 
 const priorityMap = {
@@ -61,14 +57,11 @@ const priorityMap = {
   High: 'P2_HIGH',
   Medium: 'P3_MEDIUM',
   Low: 'P4_LOW',
-  Planning: 'P5_PLANNING',
 } as const;
 
 const slaStyles = {
   Breached: "bg-red-100 text-red-700",
-  "At risk": "bg-amber-100 text-amber-800",
-  "On track": "bg-emerald-100 text-emerald-700",
-  Paused: "bg-slate-100 text-slate-600"
+  "Not overdue": "bg-slate-100 text-slate-600",
 };
 
 const initials = (name = "") =>
@@ -205,13 +198,17 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
         </div>
         <div className="rounded-2xl border border-slate-200 p-4">
           <p className="text-sm text-slate-500">Resolution</p>
-          <p className={`mt-1 font-bold ${ticket.group === "Breached" ? "text-red-600" : "text-slate-800"}`}>
+          <p className="mt-1 font-bold text-slate-800">
             {ticket.resolution}
           </p>
-          <div className="mt-2 h-1.5 rounded-full bg-slate-100">
-            <div className={`h-full rounded-full ${ticket.group === "Breached" ? "w-full bg-red-600" : "w-2/3 bg-emerald-500"}`} />
-          </div>
         </div>
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-slate-200 p-4">
+        <p className="text-sm text-slate-500">Server overdue flag</p>
+        <p className={`mt-1 font-semibold ${ticket.group === 'Breached' ? 'text-red-700' : 'text-slate-700'}`}>
+          {ticket.sla}
+        </p>
       </div>
 
       <div className="my-5 grid grid-cols-[105px_1fr] gap-y-3 text-sm sm:grid-cols-[125px_1fr]">
@@ -341,7 +338,7 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
 }
 
 export default function TicketPage({ technicianView = false }: { technicianView?: boolean }) {
-  const { user, users } = useAuth()
+  const { user } = useAuth()
   const assigneeId = user?.id ?? ''
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTicketId = searchParams.get("ticket");
@@ -366,8 +363,8 @@ export default function TicketPage({ technicianView = false }: { technicianView?
   };
   const listQuery = useGetTicketsQuery(listArgs);
   const availableTickets = useMemo(
-    () => (listQuery.data?.data ?? []).map(toClientTicket).map((ticket) => toView(ticket, users)),
-    [listQuery.data, users],
+    () => (listQuery.data?.data ?? []).map(toClientTicket).map(toView),
+    [listQuery.data],
   );
   const activeTicketId = requestedTicketId ?? (selectedId || availableTickets[0]?.id || '');
   const detailQuery = useGetTicketQuery(activeTicketId, { skip: !activeTicketId });
@@ -382,7 +379,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
 
   const scopedTickets = availableTickets;
   const selectedTicket = detailQuery.data
-    ? toView(toClientTicket(detailQuery.data), users)
+    ? toView(toClientTicket(detailQuery.data))
     : scopedTickets.find(t => t.id === activeTicketId);
 
   const filteredTickets = useMemo(() => {
@@ -404,7 +401,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
     });
   }, [scopedTickets, tab, department, priority, category, type, search, assigneeId]);
 
-  const groups = ["Breached", "At risk", "On track", "Paused"];
+  const groups = ["Breached", "Not overdue"];
 
   return (
     <main className="min-h-screen bg-[#0c194d] ">

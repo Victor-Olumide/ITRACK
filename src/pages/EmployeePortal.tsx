@@ -6,7 +6,6 @@ import type { ReactNode } from 'react'
 import {
   ArrowRight,
   Check,
-  Clock3,
   Laptop,
   Plus,
   Send,
@@ -14,15 +13,9 @@ import {
 } from 'lucide-react'
 import Badge from '../components/Badge'
 import AssetTag from '../components/AssetTag'
-import {
-  devices,
-  gatePasses,
-  userById,
-} from '../lib/data/mockData'
-import { useAppDispatch, useAppSelector } from '../lib/stores/hooks'
-import { addSubmittedPass } from '../lib/stores/demo-data-slice'
 import { useAuth } from '../contexts/AuthContext'
-import type { GatePass, PublicUser } from '../lib/types/types'
+import type { PublicUser } from '../types/types'
+import { useGetAssetsQuery } from '../lib/api/assets/assets-api'
 import {
   useAddTicketCommentMutation,
   useChangeTicketStatusMutation,
@@ -31,11 +24,6 @@ import {
   useGetTicketsQuery,
 } from '../lib/api/tickets/tickets-api'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
-
-const getEmployeePasses = (userId: string, submittedPasses: GatePass[]) => [
-  ...gatePasses.filter((pass) => pass.requesterId === userId),
-  ...submittedPasses.filter((pass) => pass.requesterId === userId),
-]
 
 function PageTitle({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   return (
@@ -50,15 +38,14 @@ function PageTitle({ title, description, children }: { title: string; descriptio
 }
 
 function Home({ viewer }: { viewer: PublicUser }) {
-  const { submittedPasses } = useAppSelector((state) => state.demoData)
   const ticketsQuery = useGetTicketsQuery({ page: 1, pageSize: 100 })
+  const assetsQuery = useGetAssetsQuery({ page: 1, pageSize: 100 })
   const myTickets = useMemo(
     () => (ticketsQuery.data?.data ?? []).map(toClientTicket),
     [ticketsQuery.data],
   )
-  const myPasses = getEmployeePasses(viewer.id, submittedPasses)
-  const employeeDevices = devices.filter((device) => device.assigneeId === viewer.id)
-  const activeTickets = myTickets.filter((ticket) => ticket.status !== 'Resolved')
+  const employeeDevices = assetsQuery.data?.data ?? []
+  const activeTickets = myTickets.filter((ticket) => !['Resolved', 'Closed'].includes(ticket.status))
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -78,12 +65,9 @@ function Home({ viewer }: { viewer: PublicUser }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            to="/employee/passes/new"
-            className="rounded-full border border-[#dce2ef] bg-white px-4 py-2.5 text-xs font-semibold text-[#202844] hover:bg-slate-50"
-          >
-            Request a gate pass
-          </Link>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-900">
+            Gate passes unavailable
+          </span>
           <Link
             to="/employee/report"
             className="inline-flex items-center gap-1.5 rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
@@ -102,10 +86,9 @@ function Home({ viewer }: { viewer: PublicUser }) {
                 All my tickets
               </Link>
             </div>
+            {ticketsQuery.isError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Tickets could not be loaded.</p>}
             <div className="divide-y divide-[#edf0f7]">
-              {activeTickets.map((ticket) => {
-                const assignee = userById(ticket.assigneeId)
-                return (
+              {activeTickets.map((ticket) => (
                   <Link key={ticket.id} to={`/employee/tickets?ticket=${ticket.id}`} className="flex items-center gap-3 py-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#edf1ff] text-[#3155ff]">
                       <Ticket size={17} />
@@ -114,13 +97,12 @@ function Home({ viewer }: { viewer: PublicUser }) {
                       <span className="block truncate text-sm font-semibold text-[#202844]">{ticket.title}</span>
                       <span className="mt-1 block text-xs text-slate-500">
                         {ticket.status === 'Resolved' ? 'Closed' : ticket.status} · {ticket.id}
-                        {assignee ? ` · ${assignee.name.split(' ')[0]} ${assignee.name.split(' ')[1]?.[0]}.` : ''}
+                        {ticket.assigneeName ? ` · ${ticket.assigneeName.split(' ')[0]}` : ''}
                       </span>
                     </span>
                     <Badge label={ticket.status === 'In progress' ? 'Being fixed' : ticket.status} />
                   </Link>
-                )
-              })}
+              ))}
               {activeTickets.length === 0 && (
                 <p className="py-8 text-center text-sm text-slate-500">No open tickets right now.</p>
               )}
@@ -130,24 +112,10 @@ function Home({ viewer }: { viewer: PublicUser }) {
           <article className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold text-[#18203e]">Gate passes</h2>
-              <Link to="/employee/passes/new" className="text-xs font-semibold text-[#3155ff] hover:underline">
-                Request a gate pass
-              </Link>
             </div>
-            {myPasses.length > 0 ? myPasses.map((pass) => (
-              <div key={pass.id} className="flex items-center gap-3 border-t border-[#edf0f7] py-3 first:border-t-0">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                  <Clock3 size={17} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[#202844]">{pass.id} · {pass.items.length} {pass.items.length === 1 ? 'item' : 'items'}</p>
-                  <p className="mt-1 truncate text-xs text-slate-500">{pass.destination} · back {pass.returnDate}</p>
-                </div>
-                <Badge label={pass.status} />
-              </div>
-            )) : (
-              <p className="border-t border-[#edf0f7] py-5 text-sm text-slate-500">You have no gate passes.</p>
-            )}
+            <p role="status" className="border-t border-[#edf0f7] py-5 text-sm leading-6 text-slate-600">
+              Gate-pass records and requests are not supported by the current v1 API.
+            </p>
           </article>
         </section>
 
@@ -156,10 +124,14 @@ function Home({ viewer }: { viewer: PublicUser }) {
             <h2 className="mb-3 text-sm font-bold text-[#18203e]">My devices</h2>
             <p className="mb-3 text-xs text-slate-500">Devices assigned to {viewer.name.split(' ')[0]}.</p>
             <div className="space-y-2">
-              {employeeDevices.map((device) => (
+              {assetsQuery.isError ? (
+                <p role="alert" className="text-xs text-red-700">Assigned devices could not be loaded.</p>
+              ) : assetsQuery.isLoading ? (
+                <p className="text-xs text-slate-500">Loading devices…</p>
+              ) : employeeDevices.map((device) => (
                 <Link
                   key={device.id}
-                  to={`/employee/devices/${device.tag}`}
+                  to={`/employee/devices/${device.assetTag}`}
                   className="flex items-center gap-3 rounded-xl border border-[#edf0f7] p-3 transition hover:border-blue-200"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#f0f3fb] text-slate-500">
@@ -167,7 +139,7 @@ function Home({ viewer }: { viewer: PublicUser }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-semibold text-[#202844]">{device.make} {device.model}</span>
-                    <span className="mt-1 block"><AssetTag tag={device.tag} size="sm" /></span>
+                    <span className="mt-1 block"><AssetTag tag={device.assetTag} size="sm" /></span>
                   </span>
                   <ArrowRight size={14} className="text-slate-400" />
                 </Link>
@@ -465,7 +437,7 @@ function MyTickets() {
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-[#f8f9fc] p-3">
                 <p className="text-[10px] text-slate-500">Working on it</p>
-                <p className="mt-1 text-sm font-semibold text-[#202844]">{userById(selected.assigneeId)?.name ?? 'Waiting for someone'}</p>
+                <p className="mt-1 text-sm font-semibold text-[#202844]">{selected.assigneeName ?? 'Waiting for someone'}</p>
               </div>
               <div className="rounded-xl bg-[#f8f9fc] p-3">
                 <p className="text-[10px] text-slate-500">Resolution target</p>
@@ -523,159 +495,26 @@ function MyTickets() {
   )
 }
 
-function Passes({ request = false, viewer }: { request?: boolean; viewer: PublicUser }) {
-  const dispatch = useAppDispatch()
-  const submittedPasses = useAppSelector((state) => state.demoData.submittedPasses)
-  const employeeDevices = devices.filter((device) => device.assigneeId === viewer.id)
-  const [selectedDevices, setSelectedDevices] = useState(() => employeeDevices.slice(0, 1).map((device) => device.id))
-  const [destination, setDestination] = useState('')
-  const [returnDate, setReturnDate] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const myPasses = getEmployeePasses(viewer.id, submittedPasses)
-
-  if (request) {
-    return (
-      <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
-        <PageTitle title="Request a gate pass" description="For taking university devices off campus." />
-        {submitted ? (
-          <section className="mx-auto mt-8 max-w-xl rounded-2xl border border-emerald-100 bg-white p-7 text-center">
-            <Check size={28} className="mx-auto text-emerald-600" />
-            <h2 className="mt-3 text-lg font-bold text-[#202844]">Request saved</h2>
-            <p className="mt-2 text-sm text-slate-500">Your request is in this session’s Redux state. IT usually reviews within one working day.</p>
-            <Link to="/employee/passes" className="mt-5 inline-flex rounded-full bg-[#3155ff] px-4 py-2.5 text-sm font-semibold text-white">View gate passes</Link>
-          </section>
-        ) : (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault()
-              const now = new Date()
-              dispatch(addSubmittedPass({
-                id: `GP-${String(now.getTime()).slice(-6)}`,
-                requesterId: viewer.id,
-                destination: destination.trim(),
-                outDate: now.toISOString().slice(0, 10),
-                returnDate,
-                status: 'Waiting',
-                items: selectedDevices.map((id) => {
-                  const device = devices.find((item) => item.id === id)
-                  if (!device) throw new Error('A selected device is no longer available.')
-                  return {
-                    tag: device.tag,
-                    make: `${device.make} ${device.model}`,
-                    serial: device.serialNumber,
-                    condition: 'Not recorded',
-                  }
-                }),
-              }))
-              setSubmitted(true)
-            }}
-            className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.7fr)]"
-          >
-            <section className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-[#202844]">What are you taking?</h2>
-              <p className="mt-1 text-xs text-slate-500">Select the devices that will leave campus.</p>
-              <div className="mt-3 space-y-2">
-                {employeeDevices.map((device) => (
-                  <label key={device.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#edf0f7] p-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedDevices.includes(device.id)}
-                      onChange={(event) => setSelectedDevices((current) => (
-                        event.target.checked
-                          ? [...current, device.id]
-                          : current.filter((id) => id !== device.id)
-                      ))}
-                      className="h-4 w-4 accent-[#3155ff]"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold text-[#202844]">{device.make} {device.model}</span>
-                      <span className="mt-1 block"><AssetTag tag={device.tag} size="sm" /></span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <label className="mt-4 block text-xs font-semibold text-slate-600">
-                Where are you taking it?
-                <input
-                  required
-                  value={destination}
-                  onChange={(event) => setDestination(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] px-3 py-2.5 text-sm font-normal outline-none focus:border-blue-400"
-                />
-              </label>
-              <label className="mt-3 block text-xs font-semibold text-slate-600">
-                Back by
-                <input
-                  required
-                  type="date"
-                  min={new Date().toISOString().slice(0, 10)}
-                  value={returnDate}
-                  onChange={(event) => setReturnDate(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] px-3 py-2.5 text-sm font-normal outline-none focus:border-blue-400 sm:max-w-xs"
-                />
-              </label>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Link to="/employee/passes" className="rounded-full border border-[#dce2ef] px-4 py-2.5 text-xs font-semibold text-slate-600">Cancel</Link>
-                <button
-                  type="submit"
-                  disabled={!selectedDevices.length}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
-                >
-                  <Send size={13} /> Send request
-                </button>
-              </div>
-            </section>
-            <aside className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
-              <h2 className="text-sm font-bold text-[#202844]">What happens next</h2>
-              <ol className="mt-3 space-y-3 text-xs leading-5 text-slate-500">
-                <li><strong className="text-[#202844]">1 · You send the request</strong><br />Now</li>
-                <li><strong className="text-[#202844]">2 · IT checks and signs it</strong><br />Within 1 working day.</li>
-                <li><strong className="text-[#202844]">3 · Show the QR at the gate</strong><br />Security checks every item against its serial.</li>
-              </ol>
-            </aside>
-          </form>
-        )}
-      </div>
-    )
-  }
-
+function Passes({ request = false }: { request?: boolean }) {
+  // TODO(v2): Restore this prototype when persistent gate-pass APIs are available.
   return (
     <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
-      <PageTitle title="Gate passes" description="Track devices going off campus and requests waiting for approval.">
-        <Link to="/employee/passes/new" className="inline-flex items-center gap-1.5 rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700">
-          <Plus size={14} /> Request a gate pass
-        </Link>
+      <PageTitle
+        title={request ? 'Request a gate pass' : 'Gate passes'}
+        description="Gate-pass actions are disabled until they are supported by the server API."
+      >
+        {request && (
+          <Link to="/employee" className="rounded-full border border-[#dce2ef] bg-white px-4 py-2.5 text-xs font-semibold text-[#202844] hover:bg-slate-50">
+            Back to home
+          </Link>
+        )}
       </PageTitle>
-      <section className="mt-5 overflow-hidden rounded-2xl border border-[#e9edf6] bg-white">
-        <div className="grid grid-cols-3 gap-3 border-b border-[#edf0f7] p-4">
-          {[
-            ['Waiting', myPasses.filter((pass) => pass.status === 'Waiting').length],
-            ['Approved', myPasses.filter((pass) => pass.status === 'Approved').length],
-            ['All passes', myPasses.length],
-          ].map(([label, count]) => (
-            <div key={label} className="rounded-xl bg-[#f8f9fc] p-3">
-              <p className="text-xs text-slate-500">{label}</p>
-              <p className="mt-1 text-xl font-bold text-[#202844]">{count}</p>
-            </div>
-          ))}
-        </div>
-        <div className="divide-y divide-[#edf0f7]">
-          {myPasses.map((pass) => (
-            <article key={pass.id} className="flex flex-wrap items-center gap-3 p-4 sm:px-5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                <Clock3 size={17} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold text-[#202844]">{pass.id} · {pass.items.length} {pass.items.length === 1 ? 'item' : 'items'}</h2>
-                <p className="mt-1 text-xs text-slate-500">{pass.destination} · {pass.outDate} – {pass.returnDate}</p>
-              </div>
-              <Badge label={pass.status} />
-            </article>
-          ))}
-          {myPasses.length === 0 && (
-            <div className="p-10 text-center text-sm text-slate-500">No gate passes yet. Request one when you need to take equipment off campus.</div>
-          )}
-        </div>
+      <section role="status" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+        <h2 className="text-sm font-semibold">Not available yet</h2>
+        <p className="mt-1 text-sm leading-6 text-amber-900">
+          The current v1 API does not provide persistent gate-pass records, approvals, or security movement checks.
+          No request or pass has been saved.
+        </p>
       </section>
     </div>
   )
@@ -687,7 +526,7 @@ export default function EmployeePortal({ section, viewer }: { section: string; v
   if (!activeViewer) return <Navigate to="/login" replace />
   if (section === 'report') return <ReportProblem viewer={activeViewer} />
   if (section === 'tickets') return <MyTickets />
-  if (section === 'passes') return <Passes viewer={activeViewer} />
-  if (section === 'pass-form') return <Passes request viewer={activeViewer} />
+  if (section === 'passes') return <Passes />
+  if (section === 'pass-form') return <Passes request />
   return <Home viewer={activeViewer} />
 }

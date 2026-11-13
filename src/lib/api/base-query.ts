@@ -5,9 +5,13 @@ import {
   type FetchBaseQueryError,
 } from "@reduxjs/toolkit/query";
 
-import { clearAuth } from "../stores/auth-slice.ts";
+import {
+  clearAuth,
+  markSessionExpired,
+} from "../stores/auth-slice.ts";
 
 const API_PREFIX = '/api/v1';
+export const AUTH_REQUEST_TIMEOUT_MS = 30_000;
 
 function withApiPrefix(url: string): string {
   const normalized = url.replace(/\/+$/, '');
@@ -43,6 +47,19 @@ const clearSession = (api: Parameters<typeof rawBaseQuery>[1]) => {
   api.dispatch({ type: "appApi/resetApiState" });
 };
 
+const isAuthenticated = (state: unknown): boolean => {
+  if (typeof state !== "object" || state === null || !("auth" in state)) {
+    return false;
+  }
+  const authState = state.auth;
+  return (
+    typeof authState === "object" &&
+    authState !== null &&
+    "isAuthenticated" in authState &&
+    authState.isAuthenticated === true
+  );
+};
+
 const refreshSession = async (
   api: Parameters<typeof rawBaseQuery>[1],
   extraOptions: Parameters<typeof rawBaseQuery>[2],
@@ -51,6 +68,7 @@ const refreshSession = async (
     {
       url: "/auth/refresh",
       method: "POST",
+      timeout: AUTH_REQUEST_TIMEOUT_MS,
     },
     api,
     extraOptions,
@@ -79,7 +97,18 @@ export const appBaseQuery: BaseQueryFn<
 
     const refreshResult = await refreshPromise;
     if ("error" in refreshResult) {
-      clearSession(api);
+      const refreshError = refreshResult.error;
+      if (!refreshError) {
+        return result;
+      }
+      if (refreshError.status !== 401) {
+        return refreshResult;
+      }
+      const sessionWasAuthenticated = isAuthenticated(api.getState());
+      if (sessionWasAuthenticated) {
+        clearSession(api);
+        api.dispatch(markSessionExpired());
+      }
       return result;
     }
 
@@ -95,7 +124,11 @@ export const appBaseQuery: BaseQueryFn<
     );
 
     if (retriedResult.error?.status === 401) {
-      clearSession(api);
+      const sessionWasAuthenticated = isAuthenticated(api.getState());
+      if (sessionWasAuthenticated) {
+        clearSession(api);
+        api.dispatch(markSessionExpired());
+      }
     }
 
     return retriedResult;

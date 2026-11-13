@@ -1,4 +1,4 @@
-import type { Ticket, TicketHistoryEntry } from '@/lib/types/types';
+import type { Ticket, TicketHistoryEntry } from '@/types/types';
 import type {
   ApiTicketPriority,
   ApiTicketStatus,
@@ -19,7 +19,7 @@ const priorityLabels: Record<ApiTicketPriority, Ticket['priority']> = {
   P2_HIGH: 'High',
   P3_MEDIUM: 'Medium',
   P4_LOW: 'Low',
-  P5_PLANNING: 'Planning',
+  P5_PLANNING: 'Legacy',
 };
 
 function toHistory(entries: TicketApiRecord): TicketHistoryEntry[] {
@@ -48,9 +48,7 @@ export function toClientTicket(ticket: TicketApiRecord): Ticket {
   const status = statusLabels[ticket.status];
   const timeState = ticket.overdue
     ? 'Breached'
-    : ticket.status === 'WAITING_ON_USER'
-      ? 'Paused'
-      : 'On track';
+    : 'Not overdue';
   const resolvedAt = ticket.resolvedAt ? new Date(ticket.resolvedAt) : null;
   const createdAt = new Date(ticket.createdAt);
 
@@ -76,7 +74,7 @@ export function toClientTicket(ticket: TicketApiRecord): Ticket {
     description: ticket.description,
     response: 'Not tracked',
     resolution: ticket.resolutionNote ?? (resolvedAt ? 'Resolved' : 'Not tracked'),
-    sla: ticket.overdue ? 'Overdue' : 'Not tracked',
+    sla: ticket.overdue ? 'Overdue' : 'Not overdue',
     ...(resolvedAt
       ? { resolutionHours: (resolvedAt.getTime() - createdAt.getTime()) / 3_600_000 }
       : {}),

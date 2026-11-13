@@ -1,31 +1,24 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { users } from '../lib/data/mockData'
+// users mockData import removed; use API data only
 import { useAppDispatch, useAppSelector } from '@/lib/stores/hooks'
 import { appApi } from '@/lib/api/app-api'
 import { useLoginMutation, useLogoutMutation } from '@/lib/api/auth/auth-api'
+import { useGetUsersQuery } from '@/lib/api/users/users-api'
 import { clearAuth, setAuthenticatedUser } from '@/lib/stores/auth-slice'
 import { useAuthSession } from '@/hooks/auth/use-auth-session'
 import type { AuthenticatedUser } from '@/lib/api/auth/types'
-import type { PublicUser, UserRole } from '../lib/types/types'
-
-interface CreateUserInput {
-  name: string
-  email: string
-  department: string
-  staffId: string
-  password: string
-  role: UserRole
-}
+import type { PublicUser, UserRole } from '../types/types'
 
 interface AuthContextValue {
   user: PublicUser | null
   users: PublicUser[]
   isLoading: boolean
+  sessionExpired: boolean
   login: (email: string, password: string) => Promise<PublicUser>
   logout: () => Promise<void>
-  createUser: (input: CreateUserInput) => PublicUser
+  usersError: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -51,16 +44,19 @@ function toPublicUser(user: AuthenticatedUser): PublicUser {
 export function homePathForRole(role: UserRole) {
   if (role === 'Technician') return '/technician'
   if (role === 'Employee') return '/employee'
-  if (role === 'Security') return '/security'
+  if (role === 'Security') return '/workspace-unavailable'
   return '/'
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { isLoading } = useAuthSession()
   const dispatch = useAppDispatch()
-  const authenticatedUser = useAppSelector((state) => state.auth.user)
+  const { user: authenticatedUser, sessionExpired } = useAppSelector((state) => state.auth)
   const [loginRequest] = useLoginMutation()
   const [logoutRequest] = useLogoutMutation()
+  const usersQuery = useGetUsersQuery(undefined, {
+    skip: authenticatedUser?.role !== 'IT_ADMIN',
+  })
   const user = useMemo(
     () => authenticatedUser ? toPublicUser(authenticatedUser) : null,
     [authenticatedUser],
@@ -78,17 +74,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch(appApi.util.resetApiState())
   }
 
-  const createUser = (): PublicUser => {
-    throw new Error('Account creation is not supported by the server yet.')
-  }
-
   const value: AuthContextValue = {
     user,
-    users,
+    users: (usersQuery.data?.users ?? []).map(toPublicUser),
     isLoading,
+    sessionExpired,
+    usersError: usersQuery.isError,
     login,
     logout,
-    createUser,
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

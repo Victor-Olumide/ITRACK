@@ -7,7 +7,6 @@ const links = [
   { to: '/projects',  label: 'Projects'  },
   { to: '/issues',    label: 'Issues'    },
   { to: '/team',      label: 'Team'      },
-  { to: '/settings',  label: 'Settings'  },
 ]
 
 export default function Navbar() {

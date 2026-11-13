@@ -3,13 +3,11 @@ import { setupListeners } from "@reduxjs/toolkit/query";
 
 import { appApi } from "@/lib/api/app-api";
 import authReducer from "@/lib/stores/auth-slice";
-import demoDataReducer from "@/lib/stores/demo-data-slice";
 
 export const store = configureStore({
   reducer: {
     [appApi.reducerPath]: appApi.reducer,
     auth: authReducer,
-    demoData: demoDataReducer,
   },
 
   middleware: (getDefaultMiddleware) =>
