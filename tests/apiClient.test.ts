@@ -95,7 +95,48 @@ test('requires API paths to start with a slash', async () => {
   await assert.rejects(apiRequest('tickets'), TypeError)
 })
 
-test('does not refresh an absent session after getMe returns 401', async () => {
+test('restores an expired access session using the refresh cookie', async () => {
+  const originalFetch = globalThis.fetch
+  let requestCount = 0
+  globalThis.fetch = async () => {
+    requestCount += 1
+    return requestCount === 1
+      ? new Response(JSON.stringify({ message: 'Access token expired' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      : new Response(JSON.stringify({ user: { id: 'user-1' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+  }
+
+  try {
+    const api = {
+      endpoint: 'getMe',
+      signal: new AbortController().signal,
+      abort: () => undefined,
+      dispatch: () => undefined,
+      getState: () => ({ auth: { isAuthenticated: false } }),
+      extra: undefined,
+      type: 'query',
+      forced: false,
+      queryCacheKey: 'authApi|getMe(undefined)',
+    } as never
+    const result = await appBaseQuery(
+      { url: '/auth/me', method: 'GET' },
+      api,
+      {},
+    )
+
+    assert.deepEqual(result.data, { user: { id: 'user-1' } })
+    assert.equal(requestCount, 2)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('attempts refresh once when session restoration receives 401', async () => {
   const originalFetch = globalThis.fetch
   let requestCount = 0
   globalThis.fetch = async () => {
@@ -103,17 +144,6 @@ test('does not refresh an absent session after getMe returns 401', async () => {
     return new Response(JSON.stringify({ message: 'No active session' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
-    })
-
-    test('adds incorrect-password guidance to 401 login errors without losing server details', () => {
-      assert.equal(
-        getLoginErrorMessage({ status: 401, data: { message: 'Invalid credentials.' } }),
-        'Incorrect password. Invalid credentials.',
-      )
-      assert.equal(
-        getLoginErrorMessage({ status: 401, data: { error: { message: 'Account disabled.' } } }),
-        'Incorrect password. Account disabled.',
-      )
     })
   }
 
@@ -136,8 +166,60 @@ test('does not refresh an absent session after getMe returns 401', async () => {
     )
 
     assert.deepEqual(result.error, { status: 401, data: { message: 'No active session' } })
-    assert.equal(requestCount, 1)
+    assert.equal(requestCount, 2)
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+test('marks an authenticated session expired when refresh is rejected', async () => {
+  const originalFetch = globalThis.fetch
+  const dispatchedActions: { type: string }[] = []
+  globalThis.fetch = async () => new Response(
+    JSON.stringify({ message: 'Session expired' }),
+    {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  )
+
+  try {
+    const api = {
+      endpoint: 'getTickets',
+      signal: new AbortController().signal,
+      abort: () => undefined,
+      dispatch: (action: { type: string }) => {
+        dispatchedActions.push(action)
+      },
+      getState: () => ({ auth: { isAuthenticated: true } }),
+      extra: undefined,
+      type: 'query',
+      forced: false,
+      queryCacheKey: 'ticketsApi|getTickets(undefined)',
+    } as never
+    const result = await appBaseQuery(
+      { url: '/tickets', method: 'GET' },
+      api,
+      {},
+    )
+
+    assert.deepEqual(result.error, { status: 401, data: { message: 'Session expired' } })
+    assert.deepEqual(
+      dispatchedActions.map(({ type }) => type),
+      ['auth/clearAuth', 'appApi/resetApiState', 'auth/markSessionExpired'],
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('adds incorrect-password guidance to 401 login errors without losing server details', () => {
+  assert.equal(
+    getLoginErrorMessage({ status: 401, data: { message: 'Invalid credentials.' } }),
+    'Incorrect password. Invalid credentials.',
+  )
+  assert.equal(
+    getLoginErrorMessage({ status: 401, data: { error: { message: 'Account disabled.' } } }),
+    'Incorrect password. Account disabled.',
+  )
 })

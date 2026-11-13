@@ -32,6 +32,7 @@ Dashboard and report screens may use only the implemented dashboard, ticket, and
 
 - Keep API request/response types next to their endpoint module and map server enums/fields at a typed boundary.
 - Treat RTK Query as the owner of server state. Keep only transient form/view state locally.
+- Restore the current user once when a protected route is loaded in a new browser page; do not recheck on ordinary client-side navigation. If the access session has expired, try the refresh cookie once before requiring sign-in.
 - Represent loading, empty, validation, session-expired, and server-error states explicitly. Never fall back to demo data after a request fails.
 - Wait for mutation success before showing confirmation; invalidate/refetch affected tags.
 - Never put database URLs, passwords, signing keys, or other secrets in `VITE_*` variables, fixtures, tests, or agent instructions.

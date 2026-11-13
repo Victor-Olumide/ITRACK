@@ -1,38 +1,40 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { useAppDispatch, useAppSelector } from '@/lib/stores/hooks';
-import { setAuthenticatedUser, clearAuth } from '@/lib/stores/auth-slice';
+import {
+	completeSessionRestore,
+	setAuthenticatedUser,
+} from '@/lib/stores/auth-slice';
 import { useGetMeQuery } from '@/lib/api/auth/auth-api';
 
-const SESSION_RECHECK_INTERVAL_SECONDS = 5 * 60;
 const PUBLIC_PATHS = new Set(['/login']);
 
 export function useAuthSession() {
 	const { pathname } = useLocation();
 	const dispatch = useAppDispatch();
-	const { user, isAuthenticated } = useAppSelector((state) => state.auth);
-	const shouldCheckSession = !isAuthenticated && !PUBLIC_PATHS.has(pathname);
+	const { user, isAuthenticated, sessionChecked } = useAppSelector((state) => state.auth);
+	const [shouldRestoreSession] = useState(() => !PUBLIC_PATHS.has(pathname));
 
 	const meQuery = useGetMeQuery(undefined, {
-		skip: !shouldCheckSession,
-		refetchOnMountOrArgChange: SESSION_RECHECK_INTERVAL_SECONDS,
+		skip: !shouldRestoreSession || sessionChecked,
 	});
 
-	const { data, isSuccess, isError, error } = meQuery;
+	const { data, isSuccess, isError, isLoading } = meQuery;
 
 	useEffect(() => {
-		if (!shouldCheckSession) return;
+		if (!shouldRestoreSession || sessionChecked) return;
 
 		if (isSuccess && data?.user) {
 			dispatch(setAuthenticatedUser(data.user));
-		} else if (isError) {
-			dispatch(clearAuth());
 		}
-	}, [shouldCheckSession, data, isSuccess, isError, error, dispatch]);
+		if (isSuccess || isError) {
+			dispatch(completeSessionRestore());
+		}
+	}, [shouldRestoreSession, sessionChecked, data, isSuccess, isError, dispatch]);
 
 	return {
 		user,
 		isAuthenticated,
-		isLoading: shouldCheckSession && meQuery.isLoading,
+		isLoading: shouldRestoreSession && !sessionChecked && isLoading,
 	};
 }

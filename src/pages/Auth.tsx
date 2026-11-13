@@ -45,7 +45,7 @@ function Field({ label, id, type = 'text', placeholder, value, onChange, right }
 
 // ── Login form ────────────────────────────────────────────────
 function LoginForm() {
-  const { login } = useAuth()
+  const { login, sessionExpired } = useAuth()
   const navigate = useNavigate()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -75,6 +75,12 @@ function LoginForm() {
             Sign in with an account provided by your IT Admin.
         </p>
       </div>
+
+      {sessionExpired && (
+        <p role="status" className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+          Your session expired. Please sign in again.
+        </p>
+      )}
 
         <Field
           label="Work email"
@@ -127,7 +133,7 @@ export default function Auth() {
     <div className="min-h-screen flex">
 
       {/* ── Left panel ── */}
-      <div className="hidden md:flex md:w-5/12 lg:w-2/5 bg-linear-to-br from-[#0B184C] to-[#0A174B] flex-col justify-between p-10 relative overflow-hidden">
+      <div className="hidden md:flex md:w-5/12 lg:w-2/5 bg-linear-to-br from-[#0B184C] to-[#0A174B] flex-col gap-5 px-10 py-35 relative overflow-hidden">
         {/* Logo */}
         <div className="flex items-center gap-3 relative z-10">
           <Logo size={42} />

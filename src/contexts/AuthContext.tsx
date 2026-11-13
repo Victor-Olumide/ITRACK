@@ -15,6 +15,7 @@ interface AuthContextValue {
   user: PublicUser | null
   users: PublicUser[]
   isLoading: boolean
+  sessionExpired: boolean
   login: (email: string, password: string) => Promise<PublicUser>
   logout: () => Promise<void>
   usersError: boolean
@@ -50,7 +51,7 @@ export function homePathForRole(role: UserRole) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { isLoading } = useAuthSession()
   const dispatch = useAppDispatch()
-  const authenticatedUser = useAppSelector((state) => state.auth.user)
+  const { user: authenticatedUser, sessionExpired } = useAppSelector((state) => state.auth)
   const [loginRequest] = useLoginMutation()
   const [logoutRequest] = useLogoutMutation()
   const usersQuery = useGetUsersQuery(undefined, {
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     users: (usersQuery.data?.users ?? []).map(toPublicUser),
     isLoading,
+    sessionExpired,
     usersError: usersQuery.isError,
     login,
     logout,
