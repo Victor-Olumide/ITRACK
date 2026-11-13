@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/api/apiClient.ts'
 import { appBaseQuery } from '../src/lib/api/base-query.ts'
+import { getLoginErrorMessage } from '../src/lib/api/auth/login-errors.ts'
 
 test('sends same-origin JSON requests with session credentials', async () => {
   const originalFetch = globalThis.fetch
@@ -94,21 +95,25 @@ test('requires API paths to start with a slash', async () => {
   await assert.rejects(apiRequest('tickets'), TypeError)
 })
 
-test('uses the refresh response for getMe instead of sending a third request', async () => {
+test('does not refresh an absent session after getMe returns 401', async () => {
   const originalFetch = globalThis.fetch
   let requestCount = 0
-  const refreshedUser = { id: 'user-1', email: 'user@example.test' }
   globalThis.fetch = async () => {
     requestCount += 1
-    if (requestCount === 1) {
-      return new Response(JSON.stringify({ message: 'Expired session' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-    return new Response(JSON.stringify({ user: refreshedUser }), {
-      status: 200,
+    return new Response(JSON.stringify({ message: 'No active session' }), {
+      status: 401,
       headers: { 'Content-Type': 'application/json' },
+    })
+
+    test('adds incorrect-password guidance to 401 login errors without losing server details', () => {
+      assert.equal(
+        getLoginErrorMessage({ status: 401, data: { message: 'Invalid credentials.' } }),
+        'Incorrect password. Invalid credentials.',
+      )
+      assert.equal(
+        getLoginErrorMessage({ status: 401, data: { error: { message: 'Account disabled.' } } }),
+        'Incorrect password. Account disabled.',
+      )
     })
   }
 
@@ -130,8 +135,8 @@ test('uses the refresh response for getMe instead of sending a third request', a
       {},
     )
 
-    assert.deepEqual(result, { data: { user: refreshedUser } })
-    assert.equal(requestCount, 2)
+    assert.deepEqual(result.error, { status: 401, data: { message: 'No active session' } })
+    assert.equal(requestCount, 1)
   } finally {
     globalThis.fetch = originalFetch
   }

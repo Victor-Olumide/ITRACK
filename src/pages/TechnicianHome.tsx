@@ -1,9 +1,8 @@
 // Technician queue summary with assigned work and SLA status.
 
 import { Link } from 'react-router'
-import { ArrowRight, Clock3, Ticket, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Ticket, TriangleAlert } from 'lucide-react'
 import Badge from '../components/Badge'
-// userById removed; all user lookups now use API data only
 import { useAuth } from '../contexts/AuthContext'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
@@ -15,7 +14,7 @@ export default function TechnicianHome() {
     { skip: !user?.id },
   )
   const myTickets = (ticketsQuery.data?.data ?? []).map(toClientTicket)
-  const activeTickets = myTickets.filter((ticket) => ticket.status !== 'Resolved')
+  const activeTickets = myTickets.filter((ticket) => !['Resolved', 'Closed'].includes(ticket.status))
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -40,11 +39,10 @@ export default function TechnicianHome() {
         </Link>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { label: 'Assigned to me', value: activeTickets.length, icon: Ticket, tone: 'bg-[#edf1ff] text-[#3155ff]' },
           { label: 'Breached', value: activeTickets.filter((ticket) => ticket.timeState === 'Breached').length, icon: TriangleAlert, tone: 'bg-red-50 text-red-600' },
-          { label: 'At risk', value: activeTickets.filter((ticket) => ticket.timeState === 'At risk').length, icon: Clock3, tone: 'bg-amber-50 text-amber-700' },
           { label: 'Resolved', value: myTickets.filter((ticket) => ticket.status === 'Resolved').length, icon: Ticket, tone: 'bg-emerald-50 text-emerald-700' },
         ].map(({ label, value, icon: Icon, tone }) => (
           <article key={label} className="rounded-2xl border border-[#e9edf6] bg-white p-4">
@@ -61,7 +59,7 @@ export default function TechnicianHome() {
         <div className="flex items-center justify-between border-b border-[#edf0f7] px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-sm font-bold text-[#18203e]">My work queue</h2>
-            <p className="mt-1 text-xs text-slate-500">Prioritized by SLA time remaining.</p>
+            <p className="mt-1 text-xs text-slate-500">Assigned ticket records from the server.</p>
           </div>
           <Link to="/technician/tickets" className="text-xs font-semibold text-[#3155ff] hover:underline">
             See all
@@ -69,9 +67,7 @@ export default function TechnicianHome() {
         </div>
         {ticketsQuery.isError && <p role="alert" className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">Your queue could not be loaded.</p>}
         <div className="divide-y divide-[#edf0f7]">
-          {activeTickets.map((ticket) => {
-            const requester = userById(ticket.requesterId)
-            return (
+          {activeTickets.map((ticket) => (
               <Link
                 key={ticket.id}
                 to={`/technician/tickets?ticket=${ticket.id}`}
@@ -83,16 +79,15 @@ export default function TechnicianHome() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-[#202844]">{ticket.title}</span>
                   <span className="mt-1 block text-xs text-slate-500">
-                    {ticket.id} · {ticket.category} · {ticket.requesterName ?? requester?.name ?? 'Requester'}
-                    {ticket.requesterDepartment || requester?.department ? ` · ${ticket.requesterDepartment ?? requester?.department}` : ''}
+                    {ticket.id} · {ticket.category} · {ticket.requesterName ?? 'Requester'}
+                    {ticket.requesterDepartment ? ` · ${ticket.requesterDepartment}` : ''}
                   </span>
                 </span>
                 <Badge label={ticket.priority} />
                 <Badge label={ticket.timeState} />
                 <ArrowRight size={15} className="text-slate-400" />
               </Link>
-            )
-          })}
+          ))}
           {activeTickets.length === 0 && (
             <p className="px-5 py-12 text-center text-sm text-slate-500">{ticketsQuery.isLoading ? 'Loading your queue…' : 'Your queue is clear.'}</p>
           )}

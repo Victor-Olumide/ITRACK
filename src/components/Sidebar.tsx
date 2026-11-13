@@ -5,21 +5,14 @@ import {
   BarChart3,
   ClipboardCheck,
   Home,
-  MapPin,
   Monitor,
-  Package,
-  PanelsTopLeft,
-  ScanLine,
   Settings,
   Ticket,
   Users,
-  Activity,
   X,
 } from 'lucide-react'
-// gatePasses, metrics mockData import removed; use API data only
 import type { LucideIcon } from 'lucide-react'
-import type { UserRole } from '../lib/types/types'
-import { useAppSelector } from '../lib/stores/hooks'
+import type { UserRole } from '../types/types'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 
 interface NavigationLink {
@@ -42,26 +35,19 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
       { to: '/', label: 'Home', Icon: Home, end: true },
       { to: '/tickets', label: 'Tickets', Icon: Ticket },
       { to: '/devices', label: 'Devices', Icon: Monitor },
-      { to: '/passes', label: 'Gate passes', Icon: ClipboardCheck },
       { to: '/reports', label: 'Reports', Icon: BarChart3 },
     ],
   },
   {
     label: 'OPERATIONS',
     links: [
-      { to: '/stock', label: 'Stock', Icon: Package },
-      { to: '/gate', label: 'Gate', Icon: ScanLine },
-      { to: '/models', label: '3D models', Icon: PanelsTopLeft },
     ],
   },
   {
     label: 'MANAGEMENT',
     links: [
       { to: '/people', label: 'People and roles', Icon: Users },
-      { to: '/locations', label: 'Locations', Icon: MapPin },
-      { to: '/categories', label: 'Categories and SLA', Icon: Settings },
-      { to: '/audit', label: 'Audit trail', Icon: Activity },
-      { to: '/settings', label: 'Settings', Icon: Settings },
+      { to: '/categories', label: 'Categories', Icon: Settings },
     ],
   },
 ]
@@ -74,7 +60,6 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
         { to: '/employee', label: 'Home', Icon: Home, end: true },
         { to: '/employee/report', label: 'Report a problem', Icon: Ticket },
         { to: '/employee/tickets', label: 'My tickets', Icon: ClipboardCheck },
-        { to: '/employee/passes', label: 'Gate passes', Icon: ScanLine },
       ],
     },
   ],
@@ -85,24 +70,13 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
         { to: '/technician', label: 'Home', Icon: Home, end: true },
         { to: '/technician/tickets', label: 'My tickets', Icon: Ticket },
         { to: '/technician/devices', label: 'Devices', Icon: Monitor },
-        { to: '/technician/passes', label: 'Gate passes', Icon: ClipboardCheck },
       ],
     },
   ],
-  Security: [
-    {
-      label: 'GATE',
-      links: [
-        { to: '/security', label: 'Gate station', Icon: ScanLine, end: true },
-      ],
-    },
-  ],
+  Security: [],
 }
 
 function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserRole }) {
-  const { submittedPasses, gatePassStatusUpdates } = useAppSelector((state) => state.demoData)
-  const waitingPasses = [...gatePasses, ...submittedPasses]
-    .filter((pass) => (gatePassStatusUpdates[pass.id] ?? pass.status) === 'Waiting').length
   const unassignedTicketsQuery = useGetTicketsQuery(
     { assigneeId: 'unassigned', page: 1, pageSize: 1 },
     { skip: role === 'Employee' || role === 'Security' },
@@ -112,10 +86,8 @@ function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserR
     ...group,
     links: group.links.map((link) => (
       link.to === '/tickets'
-        ? { ...link, badge: unassignedTickets }
-        : link.to === '/passes'
-          ? { ...link, badge: waitingPasses }
-          : link
+        ? { ...link, ...(unassignedTicketsQuery.data ? { badge: unassignedTickets } : {}) }
+        : link
     )),
   }))
   const groups = ROLE_NAV_GROUPS[role] ?? adminGroups
@@ -160,32 +132,10 @@ function Navigation({ onNavigate, role }: { onNavigate?: () => void; role: UserR
 
 function SidebarContent({ onNavigate, role }: { onNavigate?: () => void; role: UserRole }) {
   const isEmployee = role === 'Employee'
-  const isSecurity = role === 'Security'
   return (
     <div className="flex h-full flex-col bg-[#101c52]">
       <Navigation onNavigate={onNavigate} role={role} />
-      {!isEmployee && !isSecurity && (
-        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs text-slate-400">SLA met this month</p>
-          <div className="mt-1 flex items-baseline gap-2">
-            <p className="text-2xl font-bold text-white">{metrics.slaMetPercentage}%</p>
-            <p className="text-[11px] text-slate-400">Target {metrics.slaTargetPercentage}%</p>
-          </div>
-          <div
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"
-            role="progressbar"
-            aria-label="SLA met this month"
-            aria-valuenow={metrics.slaMetPercentage}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <div
-              className="h-full rounded-full bg-[#d2f54a]"
-              style={{ width: `${metrics.slaMetPercentage}%` }}
-            />
-          </div>
-        </div>
-      )}
+      {/* TODO(v2): Restore the SLA summary panel when the server exposes an SLA reporting contract. */}
       {isEmployee && (
         <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
           <p className="text-xs font-semibold text-white">Need help fast?</p>

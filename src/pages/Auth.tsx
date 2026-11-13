@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import Logo from '../components/Logo'
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
-// metrics mockData import removed; use API data only
+import { getLoginErrorMessage } from '../lib/api/auth/login-errors'
 
 // ── reusable input ─────────────────────────────────────────────
 interface FieldProps {
@@ -61,19 +61,7 @@ function LoginForm() {
       const user = await login(email, password)
       navigate(homePathForRole(user.role), { replace: true })
     } catch (loginError) {
-      if (
-        loginError &&
-        typeof loginError === 'object' &&
-        'data' in loginError &&
-        loginError.data &&
-        typeof loginError.data === 'object' &&
-        'message' in loginError.data &&
-        typeof loginError.data.message === 'string'
-      ) {
-        setError(loginError.data.message)
-      } else {
-        setError('Unable to sign in. Check your connection and try again.')
-      }
+      setError(getLoginErrorMessage(loginError))
     } finally {
       setIsSubmitting(false)
     }
@@ -115,13 +103,6 @@ function LoginForm() {
         }
       />
 
-      {/* Forgot password */}
-      <div className="flex items-center justify-between">
-        <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
-          Forgot password?
-        </Link>
-      </div>
-
       <button
         type="submit"
         disabled={isSubmitting}
@@ -155,33 +136,16 @@ export default function Auth() {
 
         {/* Hero copy */}
         <div className="relative z-10">
-          <h1 className="text-4xl lg:text-5xl font-extrabold text-white leading-tight">
+          <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
             Report it.<br />
             Track it.<br />
             <span className="text-[#CCF326]">Get it fixed.</span>
           </h1>
-          <p className="mt-4 text-sm text-gray-400 leading-relaxed max-w-xs">
-            One place for IT problems, every device the university owns, and the passes that let them leave the gate.
+          <p className="mt-4 text-md text-gray-400 leading-relaxed max-w-xs">
+            One place to report IT problems, track devices, and follow support requests.
           </p>
-          <div className="mt-8 grid max-w-sm grid-cols-3 gap-3">
-            {[
-              [String(metrics.devicesTotal), 'devices tracked'],
-              [`${metrics.avgResolutionHours ?? '—'} h`, 'average fix time'],
-              [`${metrics.slaMetPercentage}%`, 'on time this month'],
-            ].map(([value, label]) => (
-              <div key={label} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-xl font-bold text-white">{value}</p>
-                <p className="mt-1 text-[10px] leading-4 text-gray-400">{label}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Footer */}
-        <div className="relative z-10 flex items-center gap-2 text-xs text-gray-500">
-          <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-          Connected to itrack.company.ng
-        </div>
       </div>
 
       {/* ── Right panel ── */}

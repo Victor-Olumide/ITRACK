@@ -1,357 +1,167 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { useAuth } from '../contexts/AuthContext';
-import {
-  ChevronLeft, HelpCircle, RotateCcw, ZoomOut, ZoomIn,
-  Rotate3D, Maximize, MapPin, Monitor, Laptop, Smartphone, Printer
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react'
-import type { DeviceStatus } from '../lib/types/types'
-import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from '@/lib/api/assets/assets-api'
-import type { AssetDetail } from '@/lib/api/assets/types'
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
+import { ChevronLeft } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from '../lib/api/assets/assets-api'
+import type { AssetCondition } from '../lib/api/assets/types'
 
-const statusStyles: Record<DeviceStatus, string> = {
-  Assigned:   'bg-blue-100   text-blue-800',
-  'In store': 'bg-lime-100   text-lime-800',
-  'Off-site': 'bg-purple-100 text-purple-700',
-  'In repair':'bg-orange-100 text-orange-800',
-  Retired:    'bg-slate-200  text-slate-600',
+const CONDITION_LABELS: Record<AssetCondition, string> = {
+  NEW: 'New',
+  GOOD: 'Good',
+  FAIR: 'Fair',
+  FAULTY: 'Faulty',
+  RETIRED: 'Retired',
 }
 
-// Fallback icon per category
-function CategoryIcon({ category, size = 65 }: { category?: string; size?: number }) {
-  const map: Record<string, LucideIcon> = {
-    Laptop:           Laptop,
-    'Desktop tower':  Monitor,
-    Monitor:          Monitor,
-    'Laser printer':  Printer,
-    'Work phone':     Smartphone,
-  }
-  const Icon = map[category ?? ''] ?? Monitor
-  return <Icon size={size} strokeWidth={1} />
-}
-
-// Device image with fallback
-interface DeviceView {
-  id: string
-  name: string
-  tag: string
-  category: string
-  specs: string
-  status: DeviceStatus
-  assignedTo: string
-  initials: string
-  location: string
-  warranty: string
-  image: string
-}
-
-function DeviceImage({ device }: { device: DeviceView | null }) {
-  const [failed, setFailed] = useState(false)
-
-  return (
-    <div className="relative flex min-h-[320px] flex-1 items-center justify-center overflow-hidden rounded-[24px] bg-gradient-to-b from-[#f1f4fc] to-[#e8edf9]">
-      {failed || !device?.image ? (
-        <div className="flex flex-col items-center gap-2 text-slate-300">
-          <CategoryIcon category={device?.category} />
-          <span className="text-xs text-slate-400">{device?.category}</span>
-        </div>
-      ) : (
-        <img
-          src={device.image}
-          alt={device.name}
-          onError={() => setFailed(true)}
-          className="h-[80%] w-[80%] object-contain"
-        />
-      )}
-    </div>
-  )
-}
-
-function fromApiAsset(record: AssetDetail | undefined): DeviceView | null {
-  if (!record) return null
-  const category = ({ LAPTOP: 'Laptop', DESKTOP: 'Desktop tower', PRINTER: 'Laser printer', NETWORK: 'Network device', OTHER: 'Device' } as Record<string, string>)[record.type]
-  const statusByCondition: Record<AssetDetail['condition'], DeviceStatus> = { NEW: 'In store', GOOD: 'In store', FAIR: 'In repair', FAULTY: 'In repair', RETIRED: 'Retired' }
-  const warranty = record.warrantyExpiry ? new Date(record.warrantyExpiry) : null
-  const name = record.assignedTo?.fullName
-  return {
-    id: record.id,
-    name: `${record.make} ${record.model}`,
-    tag: record.assetTag,
-    category,
-    specs: '',
-    status: record.assignedTo ? 'Assigned' : statusByCondition[record.condition],
-    assignedTo: name ?? 'Not assigned',
-    initials: name ? name.split(' ').map((part) => part[0]).join('').slice(0, 2) : '—',
-    location: record.notes ?? 'No location recorded',
-    warranty: warranty ? warranty.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '—',
-    image: '',
-  }
+function formatDate(value: string | null) {
+  if (!value) return 'Not recorded'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'Not recorded' : date.toLocaleDateString('en-GB')
 }
 
 export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?: string }) {
-  const navigate  = useNavigate()
+  const navigate = useNavigate()
   const { tag } = useParams()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('Overview')
-  const { data: apiAsset, isLoading } = useGetAssetQuery(tag ?? '', { skip: !tag })
-  const [updateAsset] = useUpdateAssetMutation()
-  const [retireAsset] = useRetireAssetMutation()
+  const assetQuery = useGetAssetQuery(tag ?? '', { skip: !tag })
+  const [updateAsset, updateState] = useUpdateAssetMutation()
+  const [retireAsset, retireState] = useRetireAssetMutation()
   const [actionError, setActionError] = useState('')
-  const device: DeviceView | null = fromApiAsset(apiAsset)
+  const asset = assetQuery.data
 
-  const sendToRepair = async () => {
-    if (!apiAsset) return
+  const changeCondition = async (condition: AssetCondition) => {
+    if (!asset) return
     setActionError('')
     try {
-      await updateAsset({ id: apiAsset.id, body: { condition: 'FAULTY' } }).unwrap()
+      await updateAsset({ id: asset.id, body: { condition } }).unwrap()
     } catch {
-      setActionError('Unable to update this device.')
+      setActionError('Unable to update the asset condition. Try again.')
     }
   }
 
   const retire = async () => {
-    if (!apiAsset) return
+    if (!asset || !window.confirm(`Retire asset ${asset.assetTag}?`)) return
     setActionError('')
     try {
-      await retireAsset(apiAsset.id).unwrap()
+      await retireAsset(asset.id).unwrap()
     } catch {
-      setActionError('Unable to retire this device.')
+      setActionError('Unable to retire this asset. Try again.')
     }
   }
 
-  if (isLoading) {
-    return <main className="min-h-screen bg-[#0B184C] flex items-center justify-center p-8 text-sm text-white">Loading device…</main>
+  if (assetQuery.isLoading) {
+    return <main className="flex min-h-full items-center justify-center p-8 text-sm text-slate-500">Loading asset…</main>
   }
 
-  if (!device) {
+  if (assetQuery.isError || !asset) {
     return (
-      <main className="min-h-screen bg-[#0B184C] flex items-center justify-center p-8">
-        <div className="text-center text-white">
-          <p className="text-lg font-semibold mb-3">Device not found.</p>
-          <button
-            onClick={() => navigate(basePath)}
-            className="text-sm text-blue-300 hover:underline"
-          >
-            ← Back to Devices
+      <main className="flex min-h-full items-center justify-center px-4 py-10">
+        <section className="max-w-md rounded-2xl border border-[#e9edf6] bg-white p-6 text-center">
+          <h1 className="text-lg font-semibold text-[#111a3b]">{assetQuery.isError ? 'Asset could not be loaded' : 'Asset not found'}</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {assetQuery.isError ? 'The server request failed. Try again or return to the asset list.' : 'No asset matched this tag or ID.'}
+          </p>
+          <button type="button" onClick={() => navigate(basePath)} className="mt-4 rounded-full bg-[#3155ff] px-4 py-2 text-xs font-semibold text-white">
+            Back to assets
           </button>
-        </div>
+        </section>
       </main>
     )
   }
 
-  const tabs = ['Overview', 'Specs', 'History', 'Tickets']
-
   return (
-    <main className="min-h-screen bg-[#0B184C] p-4 sm:p-6 lg:p-8 font-sans text-slate-800">
-      <div className="mx-auto max-w-[1400px]">
-
-        {/* BREADCRUMB */}
-        <div className="mb-6 flex items-center text-sm font-medium text-white/70">
-          <ChevronLeft size={16} className="mr-1" />
-          <button
-            onClick={() => navigate(basePath)}
-            className="hover:text-white transition-colors"
-          >
-            Devices
-          </button>
-          <span className="mx-2 text-white/40">/</span>
-          <span className="text-white">{device.tag}</span>
-        </div>
-
-        {/* MAIN WHITE CONTAINER */}
-        <div className="rounded-[32px] bg-white p-3 sm:p-4 shadow-2xl">
-          <div className="flex flex-col lg:flex-row gap-4">
-
-            {/* LEFT — 3D viewer area */}
-            <section className="relative flex min-h-[500px] lg:min-h-[680px] flex-1 flex-col rounded-[28px] bg-[#f4f6fc] p-6 lg:p-8">
-
-              <div className="flex items-center gap-3 z-10">
-                <span className="rounded-full bg-slate-200/70 px-3 py-1 text-xs font-bold text-slate-500 shadow-sm">
-                  3D model
-                </span>
-                <span className="text-sm font-medium text-slate-400">
-                  Shared by all {device.name}s
-                </span>
-              </div>
-
-              {/* Viewer placeholder */}
-              <div className="flex flex-1 flex-col items-center justify-center gap-4">
-                <DeviceImage key={device.tag} device={device} />
-                <div className="text-sm font-medium text-slate-400">
-                  3D viewer — connect a .glb model via React Three Fiber
-                </div>
-              </div>
-
-              {/* 3D toolbar */}
-              <div className="absolute bottom-20 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-2xl bg-[#1e2440] p-1.5 text-white shadow-xl">
-                {[HelpCircle, RotateCcw, ZoomOut, ZoomIn].map((Ic, i) => (
-                  <button key={i} className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
-                    <Ic size={18} strokeWidth={2.5} />
-                  </button>
-                ))}
-                <button className="rounded-xl bg-[#3155ff] p-2.5 text-white shadow-md transition-colors">
-                  <Rotate3D size={18} strokeWidth={2.5} />
-                </button>
-                <button className="rounded-xl p-2.5 text-slate-300 hover:bg-white/10 hover:text-white transition-colors">
-                  <Maximize size={18} strokeWidth={2.5} />
-                </button>
-              </div>
-
-              {/* Footer meta */}
-              <div className="mt-auto flex flex-col justify-between gap-4 border-t border-slate-200/60 pt-5 text-xs font-medium sm:flex-row sm:items-center">
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-slate-500">
-                  <span>Triangles <span className="text-slate-800">—</span></span>
-                  <span>Vertices <span className="text-slate-800">—</span></span>
-                  <span>File <span className="font-bold text-slate-800">0.4 MB .glb</span></span>
-                  <span>Licence <span className="font-bold text-slate-800">CC0</span></span>
-                </div>
-                <button className="font-bold text-[#3155ff] hover:underline">Replace model</button>
-              </div>
-            </section>
-
-            {/* RIGHT — device details */}
-            <section className="flex w-full flex-col gap-6 lg:w-[420px]">
-
-              {/* Dark info card */}
-              <div className="rounded-[28px] bg-[#0C194D] p-7 text-white shadow-lg">
-                <div className="mb-5 flex items-start justify-between">
-                  <span className={`rounded-full px-4 py-1.5 text-xs font-bold ${statusStyles[device.status] ?? 'bg-white/10 text-white'}`}>
-                    {device.status}
-                  </span>
-                  <span className="rounded-lg bg-[#DCF230] px-3 py-1.5 font-mono text-xs font-bold text-[#445b0f]">
-                    {device.tag}
-                  </span>
-                </div>
-
-                <h1 className="mb-1.5 text-2xl font-bold tracking-tight">{device.name}</h1>
-                <p className="mb-8 text-sm font-medium text-slate-400">
-                  {device.category}{device.specs ? ` · ${device.specs}` : ''}
-                </p>
-
-                <div className="mb-8 space-y-2">
-                  {/* Assigned to */}
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-3.5 border border-white/5">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DCF230] text-sm font-bold text-[#445b0f]">
-                      {device.initials !== '—' ? device.initials : '?'}
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold">{device.assignedTo}</div>
-                      <div className="text-xs font-medium text-slate-400">{device.location}</div>
-                    </div>
-                  </div>
-
-                  {/* Location */}
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-3.5 border border-white/5">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-slate-300">
-                      <MapPin size={18} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold">{device.location}</div>
-                      <div className="text-xs font-medium text-slate-400">Warranty · {device.warranty}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2.5">
-                  <button className="flex-1 rounded-xl bg-[#DCF230] py-2.5 text-sm font-bold text-[#111a38] transition hover:bg-[#bce028]">
-                    Reassign
-                  </button>
-                  <button className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-semibold transition hover:bg-white/10">
-                    Gate pass
-                  </button>
-                  <button onClick={sendToRepair} className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-semibold transition hover:bg-white/10">
-                    Send to repair
-                  </button>
-                </div>
-                {user?.role === 'IT Admin' && (
-                  <button onClick={retire} className="mt-2 w-full rounded-xl border border-red-300/40 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/10">
-                    Retire asset
-                  </button>
-                )}
-                {actionError && <p role="alert" className="mt-3 text-xs text-red-200">{actionError}</p>}
-              </div>
-
-              {/* Tabs */}
-              <div className="p-3">
-                <div className="mb-6 flex gap-6 border-b border-slate-100 text-sm font-semibold">
-                  {tabs.map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setActiveTab(t)}
-                      className={`pb-3 transition-colors -mb-[1px] ${
-                        activeTab === t
-                          ? 'border-b-2 border-slate-900 text-slate-900'
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-
-                {activeTab === 'Overview' && (
-                  <div className="grid grid-cols-2 gap-y-7 text-sm">
-                    <div>
-                      <div className="mb-1 text-slate-500">Category</div>
-                      <div className="font-bold text-[#111a38]">{device.category}</div>
-                    </div>
-                    <div>
-                      <div className="mb-1 text-slate-500">Status</div>
-                      <div className="font-bold text-[#111a38]">{device.status}</div>
-                    </div>
-                    <div>
-                      <div className="mb-1 text-slate-500">Assigned to</div>
-                      <div className="font-bold text-[#111a38]">{device.assignedTo}</div>
-                    </div>
-                    <div>
-                      <div className="mb-1 text-slate-500">Warranty</div>
-                      <div className={`font-bold ${device.warranty.startsWith('Ends') ? 'text-orange-600' : 'text-[#111a38]'}`}>
-                        {device.warranty}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="mb-1 text-slate-500">Location</div>
-                      <div className="font-bold text-[#111a38]">{device.location}</div>
-                    </div>
-                    <div>
-                      <div className="mb-1 text-slate-500">Asset tag</div>
-                      <div className="font-mono font-bold text-[#111a38]">{device.tag}</div>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'Specs' && (
-                  <div className="grid grid-cols-2 gap-y-7 text-sm">
-                    <div>
-                      <div className="mb-1 text-slate-500">Model</div>
-                      <div className="font-bold text-[#111a38]">{device.name}</div>
-                    </div>
-                    {device.specs && (
-                      <div>
-                        <div className="mb-1 text-slate-500">Size</div>
-                        <div className="font-bold text-[#111a38]">{device.specs}</div>
-                      </div>
-                    )}
-                    <div>
-                      <div className="mb-1 text-slate-500">Serial number</div>
-                      <div className="font-mono font-bold text-[#111a38]">—</div>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'History' && (
-                  <p className="text-sm text-slate-400">No history recorded yet.</p>
-                )}
-
-                {activeTab === 'Tickets' && (
-                  <p className="text-sm text-slate-400">No open tickets for this device.</p>
-                )}
-              </div>
-            </section>
-
+    <main className="min-h-full bg-[#f4f6fc] px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
+      <div className="mx-auto max-w-5xl">
+        <button type="button" onClick={() => navigate(basePath)} className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-[#3155ff]">
+          <ChevronLeft size={16} /> Assets
+        </button>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="font-mono text-xs font-semibold text-slate-500">{asset.assetTag}</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#111a3b]">{asset.make} {asset.model}</h1>
+            <p className="mt-1 text-sm text-slate-500">{asset.type} · {CONDITION_LABELS[asset.condition]}</p>
           </div>
-        </div>
+          <span className="rounded-full bg-[#edf1ff] px-3 py-1.5 text-xs font-semibold text-[#3155ff]">
+            {asset.assignedTo?.fullName ?? 'Unassigned'}
+          </span>
+        </header>
+
+        {actionError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}
+
+        <section className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <article className="rounded-2xl border border-[#e9edf6] bg-white p-5">
+            <h2 className="text-sm font-bold text-[#202844]">Asset details</h2>
+            <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">Serial number</dt><dd className="mt-1 break-all text-sm font-medium text-[#202844]">{asset.serialNumber}</dd></div>
+              <div><dt className="text-xs text-slate-500">Condition</dt><dd className="mt-1 text-sm font-medium text-[#202844]">{CONDITION_LABELS[asset.condition]}</dd></div>
+              <div><dt className="text-xs text-slate-500">Purchase date</dt><dd className="mt-1 text-sm font-medium text-[#202844]">{formatDate(asset.purchaseDate)}</dd></div>
+              <div><dt className="text-xs text-slate-500">Warranty expiry</dt><dd className="mt-1 text-sm font-medium text-[#202844]">{formatDate(asset.warrantyExpiry)}</dd></div>
+              <div className="sm:col-span-2"><dt className="text-xs text-slate-500">Notes</dt><dd className="mt-1 whitespace-pre-wrap text-sm text-[#202844]">{asset.notes || 'No notes recorded'}</dd></div>
+            </dl>
+          </article>
+
+          <article className="rounded-2xl border border-[#e9edf6] bg-white p-5">
+            <h2 className="text-sm font-bold text-[#202844]">Related tickets</h2>
+            {asset.tickets.length ? (
+              <div className="mt-3 divide-y divide-[#edf0f7]">
+                {asset.tickets.map((ticket) => (
+                  <div key={ticket.id} className="py-3 first:pt-0 last:pb-0">
+                    <p className="text-sm font-semibold text-[#202844]">{ticket.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{ticket.number} · {ticket.status} · {ticket.priority}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">No related tickets.</p>
+            )}
+          </article>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-[#e9edf6] bg-white p-5">
+          <h2 className="text-sm font-bold text-[#202844]">Assignment history</h2>
+          {asset.assignmentHistory.length ? (
+            <ol className="mt-3 divide-y divide-[#edf0f7]">
+              {asset.assignmentHistory.map((change) => (
+                <li key={change.id} className="py-3 first:pt-0 last:pb-0">
+                  <p className="text-sm text-[#202844]">
+                    {change.previousAssigneeName ?? 'Unassigned'} → {change.newAssigneeName ?? 'Unassigned'}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Changed by {change.changedBy.fullName} · {new Date(change.createdAt).toLocaleString('en-GB')}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-3 text-sm text-slate-500">No assignment changes recorded.</p>
+          )}
+        </section>
+
+        {(user?.role === 'IT Admin' || user?.role === 'Technician') && asset.condition !== 'RETIRED' && (
+          <section className="mt-4 rounded-2xl border border-[#e9edf6] bg-white p-5">
+            <h2 className="text-sm font-bold text-[#202844]">Supported asset actions</h2>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="text-xs font-semibold text-slate-600">
+                Update condition
+                <select
+                  value={asset.condition}
+                  disabled={updateState.isLoading}
+                  onChange={(event) => void changeCondition(event.target.value as AssetCondition)}
+                  className="mt-1.5 block rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm font-normal text-[#202844]"
+                >
+                  {(['NEW', 'GOOD', 'FAIR', 'FAULTY'] as const).map((condition) => (
+                    <option key={condition} value={condition}>{CONDITION_LABELS[condition]}</option>
+                  ))}
+                </select>
+              </label>
+              {user.role === 'IT Admin' && (
+                <button type="button" disabled={retireState.isLoading} onClick={() => void retire()} className="rounded-full border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                  {retireState.isLoading ? 'Retiring…' : 'Retire asset'}
+                </button>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   )

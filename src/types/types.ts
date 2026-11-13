@@ -1,8 +1,8 @@
 export type UserRole = 'IT Admin' | 'Technician' | 'Employee' | 'Security'
 export type DeviceStatus = 'Assigned' | 'In store' | 'Off-site' | 'In repair' | 'Retired'
 export type TicketStatus = 'Unassigned' | 'Assigned' | 'In progress' | 'Waiting on user' | 'Resolved' | 'Closed'
-export type TicketPriority = 'Critical' | 'High' | 'Medium' | 'Low' | 'Planning'
-export type TicketTimeState = 'Breached' | 'At risk' | 'On track' | 'Paused'
+export type TicketPriority = 'Critical' | 'High' | 'Medium' | 'Low' | 'Legacy'
+export type TicketTimeState = 'Breached' | 'Not overdue'
 export type GatePassStatus = 'Waiting' | 'Approved' | 'Rejected' | 'Overdue'
 export type GateEventType = 'Out' | 'Back' | 'Stopped'
 
@@ -83,6 +83,7 @@ export interface GatePassItem {
 
 export interface GatePass {
   id: string
+  serverId?: string
   requesterId: string
   destination: string
   outDate: string

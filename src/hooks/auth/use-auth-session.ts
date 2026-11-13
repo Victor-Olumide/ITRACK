@@ -5,7 +5,7 @@ import { setAuthenticatedUser, clearAuth } from '@/lib/stores/auth-slice';
 import { useGetMeQuery } from '@/lib/api/auth/auth-api';
 
 const SESSION_RECHECK_INTERVAL_SECONDS = 5 * 60;
-const PUBLIC_PATHS = new Set(['/login', '/forgot-password']);
+const PUBLIC_PATHS = new Set(['/login']);
 
 export function useAuthSession() {
 	const { pathname } = useLocation();

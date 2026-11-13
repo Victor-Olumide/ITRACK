@@ -1,18 +1,40 @@
-# API integration structure
+# API integration
 
-Client integration code is organized under `src/lib`:
+The client uses RTK Query through `src/lib/api/app-api.ts` and the shared cookie-aware base query. Requests are relative to the configured `/api/v1` base URL and include HTTP-only session cookies. The browser never connects directly to PostgreSQL/Neon.
 
-- `api/` contains the API transport, RTK Query setup, and endpoint definitions.
-- `stores/` contains the Redux store, typed hooks, and state slices. Demo submissions and preferences that need to be shared across pages are held in Redux.
-- `data/mockData.ts` provides demo records that current pages still import.
-- `types/` contains shared domain and API request/response types.
+## Implemented v1 endpoints
 
-`mockData.ts` remains useful as read-only demo fixtures for workflows that are not server-backed. It is not a live database seed source and must never be treated as cloud-backed.
+Use the running server's controller, DTO, service, and response types as the contract. The endpoint list below reflects the server code currently present; older handoff proposals are not implemented contracts.
 
-Pages should call endpoints through RTK Query and use Redux for shared client state. Do not persist application state in `localStorage` or `sessionStorage`. Redux state is in memory and resets on reload; authentication is restored by asking the server for the current user using its HTTP-only session cookies.
+| Workflow | Implemented endpoints | Client module |
+|---|---|---|
+| Authentication/session | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` | `src/lib/api/auth/` |
+| IT-admin users/departments | `GET /auth/users`, `POST /auth/users`, `GET /auth/departments`, `PATCH /users/:id` | `src/lib/api/users/`, `src/lib/api/auth/` |
+| Tickets | `GET/POST /tickets`, `GET/PATCH/DELETE /tickets/:id`, `POST /tickets/suggest`, `POST /tickets/:id/status`, `POST /tickets/:id/assign`, `POST /tickets/:id/comments` | `src/lib/api/tickets/` |
+| Assets | `GET/POST /assets`, `GET/PATCH /assets/:id`, `POST /assets/:id/retire` | `src/lib/api/assets/` |
+| Dashboard | `GET /dashboard/summary` | `src/lib/api/dashboard/` |
 
-Ticket workflows use the server REST API through `src/lib/api/tickets/` and are not stored in the demo-data Redux slice. The `tickets` array in `mockData.ts` still supports demo-only analytics and screens that have not yet been migrated. Gate-pass requests/statuses, gate events, and profile/notification preferences remain session-only Redux interactions. The server has no asset-management endpoints yet, so ticket creation currently omits optional asset links in the client.
+All private access, role checks, organization scoping, ownership, validation, and workflow transitions are enforced by the server. Client-side route guards only control navigation.
 
-The server also provides IT-admin-only `GET /api/v1/auth/users`, `POST /api/v1/auth/users`, and `GET /api/v1/auth/departments`. The client people directory and invite form still use demo users and are not connected to those endpoints. User API fields differ from the mock UI model (for example `fullName`, `departmentId`, and uppercase role values); map them at the API boundary.
+Asset lists are server-filtered and paginated (`q`, `type`, `condition`, `assignedToId`, `warrantyExpiringWithinDays`, `includeRetired`, `page`, and `pageSize`). Retired assets are excluded by default; explicitly request `condition=RETIRED` or `includeRetired=true` to query them. Asset details include server-persisted assignment history.
 
-The Neon production branch now contains the Prisma schema, and the server's local `.env` is configured with its connection. The database currently has no user or demo rows, and the deployed server runtime has not yet been verified against Neon. Treat auth and ticket data as database-backed only when requests go through a server process configured with that connection; remaining demo fixtures and Redux interactions are not shared or durable.
+Asset assignment history uses the additive server `asset_assignments` table. The backend requires a reviewed, non-destructive schema sync before this code is deployed to an environment that does not yet have that table.
+
+The dashboard summary provides ticket counts by status, 30-day resolution/category metrics, server-calculated overdue tickets and technician workloads, asset counts by type/condition, and warranties expiring within 30 days. Do not calculate SLA progress or policy values in the client.
+
+## Unsupported workflows
+
+There are no confirmed v1 APIs for gate passes, gate movements/scans, stock, 3D models, locations, SLA policy editing, audit events, notifications, or profile preferences. Do not define RTK Query endpoints or show fixture-backed interfaces for these resources. Their routes and navigation entries stay commented out in `src/router.tsx`; mark future work with `TODO(v2)` and restore it only after the server contract and persistence behavior exist.
+
+Dashboard and report screens may use only the implemented dashboard, ticket, and asset endpoints. Do not infer SLA compliance, gate activity, or other server-owned values from client data.
+
+## Client behavior
+
+- Keep API request/response types next to their endpoint module and map server enums/fields at a typed boundary.
+- Treat RTK Query as the owner of server state. Keep only transient form/view state locally.
+- Represent loading, empty, validation, session-expired, and server-error states explicitly. Never fall back to demo data after a request fails.
+- Wait for mutation success before showing confirmation; invalidate/refetch affected tags.
+- Never put database URLs, passwords, signing keys, or other secrets in `VITE_*` variables, fixtures, tests, or agent instructions.
+- Configure exact credentialed CORS origins on the server/deployment environment, not in client code.
+
+For local development, copy `.env.example` to `.env.local`, configure `VITE_API_BASE_URL`, and set the Vite proxy target only when the server runs on a separate local origin.

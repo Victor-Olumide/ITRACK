@@ -1,19 +1,16 @@
 // People directory — manage internal users and their ITrack roles.
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Search, UserPlus, Users } from 'lucide-react'
-// ROLES is now defined inline to avoid mockData dependency
 const ROLES = [
   { label: 'IT Admin', value: 'IT Admin' },
   { label: 'Technician', value: 'Technician' },
   { label: 'Employee', value: 'Employee' },
-  { label: 'Security', value: 'Security' },
-]
-import { useAuth } from '../contexts/AuthContext'
+] as const
 import { useGetDepartmentsQuery } from '@/lib/api/auth/auth-api'
 import { useCreateUserMutation, useGetUsersQuery } from '@/lib/api/users/users-api'
 import type { UserRole as ApiUserRole } from '@/lib/api/auth/types'
-import type { UserRole as DisplayUserRole } from '../lib/types/types'
+import type { UserRole as DisplayUserRole } from '../types/types'
 
 const ROLE_TONES = {
   'IT Admin': 'bg-violet-50 text-violet-700',
@@ -23,7 +20,6 @@ const ROLE_TONES = {
 }
 
 export default function Team({ showCreateForm = false }) {
-  const { users: demoUsers } = useAuth()
   const { data: usersResponse, isLoading, error: usersError } = useGetUsersQuery()
   const { data: departmentsResponse } = useGetDepartmentsQuery()
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation()
@@ -35,12 +31,12 @@ export default function Team({ showCreateForm = false }) {
   const [inviteDepartment, setInviteDepartment] = useState('')
   const [inviteStaffId, setInviteStaffId] = useState('')
   const [invitePassword, setInvitePassword] = useState('')
-  const [inviteRole, setInviteRole] = useState(ROLES.find(({ value }) => value === 'Employee')?.value ?? ROLES[0].value)
+  const [inviteRole, setInviteRole] = useState<DisplayUserRole>('Employee')
   const [formError, setFormError] = useState('')
   const [createdMessage, setCreatedMessage] = useState('')
   const apiRoleLabels: Record<ApiUserRole, DisplayUserRole> = { EMPLOYEE: 'Employee', TECHNICIAN: 'Technician', IT_ADMIN: 'IT Admin', SECURITY: 'Security' }
   const apiRoleValues: Record<DisplayUserRole, ApiUserRole> = { Employee: 'EMPLOYEE', Technician: 'TECHNICIAN', 'IT Admin': 'IT_ADMIN', Security: 'SECURITY' }
-  const allUsers = usersResponse?.users.map((user) => ({
+  const allUsers = usersResponse?.users.filter((user) => user.role !== 'SECURITY').map((user) => ({
     id: user.id,
     name: user.fullName,
     email: user.email,
@@ -48,12 +44,12 @@ export default function Team({ showCreateForm = false }) {
     department: user.department.name,
     role: apiRoleLabels[user.role],
     isActive: user.isActive,
-  })) ?? demoUsers
-  const filteredUsers = useMemo(() => allUsers.filter((user) => {
+  })) ?? []
+  const filteredUsers = allUsers.filter((user) => {
     const matchesQuery = `${user.name} ${user.department} ${user.staffId}`
       .toLowerCase().includes(query.trim().toLowerCase())
     return matchesQuery && (role === 'All roles' || user.role === role)
-  }), [allUsers, query, role])
+  })
   const roleOptions = ['All roles', ...new Set(allUsers.map((user) => user.role))]
 
   return (
@@ -65,7 +61,7 @@ export default function Team({ showCreateForm = false }) {
             <h1 className="text-2xl font-bold tracking-tight text-[#111a3b]">People and roles</h1>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            {allUsers.length} people · Manage access for IT, employees, and security.
+            {allUsers.length} people · Manage access for IT staff and employees.
           </p>
         </div>
         <button
@@ -77,10 +73,6 @@ export default function Team({ showCreateForm = false }) {
           {showInvite ? 'Cancel' : 'Invite person'}
         </button>
       </div>
-
-      <p role="status" className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-        The people directory below is demo data. The server does not yet provide an endpoint to load or manage users.
-      </p>
 
       {showInvite && (
         <form

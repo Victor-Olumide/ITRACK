@@ -67,6 +67,7 @@ export const appBaseQuery: BaseQueryFn<
 
   const isRefreshable401 =
     result.error?.status === 401 &&
+    api.endpoint !== "getMe" &&
     !nonRefreshableEndpoints.has(api.endpoint);
 
   if (isRefreshable401) {

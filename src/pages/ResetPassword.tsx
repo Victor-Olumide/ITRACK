@@ -1,4 +1,4 @@
-// Public password-reset request screen.
+// TODO(v2): Re-enable this screen after the server adds password-recovery endpoints.
 
 import { Link } from 'react-router'
 import { ArrowLeft, Mail } from 'lucide-react'
