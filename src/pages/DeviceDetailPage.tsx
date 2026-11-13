@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, useParams } from 'react-router';
-import { deviceByTag, userById } from '../lib/data/mockData';
+import { useNavigate, useParams } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import {
   ChevronLeft, HelpCircle, RotateCcw, ZoomOut, ZoomIn,
   Rotate3D, Maximize, MapPin, Monitor, Laptop, Smartphone, Printer
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react'
-import type { Device, DeviceStatus } from '../lib/types/types'
+import type { DeviceStatus } from '../lib/types/types'
 import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from '@/lib/api/assets/assets-api'
 import type { AssetDetail } from '@/lib/api/assets/types'
 
@@ -69,34 +68,6 @@ function DeviceImage({ device }: { device: DeviceView | null }) {
   )
 }
 
-function fromAssetRecord(record: Device | undefined): DeviceView | null {
-  if (!record) return null
-  const owner = userById(record.assigneeId)
-  const category = ({
-    Laptops: 'Laptop',
-    Desktops: 'Desktop tower',
-    Monitors: 'Monitor',
-    Phones: 'Work phone',
-  } as Record<string, string>)[record.category] ?? record.category
-  const warranty = new Date(record.warrantyEnds)
-
-  return {
-    id: record.id,
-    name: `${record.make} ${record.model}`,
-    tag: record.tag,
-    category,
-    specs: '',
-    status: record.status,
-    assignedTo: owner?.name ?? 'Not assigned',
-    initials: owner?.name.split(' ').map((part) => part[0]).join('').slice(0, 2) ?? '—',
-    location: record.location,
-    warranty: Number.isNaN(warranty.getTime())
-      ? '—'
-      : warranty.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
-    image: '',
-  }
-}
-
 function fromApiAsset(record: AssetDetail | undefined): DeviceView | null {
   if (!record) return null
   const category = ({ LAPTOP: 'Laptop', DESKTOP: 'Desktop tower', PRINTER: 'Laser printer', NETWORK: 'Network device', OTHER: 'Device' } as Record<string, string>)[record.type]
@@ -120,7 +91,6 @@ function fromApiAsset(record: AssetDetail | undefined): DeviceView | null {
 
 export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?: string }) {
   const navigate  = useNavigate()
-  const location  = useLocation()
   const { tag } = useParams()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('Overview')
