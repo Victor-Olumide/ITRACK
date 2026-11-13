@@ -11,7 +11,7 @@ import {
 } from "../stores/auth-slice.ts";
 
 const API_PREFIX = '/api/v1';
-export const AUTH_REQUEST_TIMEOUT_MS = 30_000;
+export const API_REQUEST_TIMEOUT_MS = 30_000;
 
 function withApiPrefix(url: string): string {
   const normalized = url.replace(/\/+$/, '');
@@ -29,7 +29,7 @@ const getBaseUrl = (): string => {
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: getBaseUrl(),
   credentials: "include",
-  timeout: 10_000,
+  timeout: API_REQUEST_TIMEOUT_MS,
 });
 
 type RefreshResult = Awaited<ReturnType<typeof rawBaseQuery>>;
@@ -68,7 +68,7 @@ const refreshSession = async (
     {
       url: "/auth/refresh",
       method: "POST",
-      timeout: AUTH_REQUEST_TIMEOUT_MS,
+      timeout: API_REQUEST_TIMEOUT_MS,
     },
     api,
     extraOptions,

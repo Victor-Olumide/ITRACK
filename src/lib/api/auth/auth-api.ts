@@ -1,5 +1,5 @@
 import { appApi } from '@/lib/api/app-api';
-import { AUTH_REQUEST_TIMEOUT_MS } from '@/lib/api/base-query';
+import { API_REQUEST_TIMEOUT_MS } from '@/lib/api/base-query';
 import type {
   LoginPayload,
   LoginResponse,
@@ -16,7 +16,7 @@ export const authApi = appApi.injectEndpoints({
         url: '/auth/login',
         method: 'POST',
         body,
-        timeout: AUTH_REQUEST_TIMEOUT_MS,
+        timeout: API_REQUEST_TIMEOUT_MS,
       }),
       invalidatesTags: ['Auth'],
     }),
@@ -41,7 +41,7 @@ export const authApi = appApi.injectEndpoints({
       query: () => ({
         url: '/auth/me',
         method: 'GET',
-        timeout: AUTH_REQUEST_TIMEOUT_MS,
+        timeout: API_REQUEST_TIMEOUT_MS,
       }),
       providesTags: ['Auth'],
     }),
