@@ -3,7 +3,7 @@
 import { Link } from 'react-router'
 import { ArrowRight, Clock3, Ticket, TriangleAlert } from 'lucide-react'
 import Badge from '../components/Badge'
-import { userById } from '../lib/data/mockData'
+// userById removed; all user lookups now use API data only
 import { useAuth } from '../contexts/AuthContext'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'

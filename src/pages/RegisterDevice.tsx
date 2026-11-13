@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router";
 import { ChevronLeft, Search, Upload, Box } from "lucide-react";
-import { deviceModels as existingModels } from "../lib/data/mockData";
+// deviceModels mockData import removed; use API data only
 import { useCreateAssetMutation } from '@/lib/api/assets/assets-api';
 
 export default function RegisterDevicePage({ basePath = '/devices' }) {

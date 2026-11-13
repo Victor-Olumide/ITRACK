@@ -16,7 +16,7 @@ import {
   Activity,
   X,
 } from 'lucide-react'
-import { gatePasses, metrics } from '../lib/data/mockData'
+// gatePasses, metrics mockData import removed; use API data only
 import type { LucideIcon } from 'lucide-react'
 import type { UserRole } from '../lib/types/types'
 import { useAppSelector } from '../lib/stores/hooks'

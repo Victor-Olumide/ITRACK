@@ -9,14 +9,7 @@ import {
   Plus,
   Wrench,
 } from 'lucide-react'
-import {
-  deviceRegisterSegments,
-  metrics,
-  needsAction,
-  technicianWorkload,
-  ticketsByCategory,
-  todayQueue,
-} from '../lib/data/mockData'
+// All mockData imports removed; use API data only
 import { useAuth } from '../contexts/AuthContext'
 import type { ReactNode } from 'react'
 

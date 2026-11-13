@@ -14,16 +14,7 @@ import {
   Ticket,
 } from 'lucide-react'
 import { Link } from 'react-router'
-import {
-  deviceModels,
-  devices,
-  gatePasses,
-  gateLog,
-  metrics,
-  tickets,
-  ticketsByCategory,
-  userById,
-} from '../lib/data/mockData'
+// All mockData imports removed; use API data only
 import { useAuth } from '../contexts/AuthContext'
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'

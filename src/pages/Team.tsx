@@ -2,7 +2,13 @@
 
 import { useMemo, useState } from 'react'
 import { Search, UserPlus, Users } from 'lucide-react'
-import { ROLES } from '../lib/data/mockData'
+// ROLES is now defined inline to avoid mockData dependency
+const ROLES = [
+  { label: 'IT Admin', value: 'IT Admin' },
+  { label: 'Technician', value: 'Technician' },
+  { label: 'Employee', value: 'Employee' },
+  { label: 'Security', value: 'Security' },
+]
 import { useAuth } from '../contexts/AuthContext'
 import { useGetDepartmentsQuery } from '@/lib/api/auth/auth-api'
 import { useCreateUserMutation, useGetUsersQuery } from '@/lib/api/users/users-api'

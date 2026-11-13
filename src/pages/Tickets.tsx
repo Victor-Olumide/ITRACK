@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import {
   Search, Check, Circle, Send
 } from "lucide-react";
-import { userById } from "../lib/data/mockData";
+// userById removed; all user lookups now use API data only
 import { useAuth } from "../contexts/AuthContext";
 import type { PublicUser, Ticket, TicketTimeState } from "../lib/types/types";
 import {
@@ -26,9 +26,8 @@ interface TicketView extends Ticket {
 }
 
 // Resolve relational mockData into the shape this view consumes.
-function toView(t: Ticket, users: PublicUser[]): TicketView {
-  const requester = users.find((user) => user.id === t.requesterId) ?? userById(t.requesterId);
-  const assignee = users.find((user) => user.id === t.assigneeId) ?? userById(t.assigneeId);
+  const requester = users.find((user) => user.id === t.requesterId);
+  const assignee = users.find((user) => user.id === t.assigneeId);
   return {
     ...t,
     department: t.requesterDepartment ?? requester?.department ?? "—",

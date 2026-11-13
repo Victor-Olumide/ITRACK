@@ -14,11 +14,7 @@ import {
 } from 'lucide-react'
 import Badge from '../components/Badge'
 import AssetTag from '../components/AssetTag'
-import {
-  devices,
-  gatePasses,
-  userById,
-} from '../lib/data/mockData'
+// All mockData imports removed; use API data only
 import { useAppDispatch, useAppSelector } from '../lib/stores/hooks'
 import { addSubmittedPass } from '../lib/stores/demo-data-slice'
 import { useAuth } from '../contexts/AuthContext'

@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo } from 'react'
 import type { ReactNode } from 'react'
-import { users } from '../lib/data/mockData'
+// users mockData import removed; use API data only
 import { useAppDispatch, useAppSelector } from '@/lib/stores/hooks'
 import { appApi } from '@/lib/api/app-api'
 import { useLoginMutation, useLogoutMutation } from '@/lib/api/auth/auth-api'

@@ -3,7 +3,7 @@ import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import Logo from '../components/Logo'
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
-import { metrics } from '../lib/data/mockData'
+// metrics mockData import removed; use API data only
 
 // ── reusable input ─────────────────────────────────────────────
 interface FieldProps {
