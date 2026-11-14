@@ -18,10 +18,26 @@ import EmployeePortal from './pages/EmployeePortal'
 import TechnicianHome from './pages/TechnicianHome'
 import UnavailableWorkspace from './pages/UnavailableWorkspace'
 
+
 function LoginRoute() {
-  const { user } = useAuth()
-  return user ? <Navigate to={homePathForRole(user.role)} replace /> : <Auth />
+  const {
+    user,
+    isRestoringSession,
+  } = useAuth()
+
+  if (isRestoringSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Restoring your session...</p>
+      </div>
+    )
+  }
+
+  return user
+    ? <Navigate to={homePathForRole(user.role)} replace />
+    : <Auth />
 }
+
 
 const router = createBrowserRouter([
   {
