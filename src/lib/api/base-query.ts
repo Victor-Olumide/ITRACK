@@ -1,19 +1,20 @@
+
 import {
   fetchBaseQuery,
   type BaseQueryFn,
   type FetchArgs,
   type FetchBaseQueryError,
-} from "@reduxjs/toolkit/query";
+} from '@reduxjs/toolkit/query';
 
 import {
   clearAuth,
   markSessionExpired,
-} from "../stores/auth-slice.ts";
-import { resolveApiBaseUrl } from './api-config.ts'
+} from '../stores/auth-slice.ts';
+
+import { resolveApiBaseUrl } from './api-config.ts';
+
 export const API_REQUEST_TIMEOUT_MS = 180_000;
 
-// VITE_API_BASE_URL may be either a complete API URL or a same-origin proxy
-// path. VITE_API_URL is the backend origin. Both forms resolve to /api/v1.
 const getBaseUrl = (): string => {
   return resolveApiBaseUrl({
     VITE_API_BASE_URL: import.meta.env?.VITE_API_BASE_URL,
@@ -23,7 +24,7 @@ const getBaseUrl = (): string => {
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: getBaseUrl(),
-  credentials: "include",
+  credentials: 'include',
   timeout: API_REQUEST_TIMEOUT_MS,
 });
 
@@ -32,25 +33,33 @@ type RefreshResult = Awaited<ReturnType<typeof rawBaseQuery>>;
 let refreshPromise: Promise<RefreshResult> | null = null;
 
 const nonRefreshableEndpoints = new Set([
-  "login",
-  "refresh",
-  "logout",
+  'login',
+  'refresh',
+  'logout',
 ]);
 
-const clearSession = (api: Parameters<typeof rawBaseQuery>[1]) => {
+const clearSession = (
+  api: Parameters<typeof rawBaseQuery>[1],
+) => {
   api.dispatch(clearAuth());
-  api.dispatch({ type: "appApi/resetApiState" });
+  api.dispatch({ type: 'appApi/resetApiState' });
 };
 
 const isAuthenticated = (state: unknown): boolean => {
-  if (typeof state !== "object" || state === null || !("auth" in state)) {
+  if (
+    typeof state !== 'object' ||
+    state === null ||
+    !('auth' in state)
+  ) {
     return false;
   }
+
   const authState = state.auth;
+
   return (
-    typeof authState === "object" &&
+    typeof authState === 'object' &&
     authState !== null &&
-    "isAuthenticated" in authState &&
+    'isAuthenticated' in authState &&
     authState.isAuthenticated === true
   );
 };
@@ -61,14 +70,13 @@ const refreshSession = async (
 ): Promise<RefreshResult> => {
   return rawBaseQuery(
     {
-      url: "/auth/refresh",
-      method: "POST",
+      url: '/auth/refresh',
+      method: 'POST',
       timeout: API_REQUEST_TIMEOUT_MS,
     },
     api,
     extraOptions,
   );
-
 };
 
 export const appBaseQuery: BaseQueryFn<
@@ -91,27 +99,34 @@ export const appBaseQuery: BaseQueryFn<
     });
 
     const refreshResult = await refreshPromise;
-    if ("error" in refreshResult) {
+
+    if ('error' in refreshResult) {
       const refreshError = refreshResult.error;
+
       if (!refreshError) {
         return result;
       }
+
       if (refreshError.status !== 401) {
         return refreshResult;
       }
-      const sessionWasAuthenticated = isAuthenticated(api.getState());
+
+      const sessionWasAuthenticated = isAuthenticated(
+        api.getState(),
+      );
+
       if (sessionWasAuthenticated) {
         clearSession(api);
         api.dispatch(markSessionExpired());
       }
+
       return result;
     }
 
-    if (api.endpoint === "getMe") {
+    if (api.endpoint === 'getMe') {
       return { data: refreshResult.data };
     }
 
-    // Retry the original query
     const retriedResult = await rawBaseQuery(
       args,
       api,
@@ -119,7 +134,10 @@ export const appBaseQuery: BaseQueryFn<
     );
 
     if (retriedResult.error?.status === 401) {
-      const sessionWasAuthenticated = isAuthenticated(api.getState());
+      const sessionWasAuthenticated = isAuthenticated(
+        api.getState(),
+      );
+
       if (sessionWasAuthenticated) {
         clearSession(api);
         api.dispatch(markSessionExpired());
