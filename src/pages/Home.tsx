@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useGetDashboardSummaryQuery } from '../lib/api/dashboard/dashboard-api'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
+import { getApiErrorMessage } from '../lib/api/error-message'
 
 function StatCard({ label, value, note, Icon }: {
   label: string
@@ -59,7 +60,6 @@ export default function Home() {
       </header>
 
       {summaryQuery.isError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Dashboard data could not be loaded.</p>}
-      {ticketQuery.isError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Ticket queue could not be loaded.</p>}
 
       <section aria-label="Dashboard summary" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -71,7 +71,11 @@ export default function Home() {
         <StatCard
           label="Open tickets"
           value={summaryQuery.isLoading ? '…' : summary ? openCount : '—'}
-          note={unassignedQuery.data ? `${unassignedQuery.data.total} unassigned` : 'Open queue'}
+          note={unassignedQuery.isLoading
+            ? 'Loading queue…'
+            : unassignedQuery.data
+              ? `${unassignedQuery.data.total} unassigned`
+              : 'Open queue'}
           Icon={BarChart3}
         />
         <StatCard
@@ -124,8 +128,19 @@ export default function Home() {
             <h2 className="text-sm font-bold text-[#18203e]">Recent tickets</h2>
             <Link to="/tickets" className="text-[8px] font-semibold text-[#3155ff] hover:underline">See all</Link>
           </div>
-          {ticketQuery.isLoading ? (
+          {ticketQuery.isLoading || (ticketQuery.isFetching && !ticketQuery.data) ? (
             <p className="py-6 text-center text-sm text-slate-500">Loading tickets…</p>
+          ) : ticketQuery.isError ? (
+            <div role="alert" className="py-6 text-center">
+              <p className="text-sm text-red-700">{getApiErrorMessage(ticketQuery.error, 'Recent tickets could not be loaded.')}</p>
+              <button
+                type="button"
+                onClick={() => void ticketQuery.refetch()}
+                className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+              >
+                Retry
+              </button>
+            </div>
           ) : recentTickets.length ? (
             <div className="divide-y divide-[#edf0f7]">
               {recentTickets.map((ticket) => (

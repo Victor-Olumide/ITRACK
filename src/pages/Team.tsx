@@ -1,14 +1,28 @@
 // People directory — manage internal users and their ITrack roles.
 
 import { useState } from 'react'
-import { Search, UserPlus, Users } from 'lucide-react'
+import type { SubmitEvent } from 'react'
+import { Pencil, Search, UserPlus, Users } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useAuth } from '@/contexts/AuthContext'
 const ROLES = [
   { label: 'IT Admin', value: 'IT Admin' },
   { label: 'Technician', value: 'Technician' },
   { label: 'Employee', value: 'Employee' },
 ] as const
 import { useGetDepartmentsQuery } from '@/lib/api/auth/auth-api'
-import { useCreateUserMutation, useGetUsersQuery } from '@/lib/api/users/users-api'
+import {
+  useCreateUserMutation,
+  useGetUsersQuery,
+  useUpdateUserMutation,
+} from '@/lib/api/users/users-api'
 import { toCreateUserRequest } from '@/lib/api/users/create-user-form'
 import type { UserRole as ApiUserRole } from '@/lib/api/auth/types'
 import type { UserRole as DisplayUserRole } from '../types/types'
@@ -42,10 +56,22 @@ const ROLE_TONES = {
   Security: 'bg-amber-50 text-amber-700',
 }
 
+interface DirectoryUser {
+  id: string
+  name: string
+  email: string
+  staffId: string
+  department: string
+  role: DisplayUserRole
+  isActive: boolean
+}
+
 export default function Team({ showCreateForm = false }) {
+  const { user: currentUser } = useAuth()
   const { data: usersResponse, isLoading, error: usersError } = useGetUsersQuery()
   const { data: departmentsResponse } = useGetDepartmentsQuery()
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation()
+  const [updateUser, { isLoading: isUpdatingUser }] = useUpdateUserMutation()
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('All roles')
   const [showInvite, setShowInvite] = useState(showCreateForm)
@@ -57,6 +83,10 @@ export default function Team({ showCreateForm = false }) {
   const [inviteRole, setInviteRole] = useState<DisplayUserRole>('Employee')
   const [formError, setFormError] = useState('')
   const [createdMessage, setCreatedMessage] = useState('')
+  const [editingUser, setEditingUser] = useState<DirectoryUser | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editRole, setEditRole] = useState<DisplayUserRole>('Employee')
+  const [editError, setEditError] = useState('')
   const apiRoleLabels: Record<ApiUserRole, DisplayUserRole> = { EMPLOYEE: 'Employee', TECHNICIAN: 'Technician', IT_ADMIN: 'IT Admin', SECURITY: 'Security' }
   const apiRoleValues: Record<DisplayUserRole, ApiUserRole> = { Employee: 'EMPLOYEE', Technician: 'TECHNICIAN', 'IT Admin': 'IT_ADMIN', Security: 'SECURITY' }
   const allUsers = usersResponse?.users.filter((user) => user.role !== 'SECURITY').map((user) => ({
@@ -74,6 +104,33 @@ export default function Team({ showCreateForm = false }) {
     return matchesQuery && (role === 'All roles' || user.role === role)
   })
   const roleOptions = ['All roles', ...new Set(allUsers.map((user) => user.role))]
+
+  const openEditProfile = (person: DirectoryUser) => {
+    setEditingUser(person)
+    setEditName(person.name)
+    setEditRole(person.role)
+    setEditError('')
+  }
+
+  const handleUpdateProfile = async (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!editingUser) return
+
+    setEditError('')
+    try {
+      const body = {
+        fullName: editName.trim(),
+        ...(editingUser.id !== currentUser?.id && editRole !== editingUser.role
+          ? { role: apiRoleValues[editRole] }
+          : {}),
+      }
+      const response = await updateUser({ id: editingUser.id, body }).unwrap()
+      setCreatedMessage(`Profile updated for ${response.user.fullName}.`)
+      setEditingUser(null)
+    } catch (error) {
+      setEditError(getCreateUserErrorMessage(error))
+    }
+  }
 
   return (
     <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
@@ -221,7 +278,7 @@ export default function Team({ showCreateForm = false }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left">
+          <table className="w-full min-w-[760px] text-left">
             <thead className="bg-[#f8f9fc] text-[8px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-5 py-3">Person</th>
@@ -230,11 +287,12 @@ export default function Team({ showCreateForm = false }) {
                 <th className="px-5 py-3">Department</th>
                 <th className="px-5 py-3">Role</th>
                 <th className="px-5 py-3">Access</th>
+                <th className="px-5 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#edf0f7]">
-              {isLoading && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">Loading people…</td></tr>}
-              {usersError && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-red-700">Unable to load people from the server.</td></tr>}
+              {isLoading && <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-500">Loading people…</td></tr>}
+              {usersError && <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-red-700">Unable to load people from the server.</td></tr>}
               {!isLoading && !usersError && filteredUsers.map((user) => (
                 <tr key={user.id} className="transition hover:bg-[#f8faff]">
                   <td className="px-5 py-3.5">
@@ -259,11 +317,26 @@ export default function Team({ showCreateForm = false }) {
                   <td className="px-5 py-3.5 text-xs font-medium text-emerald-700">
                     {'isActive' in user && user.isActive === false ? 'Inactive' : 'Active'}
                   </td>
+                  <td className="px-5 py-3.5">
+                    {user.id === currentUser?.id ? (
+                      <span className="text-xs text-slate-400">You</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openEditProfile(user)}
+                        aria-label={`Update profile for ${user.name}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#3155ff] transition hover:bg-blue-50"
+                      >
+                        <Pencil size={14} aria-hidden="true" />
+                        Update profile
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {!isLoading && !usersError && filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">
+                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-slate-500">
                     No people match those filters.
                   </td>
                 </tr>
@@ -275,6 +348,62 @@ export default function Team({ showCreateForm = false }) {
           Showing {filteredUsers.length} of {allUsers.length} people
         </div>
       </section>
+      <Dialog
+        open={editingUser !== null}
+        onOpenChange={(open) => {
+          if (!open && !isUpdatingUser) setEditingUser(null)
+        }}
+      >
+        <DialogContent showCloseButton={!isUpdatingUser}>
+          <DialogHeader className="pr-8">
+            <DialogTitle>Update profile</DialogTitle>
+            <DialogDescription>Update this person’s name and ITrack role.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              Full name
+              <input
+                required
+                maxLength={120}
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-normal text-slate-900 outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100"
+              />
+            </label>
+            <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+              Role
+              <select
+                value={editRole}
+                onChange={(event) => {
+                  const nextRole = ROLES.find(({ value }) => value === event.target.value)?.value
+                  if (nextRole) setEditRole(nextRole)
+                }}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal text-slate-900 outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100"
+              >
+                {ROLES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            {editError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{editError}</p>}
+            <DialogFooter>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                disabled={isUpdatingUser}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isUpdatingUser || editName.trim().length === 0}
+                className="rounded-lg bg-[#3155ff] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60"
+              >
+                {isUpdatingUser ? 'Saving…' : 'Save profile'}
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

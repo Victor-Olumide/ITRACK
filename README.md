@@ -52,7 +52,7 @@ npm run preview
 | Sign in | `/login` |
 | Account management | `/people` |
 
-The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, sign-out, IT-admin user/department management, tickets, assets, and dashboard summary use implemented `/api/v1` endpoints. Password recovery is not available; contact an IT administrator for password resets.
+The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, sign-out, profile name/password changes, IT-admin user/department management, tickets, assets, and dashboard summary use implemented `/api/v1` endpoints. Password changes require the current password and end all active sessions; IT Admins can update other users' names and roles. Password recovery is not available, so contact an IT administrator if you cannot sign in.
 
 The client does not use mock records or session-only demo mutations for application data. Gate passes, gate movements, stock, model library, location management, SLA policy editing, audit events, notifications, profile preferences, and the legacy Security workspace are not part of v1. Their routes and navigation entries are disabled and marked for v2; do not expose those prototype workflows until persistent server APIs are available. Ticket overdue status is server-provided; the client does not invent SLA progress.
 

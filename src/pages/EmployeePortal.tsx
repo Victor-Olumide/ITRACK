@@ -25,6 +25,7 @@ import {
 } from '../lib/api/tickets/tickets-api'
 import { toCreateTicketRequest } from '../lib/api/tickets/ticket-form'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
+import { getApiErrorMessage } from '../lib/api/error-message'
 
 function PageTitle({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   return (
@@ -62,7 +63,9 @@ function Home({ viewer }: { viewer: PublicUser }) {
             Good morning, {viewer.name.split(' ')[0]}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {today} · {activeTickets.length} ticket{activeTickets.length === 1 ? '' : 's'} being worked on
+            {today} · {ticketsQuery.isLoading
+              ? 'Loading tickets…'
+              : `${activeTickets.length} ticket${activeTickets.length === 1 ? '' : 's'} being worked on`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -87,9 +90,21 @@ function Home({ viewer }: { viewer: PublicUser }) {
                 All my tickets
               </Link>
             </div>
-            {ticketsQuery.isError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Tickets could not be loaded.</p>}
             <div className="divide-y divide-[#edf0f7]">
-              {activeTickets.map((ticket) => (
+              {ticketsQuery.isLoading ? (
+                <p role="status" className="py-8 text-center text-sm text-slate-500">Loading tickets…</p>
+              ) : ticketsQuery.isError ? (
+                <div role="alert" className="p-4 text-center">
+                  <p className="text-sm text-red-700">{getApiErrorMessage(ticketsQuery.error, 'Tickets could not be loaded.')}</p>
+                  <button
+                    type="button"
+                    onClick={() => void ticketsQuery.refetch()}
+                    className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : activeTickets.map((ticket) => (
                   <Link key={ticket.id} to={`/employee/tickets?ticket=${ticket.id}`} className="flex items-center gap-3 py-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#edf1ff] text-[#3155ff]">
                       <Ticket size={17} />
@@ -104,7 +119,7 @@ function Home({ viewer }: { viewer: PublicUser }) {
                     <Badge label={ticket.status === 'In progress' ? 'Being fixed' : ticket.status} />
                   </Link>
               ))}
-              {activeTickets.length === 0 && (
+              {!ticketsQuery.isLoading && !ticketsQuery.isError && activeTickets.length === 0 && (
                 <p className="py-8 text-center text-sm text-slate-500">No open tickets right now.</p>
               )}
             </div>
@@ -407,7 +422,6 @@ function MyTickets() {
           <Plus size={14} /> Report a problem
         </Link>
       </PageTitle>
-      {ticketsQuery.isError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Tickets could not be loaded. Try refreshing.</p>}
       <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <section className="overflow-hidden rounded-2xl border border-[#e9edf6] bg-white">
           <div className="flex flex-wrap gap-1 border-b border-[#edf0f7] p-3">
@@ -430,7 +444,23 @@ function MyTickets() {
             />
           </div>
           <div className="divide-y divide-[#edf0f7]">
-            {filtered.map((ticket) => (
+            {ticketsQuery.isFetching && !ticketsQuery.isLoading && (
+              <p role="status" className="px-4 py-2 text-xs text-slate-500">Updating tickets…</p>
+            )}
+            {ticketsQuery.isLoading ? (
+              <p role="status" className="p-8 text-center text-sm text-slate-500">Loading tickets…</p>
+            ) : ticketsQuery.isError ? (
+              <div role="alert" className="p-8 text-center">
+                <p className="text-sm text-red-700">{getApiErrorMessage(ticketsQuery.error, 'Tickets could not be loaded.')}</p>
+                <button
+                  type="button"
+                  onClick={() => void ticketsQuery.refetch()}
+                  className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : filtered.map((ticket) => (
               <button
                 key={ticket.id}
                 type="button"
@@ -447,7 +477,7 @@ function MyTickets() {
                 <span className="mt-1.5 block text-xs text-slate-500">{ticket.id} · Updated today</span>
               </button>
             ))}
-            {filtered.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No tickets match this view.</p>}
+            {!ticketsQuery.isLoading && !ticketsQuery.isError && filtered.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No tickets match this view.</p>}
           </div>
         </section>
         {selected ? (

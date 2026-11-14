@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { ChangeEvent, FormEvent, ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import type { ChangeEvent, ReactNode, SubmitEvent } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import Logo from '../components/Logo'
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
 import { getLoginErrorMessage } from '../lib/api/auth/login-errors'
@@ -47,13 +47,15 @@ function Field({ label, id, type = 'text', placeholder, value, onChange, right }
 function LoginForm() {
   const { login, sessionExpired } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [show,     setShow]     = useState(false)
   const [error,    setError]    = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const notice = (location.state as { notice?: unknown } | null)?.notice
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
     setIsSubmitting(true)
@@ -79,6 +81,11 @@ function LoginForm() {
       {sessionExpired && (
         <p role="status" className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
           Your session expired. Please sign in again.
+        </p>
+      )}
+      {typeof notice === 'string' && (
+        <p role="status" className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-800">
+          {notice}
         </p>
       )}
 
@@ -135,7 +142,7 @@ export default function Auth() {
       {/* ── Left panel ── */}
       <div className="relative hidden flex-col items-center justify-center gap-5 overflow-hidden bg-linear-to-br from-[#0B184C] to-[#0A174B] px-10 text-left md:flex md:w-5/12 lg:w-2/5">
         {/* Logo */}
-        <div className="flex items-center text-left gap-3 relative z-10">
+        <div className="relative z-10 flex w-full max-w-xs items-center justify-start gap-3 text-left">
           <Logo size={42} />
           <span className="text-white text-2xl font-bold tracking-wide">ITrack</span>
         </div>

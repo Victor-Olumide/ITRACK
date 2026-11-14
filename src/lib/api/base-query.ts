@@ -9,21 +9,16 @@ import {
   clearAuth,
   markSessionExpired,
 } from "../stores/auth-slice.ts";
-
-const API_PREFIX = '/api/v1';
+import { resolveApiBaseUrl } from './api-config.ts'
 export const API_REQUEST_TIMEOUT_MS = 180_000;
-
-function withApiPrefix(url: string): string {
-  const normalized = url.replace(/\/+$/, '');
-  return normalized.endsWith(API_PREFIX) ? normalized : `${normalized}${API_PREFIX}`;
-}
 
 // VITE_API_BASE_URL may be either a complete API URL or a same-origin proxy
 // path. VITE_API_URL is the backend origin. Both forms resolve to /api/v1.
 const getBaseUrl = (): string => {
-  const configuredBaseUrl = import.meta.env?.VITE_API_BASE_URL;
-  const configuredApiOrigin = import.meta.env?.VITE_API_URL;
-  return withApiPrefix(configuredBaseUrl || configuredApiOrigin || 'https://itrack-server-lr0h.onrender.com');
+  return resolveApiBaseUrl({
+    VITE_API_BASE_URL: import.meta.env?.VITE_API_BASE_URL,
+    VITE_API_URL: import.meta.env?.VITE_API_URL,
+  });
 };
 
 const rawBaseQuery = fetchBaseQuery({

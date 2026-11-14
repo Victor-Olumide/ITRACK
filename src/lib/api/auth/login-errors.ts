@@ -7,16 +7,16 @@ export function getLoginErrorMessage(error: unknown): string {
 
   const apiError = error as FetchBaseQueryError
   if (apiError.status === 'FETCH_ERROR') {
-    return 'The sign-in service could not be reached. Check the API URL, server availability, and CORS configuration.'
+    return 'We couldn’t sign you in right now. Please try again shortly. If this continues, contact your IT support team.'
   }
   if (apiError.status === 'TIMEOUT_ERROR') {
-    return 'The sign-in request timed out. Please try again.'
+    return 'Sign-in is taking longer than usual. Please try again shortly.'
   }
   if (apiError.status === 'PARSING_ERROR') {
-    return 'The sign-in service returned an unreadable response. Please try again later.'
+    return 'We couldn’t complete sign-in right now. Please try again later.'
   }
   if (apiError.status === 'CUSTOM_ERROR') {
-    return 'Sign-in failed. Please try again.'
+    return 'We couldn’t sign you in right now. Please try again shortly.'
   }
 
   const data = apiError.data
@@ -43,7 +43,7 @@ export function getLoginErrorMessage(error: unknown): string {
   if (serverMessage) return serverMessage
   if (apiError.status === 403) return 'Your account is not allowed to sign in.'
   if (typeof apiError.status === 'number' && apiError.status >= 500) {
-    return 'The sign-in service is temporarily unavailable. Please try again later.'
+    return 'Sign-in isn’t available right now. Please try again shortly.'
   }
   return 'Sign-in failed. Check your details and try again.'
 }

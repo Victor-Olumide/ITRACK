@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
-  Search, Check, Circle, Send
+  Search, Check, Circle, LoaderCircle, RefreshCw, Send
 } from "lucide-react";
 // userById removed; all user lookups now use API data only
 import { useAuth } from "../contexts/AuthContext";
@@ -15,6 +15,7 @@ import {
 } from "../lib/api/tickets/tickets-api";
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
 import type { ApiTicketStatus } from "../lib/api/tickets/types";
+import { getApiErrorMessage } from "../lib/api/error-message";
 
 
 interface TicketView extends Ticket {
@@ -415,7 +416,9 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                 {technicianView ? "My tickets" : "Tickets"}
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                {availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length} open · {availableTickets.filter(ticket => !ticket.assigneeId).length} unassigned · sorted by time left
+                {listQuery.isLoading
+                  ? 'Loading tickets…'
+                  : `${availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length} open · ${availableTickets.filter(ticket => !ticket.assigneeId).length} unassigned · sorted by time left`}
               </p>
             </div>
 
@@ -476,7 +479,29 @@ export default function TicketPage({ technicianView = false }: { technicianView?
           </div>
 
           <div className="mt-6 space-y-6">
-            {groups.map(group => {
+            {listQuery.isFetching && !listQuery.isLoading && (
+              <p role="status" className="text-sm text-slate-500">Updating tickets…</p>
+            )}
+            {listQuery.isLoading ? (
+              <p role="status" className="flex items-center justify-center gap-2 rounded-2xl bg-white p-10 text-sm text-slate-500">
+                <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
+                Loading tickets…
+              </p>
+            ) : listQuery.isError ? (
+              <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+                <p className="text-sm text-red-800">
+                  {getApiErrorMessage(listQuery.error, 'Tickets could not be loaded. Check your connection and try again.')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void listQuery.refetch()}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-800 ring-1 ring-red-200 hover:bg-red-100"
+                >
+                  <RefreshCw size={15} aria-hidden="true" />
+                  Retry
+                </button>
+              </div>
+            ) : groups.map(group => {
               const groupTickets = filteredTickets.filter(t => t.group === group);
               if (!groupTickets.length) return null;
 
@@ -505,7 +530,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
               );
             })}
 
-            {!filteredTickets.length && (
+            {!listQuery.isLoading && !listQuery.isError && !filteredTickets.length && (
               <div className="rounded-2xl bg-white p-10 text-center text-sm text-slate-500">
                 No tickets match your filters.
               </div>
@@ -515,7 +540,22 @@ export default function TicketPage({ technicianView = false }: { technicianView?
 
         {/* RIGHT: TICKET DETAILS */}
         <div className="min-w-0">
-          {selectedTicket ? (
+          {detailQuery.isLoading ? (
+            <div role="status" className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500">
+              Loading ticket details…
+            </div>
+          ) : detailQuery.isError && !selectedTicket ? (
+            <div role="alert" className="flex h-full min-h-96 flex-col items-center justify-center rounded-3xl bg-white px-6 text-center text-red-700">
+              <p>{getApiErrorMessage(detailQuery.error, 'Ticket details could not be loaded.')}</p>
+              <button
+                type="button"
+                onClick={() => void detailQuery.refetch()}
+                className="mt-3 text-sm font-semibold text-[#3155ff] hover:underline"
+              >
+                Retry
+              </button>
+            </div>
+          ) : selectedTicket ? (
             <TicketDetails
               key={selectedTicket.id}
               ticket={selectedTicket}
@@ -529,14 +569,23 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                 }).unwrap();
               }}
               onAssign={async () => {
-                await assignTicket({ id: selectedTicket.serverId ?? selectedTicket.id }).unwrap();
+                await assignTicket({
+                  id: selectedTicket.serverId ?? selectedTicket.id,
+                  ...(user?.role === 'IT Admin' ? { assigneeId: user.id } : {}),
+                }).unwrap();
               }}
               isSaving={isSaving}
               error={errorMessage}
             />
           ) : (
             <div className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500">
-              Select a ticket to view its details.
+              {detailQuery.isLoading
+                ? 'Loading ticket details…'
+                : detailQuery.isError
+                  ? getApiErrorMessage(detailQuery.error, 'Ticket details could not be loaded.')
+                  : listQuery.isLoading
+                    ? 'Loading tickets…'
+                    : 'Select a ticket to view its details.'}
             </div>
           )}
         </div>

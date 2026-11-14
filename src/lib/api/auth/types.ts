@@ -48,6 +48,19 @@ export interface LogoutResponse {
   message: string;
 }
 
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  message: string;
+}
+
+export interface UpdateProfilePayload {
+  fullName: string;
+}
+
 export interface MeResponse {
   user: AuthenticatedUser;
 }

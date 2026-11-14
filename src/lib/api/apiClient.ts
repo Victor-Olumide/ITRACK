@@ -1,3 +1,5 @@
+import { resolveApiBaseUrl } from './api-config.ts'
+
 interface ApiErrorOptions {
   status?: number
   code?: string
@@ -9,7 +11,10 @@ interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | Record<string, unknown> | null
 }
 
-const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
+const API_BASE_URL = resolveApiBaseUrl({
+  VITE_API_BASE_URL: import.meta.env?.VITE_API_BASE_URL,
+  VITE_API_URL: import.meta.env?.VITE_API_URL,
+})
 
 export class ApiError extends Error {
   status?: number
