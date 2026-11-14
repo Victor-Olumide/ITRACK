@@ -3,7 +3,6 @@ import { AuthProvider, homePathForRole, useAuth } from './contexts/AuthContext'
 import RequireAuth from './components/RequireAuth'
 import RouteErrorFeedback from './components/RouteErrorFeedback'
 import Layout from './components/Layout'
-import SessionLoadingScreen from './components/SessionLoadingScreen'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
 import Tickets from './pages/Tickets'
@@ -19,15 +18,6 @@ import EmployeePortal from './pages/EmployeePortal'
 import TechnicianHome from './pages/TechnicianHome'
 import UnavailableWorkspace from './pages/UnavailableWorkspace'
 
-function AuthRouteGate() {
-  const { isLoading } = useAuth()
-
-  if (isLoading) {
-    return <SessionLoadingScreen />
-  }
-  return <Outlet />
-}
-
 function LoginRoute() {
   const { user } = useAuth()
   return user ? <Navigate to={homePathForRole(user.role)} replace /> : <Auth />
@@ -36,7 +26,7 @@ function LoginRoute() {
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <AuthProvider><AuthRouteGate /></AuthProvider>,
+    element: <AuthProvider><Outlet /></AuthProvider>,
     errorElement: <AuthProvider><RouteErrorFeedback /></AuthProvider>,
     children: [
       { path: 'login', element: <LoginRoute /> },

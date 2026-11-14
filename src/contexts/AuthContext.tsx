@@ -11,14 +11,12 @@ import {
 } from '@/lib/api/auth/auth-api'
 import { useGetUsersQuery } from '@/lib/api/users/users-api'
 import { clearAuth, setAuthenticatedUser } from '@/lib/stores/auth-slice'
-import { useAuthSession } from '@/hooks/auth/use-auth-session'
 import type { AuthenticatedUser } from '@/lib/api/auth/types'
 import type { PublicUser, UserRole } from '../types/types'
 
 interface AuthContextValue {
   user: PublicUser | null
   users: PublicUser[]
-  isLoading: boolean
   sessionExpired: boolean
   login: (email: string, password: string) => Promise<PublicUser>
   updateProfile: (fullName: string) => Promise<PublicUser>
@@ -55,7 +53,6 @@ export function homePathForRole(role: UserRole) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isLoading } = useAuthSession()
   const dispatch = useAppDispatch()
   const { user: authenticatedUser, sessionExpired } = useAppSelector((state) => state.auth)
   const [loginRequest] = useLoginMutation()
@@ -94,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     user,
     users: (usersQuery.data?.users ?? []).map(toPublicUser),
-    isLoading,
     sessionExpired,
     usersError: usersQuery.isError,
     login,
