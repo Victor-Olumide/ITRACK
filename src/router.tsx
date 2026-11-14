@@ -3,6 +3,7 @@ import { AuthProvider, homePathForRole, useAuth } from './contexts/AuthContext'
 import RequireAuth from './components/RequireAuth'
 import RouteErrorFeedback from './components/RouteErrorFeedback'
 import Layout from './components/Layout'
+import SessionLoadingScreen from './components/SessionLoadingScreen'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
 import Tickets from './pages/Tickets'
@@ -22,14 +23,7 @@ function AuthRouteGate() {
   const { isLoading } = useAuth()
 
   if (isLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f3f5fc]" aria-busy="true">
-        <span
-          className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#3155ff]"
-          aria-hidden="true"
-        />
-      </main>
-    )
+    return <SessionLoadingScreen />
   }
   return <Outlet />
 }
