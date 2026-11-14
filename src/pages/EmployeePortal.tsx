@@ -23,7 +23,9 @@ import {
   useGetTicketQuery,
   useGetTicketsQuery,
 } from '../lib/api/tickets/tickets-api'
+import { toCreateTicketRequest } from '../lib/api/tickets/ticket-form'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
+import { getApiErrorMessage } from '../lib/api/error-message'
 
 function PageTitle({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   return (
@@ -61,7 +63,9 @@ function Home({ viewer }: { viewer: PublicUser }) {
             Good morning, {viewer.name.split(' ')[0]}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {today} · {activeTickets.length} ticket{activeTickets.length === 1 ? '' : 's'} being worked on
+            {today} · {ticketsQuery.isLoading
+              ? 'Loading tickets…'
+              : `${activeTickets.length} ticket${activeTickets.length === 1 ? '' : 's'} being worked on`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -86,9 +90,21 @@ function Home({ viewer }: { viewer: PublicUser }) {
                 All my tickets
               </Link>
             </div>
-            {ticketsQuery.isError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">Tickets could not be loaded.</p>}
             <div className="divide-y divide-[#edf0f7]">
-              {activeTickets.map((ticket) => (
+              {ticketsQuery.isLoading ? (
+                <p role="status" className="py-8 text-center text-sm text-slate-500">Loading tickets…</p>
+              ) : ticketsQuery.isError ? (
+                <div role="alert" className="p-4 text-center">
+                  <p className="text-sm text-red-700">{getApiErrorMessage(ticketsQuery.error, 'Tickets could not be loaded.')}</p>
+                  <button
+                    type="button"
+                    onClick={() => void ticketsQuery.refetch()}
+                    className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : activeTickets.map((ticket) => (
                   <Link key={ticket.id} to={`/employee/tickets?ticket=${ticket.id}`} className="flex items-center gap-3 py-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#edf1ff] text-[#3155ff]">
                       <Ticket size={17} />
@@ -103,7 +119,7 @@ function Home({ viewer }: { viewer: PublicUser }) {
                     <Badge label={ticket.status === 'In progress' ? 'Being fixed' : ticket.status} />
                   </Link>
               ))}
-              {activeTickets.length === 0 && (
+              {!ticketsQuery.isLoading && !ticketsQuery.isError && activeTickets.length === 0 && (
                 <p className="py-8 text-center text-sm text-slate-500">No open tickets right now.</p>
               )}
             </div>
@@ -162,14 +178,17 @@ function Home({ viewer }: { viewer: PublicUser }) {
 
 function ReportProblem({ viewer }: { viewer: PublicUser }) {
   const [createTicket, createTicketState] = useCreateTicketMutation()
+  const assetsQuery = useGetAssetsQuery({ page: 1, pageSize: 100 })
   const [submitError, setSubmitError] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [submittedTicketId, setSubmittedTicketId] = useState('')
+  const [selectedAssetId, setSelectedAssetId] = useState('')
   const [category, setCategory] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [impact, setImpact] = useState('Just me')
   const [workState, setWorkState] = useState('It’s annoying')
+  const availableAssets = assetsQuery.data?.data ?? []
 
   if (submitted) {
     return (
@@ -200,18 +219,22 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
             event.preventDefault()
             setSubmitError('')
             try {
-              const response = await createTicket({
-                title: title.trim(),
-                description: description.trim(),
-                category: category === 'Request something' ? 'Request' : category,
-                type: category === 'Request something' ? 'REQUEST' : 'PROBLEM',
-                impact: impact === 'Everyone' || impact === 'My team'
-                  ? 'HIGH'
-                  : impact === 'One person' ? 'MEDIUM' : 'LOW',
-                urgency: workState === 'I’m stopped'
-                  ? 'HIGH'
-                  : workState === 'Work is harder' ? 'MEDIUM' : 'LOW',
-              }).unwrap()
+              const request = toCreateTicketRequest(
+                {
+                  title: title.trim(),
+                  description: description.trim(),
+                  category: category === 'Request something' ? 'Request' : category,
+                  type: category === 'Request something' ? 'REQUEST' : 'PROBLEM',
+                  impact: impact === 'Everyone' || impact === 'My team'
+                    ? 'HIGH'
+                    : impact === 'One person' ? 'MEDIUM' : 'LOW',
+                  urgency: workState === 'I’m stopped'
+                    ? 'HIGH'
+                    : workState === 'Work is harder' ? 'MEDIUM' : 'LOW',
+                },
+                selectedAssetId,
+              )
+              const response = await createTicket(request).unwrap()
               setSubmittedTicketId(response.number)
               setSubmitted(true)
             } catch (error) {
@@ -226,9 +249,35 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
         >
           <section className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
             <h2 className="text-sm font-bold text-[#202844]">1 · Which device?</h2>
-            <p className="mt-2 text-xs text-slate-500">
-              Asset links will be available when the asset register API is connected.
-            </p>
+            <label className="mt-3 block text-xs font-semibold text-slate-600">
+              Link an asset (optional)
+              <select
+                value={selectedAssetId}
+                onChange={(event) => setSelectedAssetId(event.target.value)}
+                disabled={assetsQuery.isLoading || availableAssets.length === 0}
+                className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-blue-400 disabled:bg-slate-50"
+              >
+                <option value="">No specific device</option>
+                {availableAssets.map((asset) => (
+                  <option key={asset.id} value={asset.id}>
+                    {asset.assetTag} · {asset.make} {asset.model}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {assetsQuery.isLoading && (
+              <p role="status" className="mt-2 text-xs text-slate-500">Loading available assets…</p>
+            )}
+            {assetsQuery.isError && (
+              <p role="alert" className="mt-2 text-xs text-red-700">
+                Available assets could not be loaded. You can still submit without linking an asset.
+              </p>
+            )}
+            {!assetsQuery.isLoading && !assetsQuery.isError && availableAssets.length === 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                No assets are currently assigned or available to link. You can still submit your report.
+              </p>
+            )}
           </section>
 
           <section className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
@@ -373,7 +422,6 @@ function MyTickets() {
           <Plus size={14} /> Report a problem
         </Link>
       </PageTitle>
-      {ticketsQuery.isError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Tickets could not be loaded. Try refreshing.</p>}
       <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <section className="overflow-hidden rounded-2xl border border-[#e9edf6] bg-white">
           <div className="flex flex-wrap gap-1 border-b border-[#edf0f7] p-3">
@@ -396,7 +444,23 @@ function MyTickets() {
             />
           </div>
           <div className="divide-y divide-[#edf0f7]">
-            {filtered.map((ticket) => (
+            {ticketsQuery.isFetching && !ticketsQuery.isLoading && (
+              <p role="status" className="px-4 py-2 text-xs text-slate-500">Updating tickets…</p>
+            )}
+            {ticketsQuery.isLoading ? (
+              <p role="status" className="p-8 text-center text-sm text-slate-500">Loading tickets…</p>
+            ) : ticketsQuery.isError ? (
+              <div role="alert" className="p-8 text-center">
+                <p className="text-sm text-red-700">{getApiErrorMessage(ticketsQuery.error, 'Tickets could not be loaded.')}</p>
+                <button
+                  type="button"
+                  onClick={() => void ticketsQuery.refetch()}
+                  className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : filtered.map((ticket) => (
               <button
                 key={ticket.id}
                 type="button"
@@ -413,7 +477,7 @@ function MyTickets() {
                 <span className="mt-1.5 block text-xs text-slate-500">{ticket.id} · Updated today</span>
               </button>
             ))}
-            {filtered.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No tickets match this view.</p>}
+            {!ticketsQuery.isLoading && !ticketsQuery.isError && filtered.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No tickets match this view.</p>}
           </div>
         </section>
         {selected ? (
@@ -424,7 +488,7 @@ function MyTickets() {
               <Badge label={selected.category} />
             </div>
             <h2 className="mt-3 text-xl font-bold text-[#18203e]">{selected.title}</h2>
-            <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-semibold">
+            <div className="mt-5 flex flex-wrap gap-2 text-[8px] font-semibold">
               {['Sent', 'Picked up', 'Being fixed', 'Fixed'].map((step, index) => (
                 <span
                   key={step}
@@ -436,11 +500,11 @@ function MyTickets() {
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-[#f8f9fc] p-3">
-                <p className="text-[10px] text-slate-500">Working on it</p>
+                <p className="text-[8px] text-slate-500">Working on it</p>
                 <p className="mt-1 text-sm font-semibold text-[#202844]">{selected.assigneeName ?? 'Waiting for someone'}</p>
               </div>
               <div className="rounded-xl bg-[#f8f9fc] p-3">
-                <p className="text-[10px] text-slate-500">Resolution target</p>
+                <p className="text-[8px] text-slate-500">Resolution target</p>
                 <p className="mt-1 text-sm font-semibold text-[#202844]">{selected.resolution}</p>
               </div>
             </div>
@@ -451,7 +515,7 @@ function MyTickets() {
             <div className="mt-2 space-y-2">
               {selected.history.map((entry, index) => (
                 <div key={`${entry.time}-${index}`} className="rounded-xl bg-[#f8f9fc] p-3">
-                  <p className="text-[10px] font-semibold text-slate-500">{entry.time}</p>
+                  <p className="text-[8px] font-semibold text-slate-500">{entry.time}</p>
                   <p className="mt-1 text-xs text-[#202844]">{entry.text}</p>
                 </div>
               ))}

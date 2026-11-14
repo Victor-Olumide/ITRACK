@@ -16,6 +16,7 @@ export interface CreateUserRequest {
 }
 
 export interface UpdateUserRequest {
+  fullName?: string;
   role?: UserRole;
   isActive?: boolean;
 }

@@ -4,7 +4,11 @@ import type { ReactNode } from 'react'
 // users mockData import removed; use API data only
 import { useAppDispatch, useAppSelector } from '@/lib/stores/hooks'
 import { appApi } from '@/lib/api/app-api'
-import { useLoginMutation, useLogoutMutation } from '@/lib/api/auth/auth-api'
+import {
+  useLoginMutation,
+  useLogoutMutation,
+  useUpdateProfileMutation,
+} from '@/lib/api/auth/auth-api'
 import { useGetUsersQuery } from '@/lib/api/users/users-api'
 import { clearAuth, setAuthenticatedUser } from '@/lib/stores/auth-slice'
 import { useAuthSession } from '@/hooks/auth/use-auth-session'
@@ -17,7 +21,9 @@ interface AuthContextValue {
   isLoading: boolean
   sessionExpired: boolean
   login: (email: string, password: string) => Promise<PublicUser>
+  updateProfile: (fullName: string) => Promise<PublicUser>
   logout: () => Promise<void>
+  endSessionLocally: () => void
   usersError: boolean
 }
 
@@ -54,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user: authenticatedUser, sessionExpired } = useAppSelector((state) => state.auth)
   const [loginRequest] = useLoginMutation()
   const [logoutRequest] = useLogoutMutation()
+  const [updateProfileRequest] = useUpdateProfileMutation()
   const usersQuery = useGetUsersQuery(undefined, {
     skip: authenticatedUser?.role !== 'IT_ADMIN',
   })
@@ -68,10 +75,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return toPublicUser(response.user)
   }
 
-  const logout = async () => {
-    await logoutRequest().unwrap()
+  const updateProfile = async (fullName: string) => {
+    const response = await updateProfileRequest({ fullName }).unwrap()
+    dispatch(setAuthenticatedUser(response.user))
+    return toPublicUser(response.user)
+  }
+
+  const endSessionLocally = () => {
     dispatch(clearAuth())
     dispatch(appApi.util.resetApiState())
+  }
+
+  const logout = async () => {
+    await logoutRequest().unwrap()
+    endSessionLocally()
   }
 
   const value: AuthContextValue = {
@@ -81,7 +98,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionExpired,
     usersError: usersQuery.isError,
     login,
+    updateProfile,
     logout,
+    endSessionLocally,
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

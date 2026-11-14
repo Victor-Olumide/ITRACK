@@ -6,6 +6,7 @@ import Badge from '../components/Badge'
 import { useAuth } from '../contexts/AuthContext'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
+import { getApiErrorMessage } from '../lib/api/error-message'
 
 export default function TechnicianHome() {
   const { user } = useAuth()
@@ -41,9 +42,9 @@ export default function TechnicianHome() {
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          { label: 'Assigned to me', value: activeTickets.length, icon: Ticket, tone: 'bg-[#edf1ff] text-[#3155ff]' },
-          { label: 'Breached', value: activeTickets.filter((ticket) => ticket.timeState === 'Breached').length, icon: TriangleAlert, tone: 'bg-red-50 text-red-600' },
-          { label: 'Resolved', value: myTickets.filter((ticket) => ticket.status === 'Resolved').length, icon: Ticket, tone: 'bg-emerald-50 text-emerald-700' },
+          { label: 'Assigned to me', value: ticketsQuery.isLoading ? '…' : ticketsQuery.isError ? '—' : activeTickets.length, icon: Ticket, tone: 'bg-[#edf1ff] text-[#3155ff]' },
+          { label: 'Breached', value: ticketsQuery.isLoading ? '…' : ticketsQuery.isError ? '—' : activeTickets.filter((ticket) => ticket.timeState === 'Breached').length, icon: TriangleAlert, tone: 'bg-red-50 text-red-600' },
+          { label: 'Resolved', value: ticketsQuery.isLoading ? '…' : ticketsQuery.isError ? '—' : myTickets.filter((ticket) => ticket.status === 'Resolved').length, icon: Ticket, tone: 'bg-emerald-50 text-emerald-700' },
         ].map(({ label, value, icon: Icon, tone }) => (
           <article key={label} className="rounded-2xl border border-[#e9edf6] bg-white p-4">
             <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone}`}>
@@ -65,9 +66,21 @@ export default function TechnicianHome() {
             See all
           </Link>
         </div>
-        {ticketsQuery.isError && <p role="alert" className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">Your queue could not be loaded.</p>}
         <div className="divide-y divide-[#edf0f7]">
-          {activeTickets.map((ticket) => (
+          {ticketsQuery.isLoading ? (
+            <p role="status" className="px-5 py-12 text-center text-sm text-slate-500">Loading your queue…</p>
+          ) : ticketsQuery.isError ? (
+            <div role="alert" className="px-5 py-8 text-center">
+              <p className="text-sm text-red-700">{getApiErrorMessage(ticketsQuery.error, 'Your queue could not be loaded.')}</p>
+              <button
+                type="button"
+                onClick={() => void ticketsQuery.refetch()}
+                className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+              >
+                Retry
+              </button>
+            </div>
+          ) : activeTickets.map((ticket) => (
               <Link
                 key={ticket.id}
                 to={`/technician/tickets?ticket=${ticket.id}`}
@@ -88,8 +101,8 @@ export default function TechnicianHome() {
                 <ArrowRight size={15} className="text-slate-400" />
               </Link>
           ))}
-          {activeTickets.length === 0 && (
-            <p className="px-5 py-12 text-center text-sm text-slate-500">{ticketsQuery.isLoading ? 'Loading your queue…' : 'Your queue is clear.'}</p>
+          {!ticketsQuery.isLoading && !ticketsQuery.isError && activeTickets.length === 0 && (
+            <p className="px-5 py-12 text-center text-sm text-slate-500">Your queue is clear.</p>
           )}
         </div>
       </section>

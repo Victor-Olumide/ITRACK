@@ -1,10 +1,13 @@
 import { appApi } from '@/lib/api/app-api';
-import { AUTH_REQUEST_TIMEOUT_MS } from '@/lib/api/base-query';
+import { API_REQUEST_TIMEOUT_MS } from '@/lib/api/base-query';
 import type {
   LoginPayload,
   LoginResponse,
   RefreshResponse,
   LogoutResponse,
+  ChangePasswordPayload,
+  ChangePasswordResponse,
+  UpdateProfilePayload,
   MeResponse,
   DepartmentListResponse,
 } from './types';
@@ -16,7 +19,7 @@ export const authApi = appApi.injectEndpoints({
         url: '/auth/login',
         method: 'POST',
         body,
-        timeout: AUTH_REQUEST_TIMEOUT_MS,
+        timeout: API_REQUEST_TIMEOUT_MS,
       }),
       invalidatesTags: ['Auth'],
     }),
@@ -37,11 +40,31 @@ export const authApi = appApi.injectEndpoints({
       invalidatesTags: ['Auth'],
     }),
 
+    changePassword: builder.mutation<
+      ChangePasswordResponse,
+      ChangePasswordPayload
+    >({
+      query: (body) => ({
+        url: '/auth/change-password',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    updateProfile: builder.mutation<MeResponse, UpdateProfilePayload>({
+      query: (body) => ({
+        url: '/auth/me',
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['Auth', 'User'],
+    }),
+
     getMe: builder.query<MeResponse, void>({
       query: () => ({
         url: '/auth/me',
         method: 'GET',
-        timeout: AUTH_REQUEST_TIMEOUT_MS,
+        timeout: API_REQUEST_TIMEOUT_MS,
       }),
       providesTags: ['Auth'],
     }),
@@ -56,6 +79,8 @@ export const {
   useLoginMutation,
   useRefreshMutation,
   useLogoutMutation,
+  useChangePasswordMutation,
+  useUpdateProfileMutation,
   useGetMeQuery,
   useGetDepartmentsQuery,
 } = authApi;

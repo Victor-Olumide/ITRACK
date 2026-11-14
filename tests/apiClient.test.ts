@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { API_BASE_URL, ApiError, apiRequest } from '../src/lib/api/apiClient.ts'
+import { resolveApiBaseUrl } from '../src/lib/api/api-config.ts'
 import { appBaseQuery } from '../src/lib/api/base-query.ts'
 import { getLoginErrorMessage } from '../src/lib/api/auth/login-errors.ts'
+import { toCreateUserRequest } from '../src/lib/api/users/create-user-form.ts'
+import { toCreateTicketRequest } from '../src/lib/api/tickets/ticket-form.ts'
+import { getApiErrorMessage } from '../src/lib/api/error-message.ts'
 
 test('sends same-origin JSON requests with session credentials', async () => {
   const originalFetch = globalThis.fetch
@@ -93,6 +97,88 @@ test('wraps network failures in ApiError', async () => {
 
 test('requires API paths to start with a slash', async () => {
   await assert.rejects(apiRequest('tickets'), TypeError)
+})
+
+test('resolves every supported API base URL configuration to the versioned API path', () => {
+  assert.equal(
+    resolveApiBaseUrl({ VITE_API_BASE_URL: 'https://api.example.com/api/v1/' }),
+    'https://api.example.com/api/v1',
+  )
+  assert.equal(
+    resolveApiBaseUrl({ VITE_API_BASE_URL: 'https://api.example.com/api' }),
+    'https://api.example.com/api/v1',
+  )
+  assert.equal(
+    resolveApiBaseUrl({ VITE_API_BASE_URL: 'https://api.example.com' }),
+    'https://api.example.com/api/v1',
+  )
+  assert.equal(
+    resolveApiBaseUrl({ VITE_API_BASE_URL: '/api' }),
+    '/api/v1',
+  )
+  assert.equal(
+    resolveApiBaseUrl({ VITE_API_URL: 'https://api.example.com' }),
+    'https://api.example.com/api/v1',
+  )
+  assert.equal(
+    resolveApiBaseUrl({}),
+    'https://itrack-server-lr0h.onrender.com/api/v1',
+  )
+})
+
+test('omits a blank optional staff ID from the create-user request', () => {
+  assert.deepEqual(
+    toCreateUserRequest({
+      fullName: '  Test Employee  ',
+      email: '  employee@example.com ',
+      departmentId: 'c0a80101-0000-4000-8000-000000000002',
+      staffId: '   ',
+      password: 'valid-password',
+      role: 'EMPLOYEE',
+    }),
+    {
+      fullName: 'Test Employee',
+      email: 'employee@example.com',
+      departmentId: 'c0a80101-0000-4000-8000-000000000002',
+      password: 'valid-password',
+      role: 'EMPLOYEE',
+    },
+  )
+})
+
+test('links a selected asset to a report ticket and omits the link when none is selected', () => {
+  const fields = {
+    title: 'Printer is offline',
+    description: 'The printer in my office is not responding.',
+    category: 'Printer',
+    type: 'PROBLEM' as const,
+    impact: 'LOW' as const,
+    urgency: 'LOW' as const,
+  }
+
+  const assetId = 'c0a80101-0000-4000-8000-000000000003'
+  assert.deepEqual(toCreateTicketRequest(fields, assetId), {
+    ...fields,
+    assetId,
+  })
+  assert.deepEqual(toCreateTicketRequest(fields, ''), fields)
+})
+
+test('displays sanitized server errors and uses a fallback for transport errors', () => {
+  assert.equal(
+    getApiErrorMessage(
+      { status: 503, data: { error: { code: 'DATABASE_UNAVAILABLE', message: 'The service is temporarily unavailable. Please try again shortly.' } } },
+      'Tickets could not be loaded.',
+    ),
+    'The service is temporarily unavailable. Please try again shortly.',
+  )
+  assert.equal(
+    getApiErrorMessage(
+      { status: 'FETCH_ERROR', error: 'Failed to fetch' },
+      'Tickets could not be loaded.',
+    ),
+    'Tickets could not be loaded.',
+  )
 })
 
 test('restores an expired access session using the refresh cookie', async () => {
@@ -221,5 +307,30 @@ test('adds incorrect-password guidance to 401 login errors without losing server
   assert.equal(
     getLoginErrorMessage({ status: 401, data: { error: { message: 'Account disabled.' } } }),
     'Incorrect password. Account disabled.',
+  )
+})
+
+test('keeps network sign-in errors understandable without exposing developer settings', () => {
+  const message = getLoginErrorMessage({
+    status: 'FETCH_ERROR',
+    error: 'Failed to fetch',
+  })
+
+  assert.equal(
+    message,
+    'We couldn’t sign you in right now. Please try again shortly. If this continues, contact your IT support team.',
+  )
+  assert.doesNotMatch(message, /API URL|CORS|server availability/i)
+  assert.equal(
+    getLoginErrorMessage({
+      status: 503,
+      data: {
+        error: {
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The service is temporarily unavailable. Please try again shortly.',
+        },
+      },
+    }),
+    'The service is temporarily unavailable. Please try again shortly.',
   )
 })

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useGetDashboardSummaryQuery } from '../lib/api/dashboard/dashboard-api'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
+import { getApiErrorMessage } from '../lib/api/error-message'
 
 function StatCard({ label, value, note, Icon }: {
   label: string
@@ -15,9 +16,9 @@ function StatCard({ label, value, note, Icon }: {
   return (
     <article className="relative flex min-h-28 flex-col justify-center gap-1 rounded-[18px] border border-[#e9edf6] bg-white px-4 py-4 shadow-[0_1px_3px_rgba(16,28,82,0.04)] sm:px-5">
       <Icon aria-hidden="true" size={16} className="absolute right-4 top-4 text-slate-400" />
-      <p className="pr-6 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-      <p className="text-[30px] font-bold leading-tight tracking-tight text-[#111a3b]">{value}</p>
-      <p className="text-[11px] font-medium text-slate-500">{note}</p>
+      <p className="pr-6 text-[8px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="text-[28px] font-bold leading-tight tracking-tight text-[#111a3b]">{value}</p>
+      <p className="text-[9px] font-medium text-slate-500">{note}</p>
     </article>
   )
 }
@@ -43,7 +44,7 @@ export default function Home() {
     <main className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-[#111a3b] sm:text-2xl">
+          <h1 className="text-[20px] font-bold tracking-tight text-[#111a3b] sm:text-2xl">
             Good morning, {user?.name.split(' ')[0] ?? 'there'}
           </h1>
           <p className="mt-1 text-xs text-slate-500 sm:text-sm">{today} · Live v1 workspace data</p>
@@ -59,7 +60,6 @@ export default function Home() {
       </header>
 
       {summaryQuery.isError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Dashboard data could not be loaded.</p>}
-      {ticketQuery.isError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Ticket queue could not be loaded.</p>}
 
       <section aria-label="Dashboard summary" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -71,7 +71,11 @@ export default function Home() {
         <StatCard
           label="Open tickets"
           value={summaryQuery.isLoading ? '…' : summary ? openCount : '—'}
-          note={unassignedQuery.data ? `${unassignedQuery.data.total} unassigned` : 'Open queue'}
+          note={unassignedQuery.isLoading
+            ? 'Loading queue…'
+            : unassignedQuery.data
+              ? `${unassignedQuery.data.total} unassigned`
+              : 'Open queue'}
           Icon={BarChart3}
         />
         <StatCard
@@ -122,16 +126,27 @@ export default function Home() {
         <section className="rounded-[18px] border border-[#e9edf6] bg-white p-4 shadow-[0_1px_3px_rgba(16,28,82,0.04)] sm:p-5 xl:col-span-2">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-bold text-[#18203e]">Recent tickets</h2>
-            <Link to="/tickets" className="text-[10px] font-semibold text-[#3155ff] hover:underline">See all</Link>
+            <Link to="/tickets" className="text-[8px] font-semibold text-[#3155ff] hover:underline">See all</Link>
           </div>
-          {ticketQuery.isLoading ? (
+          {ticketQuery.isLoading || (ticketQuery.isFetching && !ticketQuery.data) ? (
             <p className="py-6 text-center text-sm text-slate-500">Loading tickets…</p>
+          ) : ticketQuery.isError ? (
+            <div role="alert" className="py-6 text-center">
+              <p className="text-sm text-red-700">{getApiErrorMessage(ticketQuery.error, 'Recent tickets could not be loaded.')}</p>
+              <button
+                type="button"
+                onClick={() => void ticketQuery.refetch()}
+                className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+              >
+                Retry
+              </button>
+            </div>
           ) : recentTickets.length ? (
             <div className="divide-y divide-[#edf0f7]">
               {recentTickets.map((ticket) => (
                 <Link key={ticket.id} to={`/tickets?ticket=${encodeURIComponent(ticket.id)}`} className="block py-3 first:pt-1">
                   <span className="block truncate text-xs font-semibold text-[#202844]">{ticket.title}</span>
-                  <span className="mt-1 block truncate text-[10px] text-slate-500">
+                  <span className="mt-1 block truncate text-[8px] text-slate-500">
                     {ticket.id} · {ticket.status} · {ticket.requesterName ?? 'Requester'}
                   </span>
                 </Link>
@@ -153,7 +168,7 @@ export default function Home() {
               {summary.overdueTickets.map((ticket) => (
                 <Link key={ticket.id} to={`/tickets?ticket=${encodeURIComponent(ticket.id)}`} className="block py-3 first:pt-1">
                   <span className="block truncate text-xs font-semibold text-[#202844]">{ticket.number} · {ticket.title}</span>
-                  <span className="mt-1 block text-[10px] text-slate-500">
+                  <span className="mt-1 block text-[8px] text-slate-500">
                     {ticket.priority} · {ticket.assignee?.fullName ?? 'Unassigned'}
                   </span>
                 </Link>
@@ -189,7 +204,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <Laptop size={16} className="text-[#3155ff]" />
           <h2 className="text-sm font-bold text-[#18203e]">Asset summary</h2>
-          <Link to="/devices" className="ml-auto text-[10px] font-semibold text-[#3155ff] hover:underline">View assets</Link>
+          <Link to="/devices" className="ml-auto text-[8px] font-semibold text-[#3155ff] hover:underline">View assets</Link>
         </div>
         {summaryQuery.isLoading ? (
           <p className="py-6 text-center text-sm text-slate-500">Loading asset summary…</p>

@@ -8,15 +8,21 @@ Use the running server's controller, DTO, service, and response types as the con
 
 | Workflow | Implemented endpoints | Client module |
 |---|---|---|
-| Authentication/session | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` | `src/lib/api/auth/` |
-| IT-admin users/departments | `GET /auth/users`, `POST /auth/users`, `GET /auth/departments`, `PATCH /users/:id` | `src/lib/api/users/`, `src/lib/api/auth/` |
+| Authentication/session | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/change-password`, `GET/PATCH /auth/me` | `src/lib/api/auth/` |
+| IT-admin users/departments | `GET /auth/users`, `POST /auth/users`, `GET /auth/departments`, `PATCH /users/:id` (name, role, or access) | `src/lib/api/users/`, `src/lib/api/auth/` |
 | Tickets | `GET/POST /tickets`, `GET/PATCH/DELETE /tickets/:id`, `POST /tickets/suggest`, `POST /tickets/:id/status`, `POST /tickets/:id/assign`, `POST /tickets/:id/comments` | `src/lib/api/tickets/` |
 | Assets | `GET/POST /assets`, `GET/PATCH /assets/:id`, `POST /assets/:id/retire` | `src/lib/api/assets/` |
 | Dashboard | `GET /dashboard/summary` | `src/lib/api/dashboard/` |
 
 All private access, role checks, organization scoping, ownership, validation, and workflow transitions are enforced by the server. Client-side route guards only control navigation.
 
+`POST /auth/change-password` requires the authenticated user's `currentPassword` and a `newPassword` (8–128 characters). A successful change revokes all refresh sessions, invalidates the associated access tokens immediately, and clears the current session cookies; the user must sign in again on each device.
+
+`PATCH /auth/me` updates the authenticated user's display name. IT Admins can update a user's display name and role through `PATCH /users/:id`; the server enforces organization scope and prevents changing the acting administrator's own role.
+
 Asset lists are server-filtered and paginated (`q`, `type`, `condition`, `assignedToId`, `warrantyExpiringWithinDays`, `includeRetired`, `page`, and `pageSize`). Retired assets are excluded by default; explicitly request `condition=RETIRED` or `includeRetired=true` to query them. Asset details include server-persisted assignment history.
+
+For Employees, `GET /assets` returns only assets assigned to the authenticated user. Ticket creation accepts an optional `assetId`; the server verifies organization and employee-assignment access before linking it.
 
 Asset assignment history uses the additive server `asset_assignments` table. The backend requires a reviewed, non-destructive schema sync before this code is deployed to an environment that does not yet have that table.
 
@@ -35,7 +41,9 @@ Dashboard and report screens may use only the implemented dashboard, ticket, and
 - Restore the current user once when a protected route is loaded in a new browser page; do not recheck on ordinary client-side navigation. If the access session has expired, try the refresh cookie once before requiring sign-in.
 - Represent loading, empty, validation, session-expired, and server-error states explicitly. Never fall back to demo data after a request fails.
 - Wait for mutation success before showing confirmation; invalidate/refetch affected tags.
+- The shared RTK Query request timeout is three minutes. This client-side limit cannot override a server, hosting, or proxy timeout.
+- Ticket attachments are not supported yet: the report-page file picker is not submitted, and the server has no upload endpoint or attachment storage.
 - Never put database URLs, passwords, signing keys, or other secrets in `VITE_*` variables, fixtures, tests, or agent instructions.
 - Configure exact credentialed CORS origins on the server/deployment environment, not in client code.
 
-For local development, copy `.env.example` to `.env.local`, configure `VITE_API_BASE_URL`, and set the Vite proxy target only when the server runs on a separate local origin.
+For local development, copy `.env.example` to `.env.local`. Set `VITE_API_URL` to a backend origin, or use `VITE_API_BASE_URL=/api` (or `/api/v1`) when the frontend host proxies `/api` to the server. `VITE_API_BASE_URL` takes precedence; otherwise the client uses `VITE_API_URL`, then the deployed server default.

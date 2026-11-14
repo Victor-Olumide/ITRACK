@@ -12,14 +12,14 @@ function SummaryCard({ label, value, note, Icon }: {
     <article className="rounded-2xl border border-[#e9edf6] bg-white p-4 shadow-[0_1px_3px_rgba(16,28,82,0.04)] sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+          <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
           <p className="mt-2 text-3xl font-extrabold leading-none tracking-tight text-[#111a3b]">{value}</p>
         </div>
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
           <Icon size={17} />
         </span>
       </div>
-      <p className="mt-3 text-[11px] text-slate-500">{note}</p>
+      <p className="mt-3 text-[9px] text-slate-500">{note}</p>
     </article>
   )
 }
