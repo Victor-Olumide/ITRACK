@@ -15,6 +15,7 @@ import { useGetTicketsQuery } from "../lib/api/tickets/tickets-api";
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
 import { getApiErrorMessage } from "../lib/api/error-message";
 import { getHomepageGreeting } from "../utils/get-homepage-greeting";
+import { useEffect, useState } from "react";
 
 function StatCard({
   label,
@@ -62,10 +63,28 @@ export default function Home() {
   });
 
   // Get the authenticated user's first name.
-  const firstName = user?.fullName?.trim().split(/\s+/)[0] || "there";
+  const firstName = user?.name?.trim().split(/\s+/)[0] || "there";
 
-  // Calculate the greeting using the browser's local time.
-  const greeting = getHomepageGreeting();
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+useEffect(() => {
+  const updateTime = () => {
+    setCurrentTime(new Date());
+  };
+
+  // Update every minute.
+  const interval = window.setInterval(updateTime, 60_000);
+
+  // Refresh immediately when the user returns to the tab.
+  document.addEventListener("visibilitychange", updateTime);
+
+  return () => {
+    window.clearInterval(interval);
+    document.removeEventListener("visibilitychange", updateTime);
+  };
+}, []);
+
+const greeting = getHomepageGreeting(currentTime);
 
   // Insert the user's first name before the greeting's punctuation.
   const personalizedGreeting = greeting.title.replace(
