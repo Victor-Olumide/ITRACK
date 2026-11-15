@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
-  Search, Check, Circle, LoaderCircle, RefreshCw, Send
+  Search,
+  Check,
+  Circle,
+  LoaderCircle,
+  RefreshCw,
+  Send,
 } from "lucide-react";
 // userById removed; all user lookups now use API data only
 import { useAuth } from "../contexts/AuthContext";
-import type {Ticket, TicketTimeState } from "../types/types";
+import type { Ticket, TicketTimeState } from "../types/types";
 import {
   useAddTicketCommentMutation,
   useAssignTicketMutation,
@@ -19,12 +24,12 @@ import { getApiErrorMessage } from "../lib/api/error-message";
 
 
 interface TicketView extends Ticket {
-  department: string
-  requester: string
-  assignee: string
-  device: string
-  deviceName: string
-  group: TicketTimeState
+  department: string;
+  requester: string;
+  assignee: string;
+  device: string;
+  deviceName: string;
+  group: TicketTimeState;
 }
 
 function toView(t: Ticket): TicketView {
@@ -50,14 +55,14 @@ const priorityStyles = {
   High: "text-orange-600",
   Medium: "text-blue-600",
   Low: "text-slate-500",
-  Legacy: "text-slate-500"
+  Legacy: "text-slate-500",
 };
 
 const priorityMap = {
-  Critical: 'P1_CRITICAL',
-  High: 'P2_HIGH',
-  Medium: 'P3_MEDIUM',
-  Low: 'P4_LOW',
+  Critical: "P1_CRITICAL",
+  High: "P2_HIGH",
+  Medium: "P3_MEDIUM",
+  Low: "P4_LOW",
 } as const;
 
 const slaStyles = {
@@ -66,48 +71,61 @@ const slaStyles = {
 };
 
 const initials = (name = "") =>
-  name.split(" ").map(part => part[0]).join("").slice(0, 2).toUpperCase();
+  name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
-function Filter({ label, value, onChange, options }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: string[]
+function Filter({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
 }) {
   return (
     <select
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium outline-none hover:border-blue-400 focus:ring-2 focus:ring-blue-100"
     >
       <option value="">{label}</option>
-      {options.map(option => (
-        <option key={option} value={option}>{option}</option>
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
       ))}
     </select>
   );
 }
 
-function TicketRow({ ticket, selected, onClick }: {
-  ticket: TicketView
-  selected: boolean
-  onClick: () => void
+function TicketRow({
+  ticket,
+  selected,
+  onClick,
+}: {
+  ticket: TicketView;
+  selected: boolean;
+  onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
       className={`w-full rounded-[20px] border p-4 text-left transition-all
-        ${selected
-          ? "border-blue-500 bg-white shadow-[0_0_0_3px_rgba(59,130,246,0.13)]"
-          : "border-transparent bg-white hover:border-blue-200 hover:shadow-sm"
+        ${
+          selected
+            ? "border-blue-500 bg-white shadow-[0_0_0_3px_rgba(59,130,246,0.13)]"
+            : "border-transparent bg-white hover:border-blue-200 hover:shadow-sm"
         }`}
     >
       <div className="flex items-center gap-3">
-        <Circle
-          size={25}
-          className="shrink-0 text-blue-600"
-          strokeWidth={2}
-        />
+        <Circle size={25} className="shrink-0 text-blue-600" strokeWidth={2} />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -130,10 +148,14 @@ function TicketRow({ ticket, selected, onClick }: {
         </div>
 
         <div className="hidden shrink-0 items-center gap-2 sm:flex">
-          <span className={`text-xs font-bold ${priorityStyles[ticket.priority]}`}>
+          <span
+            className={`text-xs font-bold ${priorityStyles[ticket.priority]}`}
+          >
             ▪ {ticket.priority}
           </span>
-          <span className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${slaStyles[ticket.group]}`}>
+          <span
+            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${slaStyles[ticket.group]}`}
+          >
             {ticket.sla}
           </span>
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
@@ -143,10 +165,14 @@ function TicketRow({ ticket, selected, onClick }: {
       </div>
 
       <div className="mt-2 flex items-center gap-2 pl-9 sm:hidden">
-        <span className={`text-xs font-semibold ${priorityStyles[ticket.priority]}`}>
+        <span
+          className={`text-xs font-semibold ${priorityStyles[ticket.priority]}`}
+        >
           {ticket.priority}
         </span>
-        <span className={`rounded-full px-2 py-1 text-xs ${slaStyles[ticket.group]}`}>
+        <span
+          className={`rounded-full px-2 py-1 text-xs ${slaStyles[ticket.group]}`}
+        >
           {ticket.sla}
         </span>
       </div>
@@ -154,14 +180,25 @@ function TicketRow({ ticket, selected, onClick }: {
   );
 }
 
-function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, error }: {
-  ticket: TicketView | undefined
-  onComment: (body: string, isInternal: boolean) => Promise<void>
-  onStatusChange: (status: ApiTicketStatus, resolutionNote?: string) => Promise<void>
-  onAssign: () => Promise<void>
-  isSaving: boolean
-  error?: string
+function TicketDetails({
+  ticket,
+  onComment,
+  onStatusChange,
+  onAssign,
+  isSaving,
+  error,
+}: {
+  ticket: TicketView | undefined;
+  onComment: (body: string, isInternal: boolean) => Promise<void>;
+  onStatusChange: (
+    status: ApiTicketStatus,
+    resolutionNote?: string,
+  ) => Promise<void>;
+  onAssign: () => Promise<void>;
+  isSaving: boolean;
+  error?: string;
 }) {
+  const { user } = useAuth();
   const [mode, setMode] = useState("reply");
   const [message, setMessage] = useState("");
   const [resolutionNote, setResolutionNote] = useState("");
@@ -199,28 +236,32 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
         </div>
         <div className="rounded-2xl border border-slate-200 p-4">
           <p className="text-sm text-slate-500">Resolution</p>
-          <p className="mt-1 font-bold text-slate-800">
-            {ticket.resolution}
-          </p>
+          <p className="mt-1 font-bold text-slate-800">{ticket.resolution}</p>
         </div>
       </div>
 
       <div className="mt-3 rounded-2xl border border-slate-200 p-4">
         <p className="text-sm text-slate-500">Server overdue flag</p>
-        <p className={`mt-1 font-semibold ${ticket.group === 'Breached' ? 'text-red-700' : 'text-slate-700'}`}>
+        <p
+          className={`mt-1 font-semibold ${ticket.group === "Breached" ? "text-red-700" : "text-slate-700"}`}
+        >
           {ticket.sla}
         </p>
       </div>
 
       <div className="my-5 grid grid-cols-[105px_1fr] gap-y-3 text-sm sm:grid-cols-[125px_1fr]">
         <span className="text-slate-500">Requested by</span>
-        <strong>{ticket.requester} · {ticket.department}</strong>
+        <strong>
+          {ticket.requester} · {ticket.department}
+        </strong>
 
         <span className="text-slate-500">Assignee</span>
         <strong>{ticket.assignee}</strong>
 
         <span className="text-slate-500">Type</span>
-        <strong>{ticket.type} · {ticket.category}</strong>
+        <strong>
+          {ticket.type} · {ticket.category}
+        </strong>
 
         <span className="text-slate-500">Device</span>
         <div className="flex flex-wrap items-center gap-2">
@@ -246,7 +287,9 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
               <span className="shrink-0 font-mono text-slate-500">
                 {item.time}
               </span>
-              <p className={`leading-5 ${item.note ? "rounded-md bg-amber-100 px-2 py-1 text-amber-900" : "text-slate-700"}`}>
+              <p
+                className={`leading-5 ${item.note ? "rounded-md bg-amber-100 px-2 py-1 text-amber-900" : "text-slate-700"}`}
+              >
                 {item.text}
               </p>
             </div>
@@ -271,13 +314,19 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
         </div>
 
         <p className="mb-2 mt-2 text-xs text-slate-500">
-          {mode === "note" ? "Only IT staff will see this note" : "Your response will be visible to the requester"}
+          {mode === "note"
+            ? "Only IT staff will see this note"
+            : "Your response will be visible to the requester"}
         </p>
 
         <textarea
           value={message}
-          onChange={e => setMessage(e.target.value)}
-          placeholder={mode === "note" ? "Write a note for the IT team" : "Write a reply to the requester"}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={
+            mode === "note"
+              ? "Write a note for the IT team"
+              : "Write a reply to the requester"
+          }
           rows={3}
           className="w-full resize-y rounded-2xl border border-slate-200 bg-amber-50/60 p-4 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
@@ -292,11 +341,22 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
         </button>
       </div>
 
-      {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-6">
         {ticket.status === "Assigned" && (
-          <button onClick={() => void onStatusChange("IN_PROGRESS")} disabled={isSaving} className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50">
+          <button
+            onClick={() => void onStatusChange("IN_PROGRESS")}
+            disabled={isSaving}
+            className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+          >
             Start work
           </button>
         )}
@@ -317,7 +377,9 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
               className="min-w-48 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
             <button
-              onClick={() => void onStatusChange("RESOLVED", resolutionNote.trim())}
+              onClick={() =>
+                void onStatusChange("RESOLVED", resolutionNote.trim())
+              }
               disabled={!resolutionNote.trim() || isSaving}
               className="flex items-center gap-2 rounded-full bg-lime-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-lime-500 disabled:opacity-50"
             >
@@ -325,24 +387,29 @@ function TicketDetails({ ticket, onComment, onStatusChange, onAssign, isSaving, 
             </button>
           </>
         )}
-        {ticket.status === "Unassigned" && (
-          <button onClick={() => void onAssign()} disabled={isSaving} className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-            Take ticket
-          </button>
-        )}
+        {ticket.status === "Unassigned" &&
+          !ticket.assigneeId &&
+          user?.role === "Technician" && (
+            <button onClick={() => void onAssign()}>Take ticket</button>
+          )}
         {ticket.status === "Resolved" && (
-          <p className="text-sm text-slate-500">Waiting for the requester to confirm or reopen.</p>
+          <p className="text-sm text-slate-500">
+            Waiting for the requester to confirm or reopen.
+          </p>
         )}
       </div>
     </section>
   );
 }
 
+
 export default function TicketPage({ technicianView = false }: { technicianView?: boolean }) {
-  const { user } = useAuth()
-  const assigneeId = user?.id ?? ''
+  const { user } = useAuth();
+  const assigneeId = user?.id ?? '';
+
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTicketId = searchParams.get("ticket");
+
   const [selectedId, setSelectedId] = useState(requestedTicketId ?? '');
   const [tab, setTab] = useState(technicianView ? "Mine" : "All open");
   const [department, setDepartment] = useState(technicianView ? "" : "Finance");
@@ -350,6 +417,8 @@ export default function TicketPage({ technicianView = false }: { technicianView?
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
+
+  const isUnassignedTab = technicianView && tab === "Unassigned";
 
   const listArgs = {
     page: 1,
@@ -359,55 +428,113 @@ export default function TicketPage({ technicianView = false }: { technicianView?
       ? { priority: priorityMap[priority as keyof typeof priorityMap] }
       : {}),
     ...(category ? { category } : {}),
-    ...(technicianView && tab === 'Mine' ? { assigneeId } : {}),
-    ...(technicianView && tab === 'Unassigned' ? { assigneeId: 'unassigned' as const } : {}),
+    ...(technicianView && tab === "Mine" ? { assigneeId } : {}),
+    ...(isUnassignedTab ? { assigneeId: "unassigned" as const } : {}),
   };
+
   const listQuery = useGetTicketsQuery(listArgs);
+
   const availableTickets = useMemo(
     () => (listQuery.data?.data ?? []).map(toClientTicket).map(toView),
     [listQuery.data],
   );
-  const activeTicketId = requestedTicketId ?? (selectedId || availableTickets[0]?.id || '');
-  const detailQuery = useGetTicketQuery(activeTicketId, { skip: !activeTicketId });
+
+  // Do not automatically select a ticket on the Unassigned tab.
+  const activeTicketId =
+    requestedTicketId ??
+    selectedId ??
+    (isUnassignedTab ? '' : availableTickets[0]?.id ?? '');
+
+  const detailQuery = useGetTicketQuery(activeTicketId, {
+    skip: !activeTicketId,
+  });
+
   const [addComment, commentState] = useAddTicketCommentMutation();
   const [changeStatus, statusState] = useChangeTicketStatusMutation();
   const [assignTicket, assignState] = useAssignTicketMutation();
-  const isSaving = commentState.isLoading || statusState.isLoading || assignState.isLoading;
-  const mutationError = commentState.error ?? statusState.error ?? assignState.error;
-  const errorMessage = mutationError && 'data' in mutationError && mutationError.data && typeof mutationError.data === 'object' && 'error' in mutationError.data
-    ? String((mutationError.data as { error?: { message?: string } }).error?.message ?? 'Ticket action failed.')
-    : mutationError ? 'Ticket action failed. Try again.' : undefined;
+
+  const isSaving =
+    commentState.isLoading ||
+    statusState.isLoading ||
+    assignState.isLoading;
+
+  const mutationError =
+    commentState.error ?? statusState.error ?? assignState.error;
+
+  const errorMessage =
+    mutationError &&
+    'data' in mutationError &&
+    mutationError.data &&
+    typeof mutationError.data === 'object' &&
+    'error' in mutationError.data
+      ? String(
+          (mutationError.data as { error?: { message?: string } }).error
+            ?.message ?? 'Ticket action failed.',
+        )
+      : mutationError
+        ? 'Ticket action failed. Try again.'
+        : undefined;
 
   const scopedTickets = availableTickets;
+
   const selectedTicket = detailQuery.data
     ? toView(toClientTicket(detailQuery.data))
-    : scopedTickets.find(t => t.id === activeTicketId);
+    : scopedTickets.find((ticket) => ticket.id === activeTicketId);
 
   const filteredTickets = useMemo(() => {
-    return scopedTickets.filter(ticket => {
+    return scopedTickets.filter((ticket) => {
       const isOpen = ticket.status !== "Resolved";
 
       return (
-        (tab === "All open" ? isOpen :
-          tab === "Mine" ? ticket.assigneeId === assigneeId && isOpen :
-          tab === "Unassigned" ? !ticket.assigneeId && isOpen :
-          true) &&
+        (tab === "All open"
+          ? isOpen
+          : tab === "Mine"
+            ? ticket.assigneeId === assigneeId && isOpen
+            : tab === "Unassigned"
+              ? !ticket.assigneeId && isOpen
+              : true) &&
         (!department || ticket.department === department) &&
         (!priority || ticket.priority === priority) &&
         (!category || ticket.category === category) &&
         (!type || ticket.type === type) &&
-        (`${ticket.title} ${ticket.id} ${ticket.requester}`
-          .toLowerCase().includes(search.toLowerCase()))
+        `${ticket.title} ${ticket.id} ${ticket.requester}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
       );
     });
-  }, [scopedTickets, tab, department, priority, category, type, search, assigneeId]);
+  }, [
+    scopedTickets,
+    tab,
+    department,
+    priority,
+    category,
+    type,
+    search,
+    assigneeId,
+  ]);
 
   const groups = ["Breached", "Not overdue"];
 
-  return (
-    <main className="min-h-screen bg-[#0c194d] ">
-      <div className="mx-auto grid max-w-[1800px] grid-cols-1 items-stretch gap-3 lg:grid-cols-[1.3fr_1fr]">
+  const handleTabChange = (nextTab: string) => {
+    setTab(nextTab);
+    setSelectedId('');
+    setSearchParams({});
+  };
 
+  const handleTicketSelect = (ticketId: string) => {
+    setSelectedId(ticketId);
+    setSearchParams({ ticket: ticketId });
+  };
+
+  return (
+    <main className="min-h-screen bg-[#0c194d]">
+      <div
+        className={`mx-auto grid max-w-[1800px] grid-cols-1 items-stretch gap-3 ${
+          isUnassignedTab && !activeTicketId
+            ? ''
+            : 'lg:grid-cols-[1.3fr_1fr]'
+        }`}
+      >
         {/* LEFT: TICKET LIST */}
         <section className="min-w-0 rounded-[26px] bg-[#f4f6fc] p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -415,9 +542,10 @@ export default function TicketPage({ technicianView = false }: { technicianView?
               <h1 className="text-3xl font-bold tracking-tight text-[#101a3b]">
                 {technicianView ? "My tickets" : "Tickets"}
               </h1>
+
               <p className="mt-1 text-sm text-slate-500">
                 {listQuery.isLoading
-                  ? 'Loading tickets…'
+                  ? "Loading tickets…"
                   : `${availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length} open · ${availableTickets.filter(ticket => !ticket.assigneeId).length} unassigned · sorted by time left`}
               </p>
             </div>
@@ -426,7 +554,8 @@ export default function TicketPage({ technicianView = false }: { technicianView?
               {["Unassigned", "Mine", "All open"].map((item) => (
                 <button
                   key={item}
-                  onClick={() => setTab(item)}
+                  type="button"
+                  onClick={() => handleTabChange(item)}
                   className={`rounded-full px-3 py-2 text-xs font-semibold sm:px-4 ${
                     tab === item
                       ? "bg-[#101a50] text-white"
@@ -434,12 +563,13 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                   }`}
                 >
                   {item}
+
                   <span className="ml-1 opacity-70">
                     {item === "Unassigned"
                       ? availableTickets.filter(ticket => !ticket.assigneeId).length
                       : item === "Mine"
-                      ? availableTickets.filter(ticket => ticket.assigneeId === assigneeId).length
-                      : availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length}
+                        ? availableTickets.filter(ticket => ticket.assigneeId === assigneeId).length
+                        : availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length}
                   </span>
                 </button>
               ))}
@@ -449,29 +579,45 @@ export default function TicketPage({ technicianView = false }: { technicianView?
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <select
               value={department}
-              onChange={e => setDepartment(e.target.value)}
+              onChange={(event) => setDepartment(event.target.value)}
               className="rounded-full border border-blue-100 bg-blue-100 px-4 py-2.5 text-sm text-blue-800 outline-none"
             >
               <option value="">All departments</option>
-              {["Finance", "Admin", "Operations", "HR", "Security", "IT"].map(d => (
-                <option key={d}>{d}</option>
+              {["Finance", "Admin", "Operations", "HR", "Security", "IT"].map((item) => (
+                <option key={item}>{item}</option>
               ))}
             </select>
 
-            <Filter label="Priority" value={priority} onChange={setPriority}
-              options={["Critical", "High", "Medium", "Low"]} />
+            <Filter
+              label="Priority"
+              value={priority}
+              onChange={setPriority}
+              options={["Critical", "High", "Medium", "Low"]}
+            />
 
-            <Filter label="Category" value={category} onChange={setCategory}
-              options={["PC hardware", "Network", "Accessories", "Printer", "Accounts"]} />
+            <Filter
+              label="Category"
+              value={category}
+              onChange={setCategory}
+              options={["PC hardware", "Network", "Accessories", "Printer", "Accounts"]}
+            />
 
-            <Filter label="Type" value={type} onChange={setType}
-              options={["Problem", "Request"]} />
+            <Filter
+              label="Type"
+              value={type}
+              onChange={setType}
+              options={["Problem", "Request"]}
+            />
 
             <div className="relative w-full sm:ml-auto sm:w-48">
-              <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+              <Search
+                size={16}
+                className="absolute left-3 top-3 text-slate-400"
+              />
+
               <input
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search tickets..."
                 className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-blue-400"
               />
@@ -480,18 +626,35 @@ export default function TicketPage({ technicianView = false }: { technicianView?
 
           <div className="mt-6 space-y-6">
             {listQuery.isFetching && !listQuery.isLoading && (
-              <p role="status" className="text-sm text-slate-500">Updating tickets…</p>
+              <p role="status" className="text-sm text-slate-500">
+                Updating tickets…
+              </p>
             )}
+
             {listQuery.isLoading ? (
-              <p role="status" className="flex items-center justify-center gap-2 rounded-2xl bg-white p-10 text-sm text-slate-500">
-                <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />
+              <p
+                role="status"
+                className="flex items-center justify-center gap-2 rounded-2xl bg-white p-10 text-sm text-slate-500"
+              >
+                <LoaderCircle
+                  size={16}
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
                 Loading tickets…
               </p>
             ) : listQuery.isError ? (
-              <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+              <div
+                role="alert"
+                className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center"
+              >
                 <p className="text-sm text-red-800">
-                  {getApiErrorMessage(listQuery.error, 'Tickets could not be loaded. Check your connection and try again.')}
+                  {getApiErrorMessage(
+                    listQuery.error,
+                    "Tickets could not be loaded. Check your connection and try again.",
+                  )}
                 </p>
+
                 <button
                   type="button"
                   onClick={() => void listQuery.refetch()}
@@ -501,96 +664,136 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                   Retry
                 </button>
               </div>
-            ) : groups.map(group => {
-              const groupTickets = filteredTickets.filter(t => t.group === group);
-              if (!groupTickets.length) return null;
-
-              return (
-                <div key={group}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${groupStyles[group].dot}`} />
-                    <h3 className="text-sm font-bold text-slate-800">{group}</h3>
-                    <span className="text-sm text-slate-500">{groupTickets.length}</span>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {groupTickets.map(ticket => (
-                      <TicketRow
-                        key={ticket.id}
-                        ticket={ticket}
-                        selected={activeTicketId === ticket.id}
-                        onClick={() => {
-                          setSelectedId(ticket.id);
-                          setSearchParams({ ticket: ticket.id });
-                        }}
-                      />
-                    ))}
-                  </div>
+            ) : filteredTickets.length > 0 ? (
+              isUnassignedTab ? (
+                // UNASSIGNED: show a simple list.
+                // Details appear only after the user clicks a ticket.
+                <div className="space-y-3">
+                  {filteredTickets.map((ticket) => (
+                    <TicketRow
+                      key={ticket.id}
+                      ticket={ticket}
+                      selected={activeTicketId === ticket.id}
+                      onClick={() => handleTicketSelect(ticket.id)}
+                    />
+                  ))}
                 </div>
-              );
-            })}
+              ) : (
+                groups.map((group) => {
+                  const groupTickets = filteredTickets.filter(
+                    (ticket) => ticket.group === group,
+                  );
 
-            {!listQuery.isLoading && !listQuery.isError && !filteredTickets.length && (
+                  if (!groupTickets.length) return null;
+
+                  return (
+                    <div key={group}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${groupStyles[group].dot}`}
+                        />
+                        <h3 className="text-sm font-bold text-slate-800">
+                          {group}
+                        </h3>
+                        <span className="text-sm text-slate-500">
+                          {groupTickets.length}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {groupTickets.map((ticket) => (
+                          <TicketRow
+                            key={ticket.id}
+                            ticket={ticket}
+                            selected={activeTicketId === ticket.id}
+                            onClick={() => handleTicketSelect(ticket.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )
+            ) : (
               <div className="rounded-2xl bg-white p-10 text-center text-sm text-slate-500">
-                No tickets match your filters.
+                {isUnassignedTab
+                  ? "There are currently no unassigned tickets."
+                  : "No tickets match your filters."}
               </div>
             )}
           </div>
         </section>
 
         {/* RIGHT: TICKET DETAILS */}
-        <div className="min-w-0">
-          {detailQuery.isLoading ? (
-            <div role="status" className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500">
-              Loading ticket details…
-            </div>
-          ) : detailQuery.isError && !selectedTicket ? (
-            <div role="alert" className="flex h-full min-h-96 flex-col items-center justify-center rounded-3xl bg-white px-6 text-center text-red-700">
-              <p>{getApiErrorMessage(detailQuery.error, 'Ticket details could not be loaded.')}</p>
-              <button
-                type="button"
-                onClick={() => void detailQuery.refetch()}
-                className="mt-3 text-sm font-semibold text-[#3155ff] hover:underline"
+        {(!isUnassignedTab || activeTicketId) && (
+          <div className="min-w-0">
+            {detailQuery.isLoading ? (
+              <div
+                role="status"
+                className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500"
               >
-                Retry
-              </button>
-            </div>
-          ) : selectedTicket ? (
-            <TicketDetails
-              key={selectedTicket.id}
-              ticket={selectedTicket}
-              onComment={async (body, isInternal) => {
-                await addComment({ id: selectedTicket.serverId ?? selectedTicket.id, body, isInternal }).unwrap();
-              }}
-              onStatusChange={async (status, resolutionNote) => {
-                await changeStatus({
-                  id: selectedTicket.serverId ?? selectedTicket.id,
-                  body: { to: status, ...(resolutionNote ? { resolutionNote } : {}) },
-                }).unwrap();
-              }}
-              onAssign={async () => {
-                await assignTicket({
-                  id: selectedTicket.serverId ?? selectedTicket.id,
-                  ...(user?.role === 'IT Admin' ? { assigneeId: user.id } : {}),
-                }).unwrap();
-              }}
-              isSaving={isSaving}
-              error={errorMessage}
-            />
-          ) : (
-            <div className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500">
-              {detailQuery.isLoading
-                ? 'Loading ticket details…'
-                : detailQuery.isError
-                  ? getApiErrorMessage(detailQuery.error, 'Ticket details could not be loaded.')
-                  : listQuery.isLoading
-                    ? 'Loading tickets…'
-                    : 'Select a ticket to view its details.'}
-            </div>
-          )}
-        </div>
+                Loading ticket details…
+              </div>
+            ) : detailQuery.isError && !selectedTicket ? (
+              <div
+                role="alert"
+                className="flex h-full min-h-96 flex-col items-center justify-center rounded-3xl bg-white px-6 text-center text-red-700"
+              >
+                <p>
+                  {getApiErrorMessage(
+                    detailQuery.error,
+                    "Ticket details could not be loaded.",
+                  )}
+                </p>
 
+                <button
+                  type="button"
+                  onClick={() => void detailQuery.refetch()}
+                  className="mt-3 text-sm font-semibold text-[#3155ff] hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : selectedTicket ? (
+              <TicketDetails
+                key={selectedTicket.id}
+                ticket={selectedTicket}
+                onComment={async (body, isInternal) => {
+                  await addComment({
+                    id: selectedTicket.serverId ?? selectedTicket.id,
+                    body,
+                    isInternal,
+                  }).unwrap();
+                }}
+                onStatusChange={async (status, resolutionNote) => {
+                  await changeStatus({
+                    id: selectedTicket.serverId ?? selectedTicket.id,
+                    body: {
+                      to: status,
+                      ...(resolutionNote ? { resolutionNote } : {}),
+                    },
+                  }).unwrap();
+                }}
+                onAssign={async () => {
+                  await assignTicket({
+                    id: selectedTicket.serverId ?? selectedTicket.id,
+                    ...(user?.role === "IT Admin"
+                      ? { assigneeId: user.id }
+                      : {}),
+                  }).unwrap();
+                }}
+                isSaving={isSaving}
+                error={errorMessage}
+              />
+            ) : (
+              <div className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500">
+                Select a ticket to view its details.
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </main>
   );
 }
+
