@@ -1,3 +1,4 @@
+
 import { Navigate, useLocation } from 'react-router'
 
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
@@ -8,6 +9,43 @@ import type { UserRole } from '../types/types'
 interface RequireAuthProps {
   roles: UserRole[]
   children: ReactNode
+}
+
+export function SessionSplash() {
+  return (
+    <div
+      className="flex min-h-screen flex-col items-center justify-center bg-background px-6"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="mb-8 flex flex-col items-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground shadow-lg">
+          i
+        </div>
+
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          iTrack
+        </h1>
+      </div>
+
+      <div className="flex flex-col items-center gap-4">
+        <div
+          className="h-7 w-7 animate-spin rounded-full border-[3px] border-muted border-t-primary"
+          aria-hidden="true"
+        />
+
+        <div className="text-center">
+          <p className="text-sm font-medium text-foreground">
+            Checking your session
+          </p>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Please wait while we securely restore your access.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function RequireAuth({
@@ -21,16 +59,12 @@ export default function RequireAuth({
 
   const location = useLocation()
 
-  // Wait until the initial authentication check completes.
+  // Wait for the backend to verify a returning user's session.
   if (isRestoringSession) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Restoring your session...</p>
-      </div>
-    )
+    return <SessionSplash />
   }
 
-  // No authenticated user after session restoration.
+  // No authenticated user after the session check.
   if (!user) {
     return (
       <Navigate
@@ -41,7 +75,7 @@ export default function RequireAuth({
     )
   }
 
-  // Check whether the authenticated user has the required role.
+  // Ensure the user has permission to access this route.
   if (!roles.includes(user.role)) {
     return (
       <Navigate

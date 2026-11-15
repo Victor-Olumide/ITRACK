@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
 } from 'react'
 
 import type { ReactNode } from 'react'
@@ -29,6 +30,8 @@ import {
 
 import type { AuthenticatedUser } from '@/lib/api/auth/types'
 import type { PublicUser, UserRole } from '../types/types'
+
+const AUTH_HISTORY_KEY = 'hasAuthenticatedBefore'
 
 interface AuthContextValue {
   user: PublicUser | null
@@ -65,6 +68,15 @@ function toPublicUser(user: AuthenticatedUser): PublicUser {
   }
 }
 
+function isUnauthorizedError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    error.status === 401
+  )
+}
+
 export function homePathForRole(role: UserRole) {
   if (role === 'Technician') return '/technician'
   if (role === 'Employee') return '/employee'
@@ -81,23 +93,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionExpired,
   } = useAppSelector((state) => state.auth)
 
-  // Restore the authenticated session whenever the application starts.
-  const meQuery = useGetMeQuery()
+  // This is only a marker that tells us whether this browser
+  // has authenticated before. It is not an authentication token.
+  const [shouldRestoreSession, setShouldRestoreSession] = useState(
+    () => localStorage.getItem(AUTH_HISTORY_KEY) === 'true',
+  )
 
-  // Prefer the existing Redux user, otherwise use the restored API user.
-  const sessionUser =
-    authenticatedUser ?? meQuery.data?.user ?? null
+  // Only returning browsers attempt to restore a session.
+  const meQuery = useGetMeQuery(undefined, {
+    skip: !shouldRestoreSession,
+  })
 
-  // Synchronize the restored user with Redux.
+  const unauthorized = isUnauthorizedError(meQuery.error)
+
+  // Do not trust a previously persisted Redux user until the
+  // backend has verified the returning user's cookie.
+  const sessionUser = shouldRestoreSession
+    ? unauthorized
+      ? null
+      : meQuery.data?.user ?? null
+    : authenticatedUser
+
+  // Keep Redux synchronized with the verified backend user.
   useEffect(() => {
-    if (meQuery.data?.user) {
+    if (meQuery.data?.user && !unauthorized) {
       dispatch(setAuthenticatedUser(meQuery.data.user))
     }
-  }, [dispatch, meQuery.data?.user])
+  }, [dispatch, meQuery.data?.user, unauthorized])
 
-  // Only block protected routes while the initial session check is running.
+  // A 401 means the previous session is no longer valid.
+  // No React state update is needed here: the query state
+  // already tells us that session restoration has failed.
+  useEffect(() => {
+    if (unauthorized) {
+      localStorage.removeItem(AUTH_HISTORY_KEY)
+      dispatch(clearAuth())
+    }
+  }, [dispatch, unauthorized])
+
   const isRestoringSession =
-    !sessionUser && meQuery.isFetching
+    shouldRestoreSession &&
+    !sessionUser &&
+    !meQuery.isError &&
+    (meQuery.isLoading || meQuery.isFetching)
 
   const [loginRequest] = useLoginMutation()
   const [logoutRequest] = useLogoutMutation()
@@ -108,22 +146,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const user = useMemo(
-    () => sessionUser ? toPublicUser(sessionUser) : null,
+    () => (sessionUser ? toPublicUser(sessionUser) : null),
     [sessionUser],
   )
 
-  const login = async (email: string, password: string) => {
+  const login = async (
+    email: string,
+    password: string,
+  ): Promise<PublicUser> => {
     const response = await loginRequest({
       email: email.trim(),
       password,
     }).unwrap()
+
+    // A successful login means this browser has authenticated.
+    localStorage.setItem(AUTH_HISTORY_KEY, 'true')
+
+    // Session restoration is no longer needed in this app instance.
+    setShouldRestoreSession(false)
 
     dispatch(setAuthenticatedUser(response.user))
 
     return toPublicUser(response.user)
   }
 
-  const updateProfile = async (fullName: string) => {
+  const updateProfile = async (
+    fullName: string,
+  ): Promise<PublicUser> => {
     const response = await updateProfileRequest({
       fullName,
     }).unwrap()
@@ -134,6 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const endSessionLocally = () => {
+    // An intentional logout must prevent automatic restoration.
+    localStorage.removeItem(AUTH_HISTORY_KEY)
+    setShouldRestoreSession(false)
+
     dispatch(clearAuth())
     dispatch(appApi.util.resetApiState())
   }

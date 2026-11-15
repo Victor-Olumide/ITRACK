@@ -1,8 +1,24 @@
-import { createBrowserRouter, Navigate, Outlet, RouterProvider } from 'react-router'
-import { AuthProvider, homePathForRole, useAuth } from './contexts/AuthContext'
-import RequireAuth from './components/RequireAuth'
+
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  RouterProvider,
+} from 'react-router'
+
+import {
+  AuthProvider,
+  homePathForRole,
+  useAuth,
+} from './contexts/AuthContext'
+
+import RequireAuth, {
+  SessionSplash,
+} from './components/RequireAuth'
+
 import RouteErrorFeedback from './components/RouteErrorFeedback'
 import Layout from './components/Layout'
+
 import Auth from './pages/Auth'
 import Home from './pages/Home'
 import Tickets from './pages/Tickets'
@@ -18,19 +34,15 @@ import EmployeePortal from './pages/EmployeePortal'
 import TechnicianHome from './pages/TechnicianHome'
 import UnavailableWorkspace from './pages/UnavailableWorkspace'
 
-
 function LoginRoute() {
   const {
     user,
     isRestoringSession,
   } = useAuth()
 
+  // Do not render the login page until session restoration finishes.
   if (isRestoringSession) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Restoring your session...</p>
-      </div>
-    )
+    return <SessionSplash />
   }
 
   return user
@@ -38,16 +50,28 @@ function LoginRoute() {
     : <Auth />
 }
 
-
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <AuthProvider><Outlet /></AuthProvider>,
-    errorElement: <AuthProvider><RouteErrorFeedback /></AuthProvider>,
+    element: (
+      <AuthProvider>
+        <Outlet />
+      </AuthProvider>
+    ),
+    errorElement: (
+      <AuthProvider>
+        <RouteErrorFeedback />
+      </AuthProvider>
+    ),
     children: [
       { path: 'login', element: <LoginRoute /> },
+
       {
-        element: <RequireAuth roles={['IT Admin']}><Layout /></RequireAuth>,
+        element: (
+          <RequireAuth roles={['IT Admin']}>
+            <Layout />
+          </RequireAuth>
+        ),
         children: [
           { index: true, element: <Home /> },
           { path: 'tickets', element: <Tickets /> },
@@ -60,39 +84,97 @@ const router = createBrowserRouter([
           { path: 'team', element: <Team /> },
           { path: 'people', element: <Team /> },
           { path: 'signup', element: <Team showCreateForm /> },
-          { path: 'categories', element: <AdminWorkspace section="categories" /> },
-          // TODO(v2): Re-enable /stock, /passes, /gate, /locations, /audit, /models, and /notifications when their persistent APIs are available.
-          // TODO(v2): Re-enable /settings profile preferences and /security after their v1 APIs are implemented.
+          {
+            path: 'categories',
+            element: <AdminWorkspace section="categories" />,
+          },
+
+          // TODO(v2): Re-enable /stock, /passes, /gate, /locations,
+          // /audit, /models, and /notifications when their persistent APIs are available.
+          // TODO(v2): Re-enable /settings profile preferences and
+          // /security after their v1 APIs are implemented.
         ],
       },
+
       {
-        element: <RequireAuth roles={['Technician']}><Layout /></RequireAuth>,
+        element: (
+          <RequireAuth roles={['Technician']}>
+            <Layout />
+          </RequireAuth>
+        ),
         children: [
           { path: 'technician', element: <TechnicianHome /> },
-          { path: 'technician/tickets', element: <Tickets technicianView /> },
-          { path: 'technician/tickets/queue', element: <TicketQueue /> },
-          { path: 'technician/devices', element: <Devices basePath="/technician/devices" /> },
-          { path: 'technician/devices/register', element: <RegisterDevice basePath="/technician/devices" /> },
-          { path: 'technician/devices/:tag', element: <DeviceDetailPage basePath="/technician/devices" /> },
+          {
+            path: 'technician/tickets',
+            element: <Tickets technicianView />,
+          },
+          {
+            path: 'technician/tickets/queue',
+            element: <TicketQueue />,
+          },
+          {
+            path: 'technician/devices',
+            element: <Devices basePath="/technician/devices" />,
+          },
+          {
+            path: 'technician/devices/register',
+            element: <RegisterDevice basePath="/technician/devices" />,
+          },
+          {
+            path: 'technician/devices/:tag',
+            element: (
+              <DeviceDetailPage basePath="/technician/devices" />
+            ),
+          },
+
           // TODO(v2): Re-enable /technician/passes after the gate-pass API is ready.
         ],
       },
+
       {
-        element: <RequireAuth roles={['Employee']}><Layout /></RequireAuth>,
+        element: (
+          <RequireAuth roles={['Employee']}>
+            <Layout />
+          </RequireAuth>
+        ),
         children: [
-          { path: 'employee', element: <EmployeePortal section="home" /> },
-          { path: 'employee/report', element: <EmployeePortal section="report" /> },
-          { path: 'employee/tickets', element: <EmployeePortal section="tickets" /> },
-          { path: 'employee/tickets/queue', element: <TicketQueue /> },
-          { path: 'employee/devices/:tag', element: <DeviceDetailPage basePath="/employee" /> },
-          // TODO(v2): Re-enable /employee/passes and /employee/passes/new after the gate-pass API is ready.
+          {
+            path: 'employee',
+            element: <EmployeePortal section="home" />,
+          },
+          {
+            path: 'employee/report',
+            element: <EmployeePortal section="report" />,
+          },
+          {
+            path: 'employee/tickets',
+            element: <EmployeePortal section="tickets" />,
+          },
+          {
+            path: 'employee/tickets/queue',
+            element: <TicketQueue />,
+          },
+          {
+            path: 'employee/devices/:tag',
+            element: <DeviceDetailPage basePath="/employee" />,
+          },
+
+          // TODO(v2): Re-enable /employee/passes and /employee/passes/new
+          // after the gate-pass API is ready.
         ],
       },
+
       {
         path: 'workspace-unavailable',
-        element: <RequireAuth roles={['Security']}><UnavailableWorkspace /></RequireAuth>,
+        element: (
+          <RequireAuth roles={['Security']}>
+            <UnavailableWorkspace />
+          </RequireAuth>
+        ),
       },
-      // TODO(v2): Re-enable the /security kiosk only when its workflows have persistent API support.
+
+      // TODO(v2): Re-enable the /security kiosk only when its workflows
+      // have persistent API support.
       { path: '*', element: <RouteErrorFeedback status={404} /> },
     ],
   },
