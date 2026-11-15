@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
@@ -23,6 +24,14 @@ import {
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
 import type { ApiTicketStatus } from "../lib/api/tickets/types";
 import { getApiErrorMessage } from "../lib/api/error-message";
+
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "../components/ui/drawer";
 
 interface TicketView extends Ticket {
   department: string;
@@ -167,7 +176,9 @@ function TicketRow({
           </span>
 
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
-            {ticket.assignee === "Unassigned" ? "—" : initials(ticket.assignee)}
+            {ticket.assignee === "Unassigned"
+              ? "—"
+              : initials(ticket.assignee)}
           </span>
         </div>
       </div>
@@ -251,7 +262,7 @@ function TicketDetails({
   };
 
   return (
-    <section className="flex h-full min-h-187.5 flex-col rounded-3xl bg-white p-5 sm:p-7">
+    <section className="flex min-h-full flex-col bg-white p-5 sm:p-7">
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <span className="font-mono text-sm font-semibold text-slate-500">
           {ticket.id}
@@ -315,7 +326,9 @@ function TicketDetails({
             {ticket.device}
           </span>
 
-          <span className="font-medium text-blue-600">{ticket.deviceName}</span>
+          <span className="font-medium text-blue-600">
+            {ticket.deviceName}
+          </span>
         </div>
       </div>
 
@@ -570,7 +583,9 @@ function TicketDetails({
         )}
 
         {ticket.status === "Closed" && (
-          <p className="text-sm text-slate-500">This ticket has been closed.</p>
+          <p className="text-sm text-slate-500">
+            This ticket has been closed.
+          </p>
         )}
       </div>
     </section>
@@ -600,7 +615,6 @@ export default function TicketPage({
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
 
-  // These filters apply to every staff view, not just technician routes.
   const isUnassignedTab = tab === "Unassigned";
   const isMineTab = tab === "Mine";
 
@@ -644,11 +658,8 @@ export default function TicketPage({
               : true;
 
       const matchesDepartment = !department || ticket.department === department;
-
       const matchesPriority = !priority || ticket.priority === priority;
-
       const matchesCategory = !category || ticket.category === category;
-
       const matchesType = !type || ticket.type === type;
 
       const matchesSearch = `${ticket.title} ${ticket.id} ${ticket.requester}`
@@ -675,20 +686,15 @@ export default function TicketPage({
     search,
   ]);
 
-  // Never automatically open a ticket in the Unassigned tab.
-  const activeTicketId =
-    requestedTicketId ??
-    selectedId ??
-    (isUnassignedTab ? "" : (filteredTickets[0]?.id ?? ""));
+  // Only open ticket details when a ticket is explicitly selected.
+  const activeTicketId = requestedTicketId ?? selectedId;
 
-  const detailQuery = useGetTicketQuery(activeTicketId, {
+  const detailQuery = useGetTicketQuery(activeTicketId ?? "", {
     skip: !activeTicketId,
   });
 
   const [addComment, commentState] = useAddTicketCommentMutation();
-
   const [changeStatus, statusState] = useChangeTicketStatusMutation();
-
   const [assignTicket, assignState] = useAssignTicketMutation();
 
   const isSaving =
@@ -721,14 +727,15 @@ export default function TicketPage({
     setSearchParams({ ticket: ticketId });
   };
 
+  const handleCloseDetails = () => {
+    setSelectedId("");
+    setSearchParams({});
+  };
+
   return (
     <main className="min-h-screen bg-[#0c194d]">
-      <div
-        className={`mx-auto grid max-w-[1800px] grid-cols-1 items-stretch gap-3 ${
-          isUnassignedTab && !activeTicketId ? "" : "lg:grid-cols-[1.3fr_1fr]"
-        }`}
-      >
-        {/* LEFT: TICKET LIST */}
+      <div className="mx-auto max-w-[1800px]">
+        {/* TICKET LIST */}
 
         <section className="min-w-0 rounded-[26px] bg-[#f4f6fc] p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -920,22 +927,46 @@ export default function TicketPage({
             )}
           </div>
         </section>
+      </div>
 
-        {/* RIGHT: TICKET DETAILS */}
+      {/* RIGHT-SIDE TICKET DETAILS DRAWER */}
 
-        {(!isUnassignedTab || activeTicketId) && (
-          <div className="min-w-0">
+      <Drawer
+       swipeDirection="right"
+        open={Boolean(activeTicketId)}
+        onOpenChange={(open) => {
+          if (!open) handleCloseDetails();
+        }}
+      >
+        <DrawerContent className="h-full w-full max-w-none rounded-l-2xl rounded-r-none border-l border-slate-200 bg-white p-0 sm:max-w-xl">
+          <DrawerHeader className="border-b border-slate-100 px-6 py-4 text-left">
+            <DrawerTitle className="text-lg font-bold text-[#0B184C]">
+              Ticket details
+            </DrawerTitle>
+
+            <DrawerDescription className="text-xs text-slate-500">
+              View ticket information, communicate with the requester and
+              manage its status.
+            </DrawerDescription>
+          </DrawerHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {detailQuery.isLoading ? (
               <div
                 role="status"
-                className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500"
+                className="flex min-h-48 items-center justify-center text-sm text-slate-500"
               >
+                <LoaderCircle
+                  className="mr-2 animate-spin"
+                  size={18}
+                  aria-hidden="true"
+                />
                 Loading ticket details...
               </div>
             ) : detailQuery.isError && !detailQuery.currentData ? (
               <div
                 role="alert"
-                className="flex h-full min-h-96 flex-col items-center justify-center rounded-3xl bg-white px-6 text-center text-red-700"
+                className="flex min-h-48 flex-col items-center justify-center px-6 text-center text-sm text-red-700"
               >
                 <p>
                   {getApiErrorMessage(
@@ -947,7 +978,7 @@ export default function TicketPage({
                 <button
                   type="button"
                   onClick={() => void detailQuery.refetch()}
-                  className="mt-3 text-sm font-semibold text-[#3155ff] hover:underline"
+                  className="mt-3 font-semibold text-[#3155ff] hover:underline"
                 >
                   Retry
                 </button>
@@ -986,13 +1017,13 @@ export default function TicketPage({
                 error={errorMessage}
               />
             ) : (
-              <div className="flex h-full text-[12px] min-h-12 items-center justify-center rounded-md bg-white text-slate-600">
-                Select a ticket to view its details.
+              <div className="flex min-h-48 items-center justify-center px-6 text-center text-sm text-slate-500">
+                Ticket details are unavailable.
               </div>
             )}
           </div>
-        )}
-      </div>
+        </DrawerContent>
+      </Drawer>
     </main>
   );
 }
