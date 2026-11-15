@@ -6,7 +6,7 @@ export interface ApiEnvironmentConfig {
 
 export function resolveApiBaseUrl(
   config: ApiEnvironmentConfig,
-  defaultUrl = 'https://itrack-server-lr0h.onrender.com',
+  defaultUrl = '/api',
 ): string {
   const baseUrl = (
     config.VITE_API_BASE_URL?.trim() ||
@@ -23,4 +23,20 @@ export function resolveApiBaseUrl(
   }
 
   return `${baseUrl}/api/v1`;
+}
+
+// True when API requests leave the current page origin.
+export function isCrossOriginApiBase(
+  baseUrl: string,
+  pageOrigin: string,
+): boolean {
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    return false;
+  }
+
+  try {
+    return new URL(baseUrl).origin !== pageOrigin;
+  } catch {
+    return true;
+  }
 }

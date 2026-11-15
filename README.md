@@ -58,7 +58,7 @@ The client does not use mock records or session-only demo mutations for applicat
 
 ## Backend handoff
 
-API responses are the source of truth for supported workflows; configuring `VITE_API_BASE_URL` does not make an unimplemented endpoint available. See [docs/BACKEND_HANDOFF.md](./docs/BACKEND_HANDOFF.md) for the current data boundary and v2 work. Copy `.env.example` to `.env.local` for local API configuration. Cross-origin deployments also require the backend to allow the exact client origin with credentials and issue cookies usable by that client.
+API responses are the source of truth for supported workflows; configuring `VITE_API_BASE_URL` does not make an unimplemented endpoint available. See [docs/BACKEND_HANDOFF.md](./docs/BACKEND_HANDOFF.md) for the current data boundary and v2 work. Copy `.env.example` to `.env.local` for local API configuration. In production the client calls the same-origin /api/v1 path and vercel.json rewrites it to the backend, so the HttpOnly auth cookies are first-party; leave VITE_API_URL and VITE_API_BASE_URL unset on Vercel. Direct cross-origin API URLs make those cookies third-party and Safari/iOS will reject them.
 
 Gate-pass and security-scanning routes are disabled until the server provides persistent endpoints and authorization for those workflows.
 

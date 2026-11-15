@@ -11,7 +11,10 @@ import {
   markSessionExpired,
 } from '../stores/auth-slice.ts';
 
-import { resolveApiBaseUrl } from './api-config.ts';
+import {
+  isCrossOriginApiBase,
+  resolveApiBaseUrl,
+} from './api-config.ts';
 
 export const API_REQUEST_TIMEOUT_MS = 180_000;
 
@@ -22,8 +25,21 @@ const getBaseUrl = (): string => {
   });
 };
 
+const apiBaseUrl = getBaseUrl();
+
+if (
+  import.meta.env?.PROD &&
+  typeof window !== 'undefined' &&
+  isCrossOriginApiBase(apiBaseUrl, window.location.origin)
+) {
+  console.error(
+    `API base URL ${apiBaseUrl} is cross-origin. ` +
+    'Use the same-origin /api/v1 Vercel proxy to avoid cross-site cookie restrictions.',
+  );
+}
+
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: getBaseUrl(),
+  baseUrl: apiBaseUrl,
   credentials: 'include',
   timeout: API_REQUEST_TIMEOUT_MS,
 });
