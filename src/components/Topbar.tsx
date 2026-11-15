@@ -229,7 +229,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:text-red-600 focus-visible:outline-2 focus-visible:outline-[#3155ff]"
+                className="flex w-full items-center gap-1 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 hover:text-red-600 focus-visible:outline-2 focus-visible:outline-[#3155ff]"
               >
                 <LogOut size={17} aria-hidden="true" />
                 Sign out
