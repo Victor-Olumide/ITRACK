@@ -251,7 +251,7 @@ function TicketDetails({
   };
 
   return (
-    <section className="flex h-full min-h-[750px] flex-col rounded-[24px] bg-white p-5 sm:p-7">
+    <section className="flex h-full min-h-187.5 flex-col rounded-3xl bg-white p-5 sm:p-7">
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <span className="font-mono text-sm font-semibold text-slate-500">
           {ticket.id}
