@@ -14,7 +14,7 @@ interface RequireAuthProps {
 export function SessionSplash() {
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center bg-background px-6"
+      className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-foreground transition-colors duration-300"
       role="status"
       aria-live="polite"
     >
@@ -26,16 +26,20 @@ export function SessionSplash() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           iTrack
         </h1>
+
+        <p className="mt-1 text-xs font-medium text-muted-foreground">
+          Asset & Ticket Management
+        </p>
       </div>
 
       <div className="flex flex-col items-center gap-4">
         <div
-          className="h-7 w-7 animate-spin rounded-full border-[3px] border-muted border-t-primary"
+          className="h-8 w-8 animate-spin rounded-full border-[3px] border-border border-t-primary"
           aria-hidden="true"
         />
 
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground">
+          <p className="text-sm font-semibold text-foreground">
             Checking your session
           </p>
 
