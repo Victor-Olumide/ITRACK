@@ -8,9 +8,10 @@ import {
   RefreshCw,
   Send,
 } from "lucide-react";
-// userById removed; all user lookups now use API data only
+
 import { useAuth } from "../contexts/AuthContext";
 import type { Ticket, TicketTimeState } from "../types/types";
+import { useGetUsersQuery } from "../lib/api/users/users-api";
 import {
   useAddTicketCommentMutation,
   useAssignTicketMutation,
@@ -18,10 +19,10 @@ import {
   useGetTicketQuery,
   useGetTicketsQuery,
 } from "../lib/api/tickets/tickets-api";
+
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
 import type { ApiTicketStatus } from "../lib/api/tickets/types";
 import { getApiErrorMessage } from "../lib/api/error-message";
-
 
 interface TicketView extends Ticket {
   department: string;
@@ -32,25 +33,28 @@ interface TicketView extends Ticket {
   group: TicketTimeState;
 }
 
-function toView(t: Ticket): TicketView {
+function toView(ticket: Ticket): TicketView {
   return {
-    ...t,
-    department: t.requesterDepartment ?? "—",
-    requester: t.requesterName ?? "Unknown",
-    assignee: t.assigneeName ?? "Unassigned",
-    assigneeId: t.assigneeId,
-    device: t.deviceTag ?? "—",
-    deviceName: t.deviceName ?? "—",
-    group: t.timeState,
+    ...ticket,
+    department: ticket.requesterDepartment ?? "—",
+    requester: ticket.requesterName ?? "Unknown",
+    assignee: ticket.assigneeName ?? "Unassigned",
+    device: ticket.deviceTag ?? "—",
+    deviceName: ticket.deviceName ?? "—",
+    group: ticket.timeState,
   };
 }
 
-const groupStyles: Record<string, { dot: string; color: string }> = {
-  Breached: { dot: "bg-red-600", color: "text-red-600" },
-  "Not overdue": { dot: "bg-slate-400", color: "text-slate-500" },
+const groupStyles: Record<TicketTimeState, { dot: string }> = {
+  Breached: {
+    dot: "bg-red-600",
+  },
+  "Not overdue": {
+    dot: "bg-slate-400",
+  },
 };
 
-const priorityStyles = {
+const priorityStyles: Record<string, string> = {
   Critical: "text-red-600",
   High: "text-orange-600",
   Medium: "text-blue-600",
@@ -65,7 +69,7 @@ const priorityMap = {
   Low: "P4_LOW",
 } as const;
 
-const slaStyles = {
+const slaStyles: Record<TicketTimeState, string> = {
   Breached: "bg-red-100 text-red-700",
   "Not overdue": "bg-slate-100 text-slate-600",
 };
@@ -92,10 +96,11 @@ function Filter({
   return (
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(event) => onChange(event.target.value)}
       className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium outline-none hover:border-blue-400 focus:ring-2 focus:ring-blue-100"
     >
       <option value="">{label}</option>
+
       {options.map((option) => (
         <option key={option} value={option}>
           {option}
@@ -116,31 +121,32 @@ function TicketRow({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`w-full rounded-[20px] border p-4 text-left transition-all
-        ${
-          selected
-            ? "border-blue-500 bg-white shadow-[0_0_0_3px_rgba(59,130,246,0.13)]"
-            : "border-transparent bg-white hover:border-blue-200 hover:shadow-sm"
-        }`}
+      aria-pressed={selected}
+      className={`w-full rounded-[20px] border p-4 text-left transition-all ${
+        selected
+          ? "border-blue-500 bg-white shadow-[0_0_0_3px_rgba(59,130,246,0.13)]"
+          : "border-transparent bg-white hover:border-blue-200 hover:shadow-sm"
+      }`}
     >
       <div className="flex items-center gap-3">
         <Circle size={25} className="shrink-0 text-blue-600" strokeWidth={2} />
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-[13px] font-semibold text-slate-900">
-              {ticket.title}
-            </p>
-          </div>
+          <p className="truncate text-[13px] font-semibold text-slate-900">
+            {ticket.title}
+          </p>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
             <span className="font-mono font-semibold text-slate-800">
               {ticket.id}
             </span>
+
             <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-500">
               {ticket.type} · {ticket.category}
             </span>
+
             <span className="text-slate-500">
               {ticket.requester} · {ticket.department}
             </span>
@@ -153,11 +159,13 @@ function TicketRow({
           >
             ▪ {ticket.priority}
           </span>
+
           <span
             className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${slaStyles[ticket.group]}`}
           >
             {ticket.sla}
           </span>
+
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
             {ticket.assignee === "Unassigned" ? "—" : initials(ticket.assignee)}
           </span>
@@ -170,6 +178,7 @@ function TicketRow({
         >
           {ticket.priority}
         </span>
+
         <span
           className={`rounded-full px-2 py-1 text-xs ${slaStyles[ticket.group]}`}
         >
@@ -194,21 +203,51 @@ function TicketDetails({
     status: ApiTicketStatus,
     resolutionNote?: string,
   ) => Promise<void>;
-  onAssign: () => Promise<void>;
+  onAssign: (assigneeId: string) => Promise<void>;
   isSaving: boolean;
   error?: string;
 }) {
   const { user } = useAuth();
-  const [mode, setMode] = useState("reply");
+  const isAdmin = user?.role === "IT Admin";
+
+  const {
+    data: usersData,
+    isLoading: isLoadingTechnicians,
+    isError: techniciansError,
+  } = useGetUsersQuery(undefined, {
+    skip: !isAdmin,
+  });
+
+  const technicians = (usersData?.users ?? []).filter(
+    (candidate) => candidate.role === "TECHNICIAN" && candidate.isActive,
+  );
+
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
+  const [mode, setMode] = useState<"reply" | "note">("reply");
   const [message, setMessage] = useState("");
   const [resolutionNote, setResolutionNote] = useState("");
 
   if (!ticket) return null;
 
+  const isStaff = user?.role === "Technician" || user?.role === "IT Admin";
+
+  const runAction = async (action: () => Promise<void>) => {
+    try {
+      await action();
+    } catch {
+      // The mutation error is displayed by the parent component.
+    }
+  };
+
   const addMessage = async () => {
-    if (!message.trim()) return;
-    await onComment(message.trim(), mode === "note");
-    setMessage("");
+    if (!message.trim() || isSaving) return;
+
+    try {
+      await onComment(message.trim(), mode === "note");
+      setMessage("");
+    } catch {
+      // Preserve the message so the user can retry.
+    }
   };
 
   return (
@@ -217,9 +256,11 @@ function TicketDetails({
         <span className="font-mono text-sm font-semibold text-slate-500">
           {ticket.id}
         </span>
+
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
           {ticket.status}
         </span>
+
         <span className="text-xs font-semibold text-orange-600">
           {ticket.priority} priority
         </span>
@@ -234,6 +275,7 @@ function TicketDetails({
           <p className="text-sm text-slate-500">Response</p>
           <p className="mt-1 font-bold text-emerald-600">{ticket.response}</p>
         </div>
+
         <div className="rounded-2xl border border-slate-200 p-4">
           <p className="text-sm text-slate-500">Resolution</p>
           <p className="mt-1 font-bold text-slate-800">{ticket.resolution}</p>
@@ -241,9 +283,12 @@ function TicketDetails({
       </div>
 
       <div className="mt-3 rounded-2xl border border-slate-200 p-4">
-        <p className="text-sm text-slate-500">Server overdue flag</p>
+        <p className="text-sm text-slate-500">SLA status</p>
+
         <p
-          className={`mt-1 font-semibold ${ticket.group === "Breached" ? "text-red-700" : "text-slate-700"}`}
+          className={`mt-1 font-semibold ${
+            ticket.group === "Breached" ? "text-red-700" : "text-slate-700"
+          }`}
         >
           {ticket.sla}
         </p>
@@ -264,10 +309,12 @@ function TicketDetails({
         </strong>
 
         <span className="text-slate-500">Device</span>
+
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-lime-300 px-2 py-1 font-mono text-xs font-semibold text-slate-900">
             {ticket.device}
           </span>
+
           <span className="font-medium text-blue-600">{ticket.deviceName}</span>
         </div>
       </div>
@@ -287,8 +334,13 @@ function TicketDetails({
               <span className="shrink-0 font-mono text-slate-500">
                 {item.time}
               </span>
+
               <p
-                className={`leading-5 ${item.note ? "rounded-md bg-amber-100 px-2 py-1 text-amber-900" : "text-slate-700"}`}
+                className={`leading-5 ${
+                  item.note
+                    ? "rounded-md bg-amber-100 px-2 py-1 text-amber-900"
+                    : "text-slate-700"
+                }`}
               >
                 {item.text}
               </p>
@@ -300,17 +352,30 @@ function TicketDetails({
       <div className="mt-6">
         <div className="inline-flex rounded-xl bg-slate-100 p-1">
           <button
+            type="button"
             onClick={() => setMode("reply")}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${mode === "reply" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+              mode === "reply"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500"
+            }`}
           >
             Reply to requester
           </button>
-          <button
-            onClick={() => setMode("note")}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${mode === "note" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
-          >
-            Internal note
-          </button>
+
+          {isStaff && (
+            <button
+              type="button"
+              onClick={() => setMode("note")}
+              className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                mode === "note"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500"
+              }`}
+            >
+              Internal note
+            </button>
+          )}
         </div>
 
         <p className="mb-2 mt-2 text-xs text-slate-500">
@@ -321,7 +386,7 @@ function TicketDetails({
 
         <textarea
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(event) => setMessage(event.target.value)}
           placeholder={
             mode === "note"
               ? "Write a note for the IT team"
@@ -332,6 +397,7 @@ function TicketDetails({
         />
 
         <button
+          type="button"
           onClick={() => void addMessage()}
           disabled={!message.trim() || isSaving}
           className="mt-2 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
@@ -351,24 +417,30 @@ function TicketDetails({
       )}
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-6">
-        {ticket.status === "Assigned" && (
+        {ticket.status === "Assigned" && isStaff && (
           <button
-            onClick={() => void onStatusChange("IN_PROGRESS")}
+            type="button"
+            onClick={() => void runAction(() => onStatusChange("IN_PROGRESS"))}
             disabled={isSaving}
             className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
           >
             Start work
           </button>
         )}
-        {ticket.status === "In progress" && (
+
+        {ticket.status === "In progress" && isStaff && (
           <>
             <button
-              onClick={() => void onStatusChange("WAITING_ON_USER")}
+              type="button"
+              onClick={() =>
+                void runAction(() => onStatusChange("WAITING_ON_USER"))
+              }
               disabled={isSaving}
               className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
             >
               Waiting on user
             </button>
+
             <input
               value={resolutionNote}
               onChange={(event) => setResolutionNote(event.target.value)}
@@ -376,59 +448,178 @@ function TicketDetails({
               aria-label="Resolution note"
               className="min-w-48 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
+
             <button
+              type="button"
               onClick={() =>
-                void onStatusChange("RESOLVED", resolutionNote.trim())
+                void runAction(() =>
+                  onStatusChange("RESOLVED", resolutionNote.trim()),
+                )
               }
               disabled={!resolutionNote.trim() || isSaving}
               className="flex items-center gap-2 rounded-full bg-lime-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-lime-500 disabled:opacity-50"
             >
-              <Check size={17} /> Resolve
+              <Check size={17} />
+              Resolve
             </button>
           </>
         )}
+
+        {ticket.status === "Waiting on user" && isStaff && (
+          <button
+            type="button"
+            onClick={() => void runAction(() => onStatusChange("IN_PROGRESS"))}
+            disabled={isSaving}
+            className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+          >
+            Resume work
+          </button>
+        )}
+
+        {/* TECHNICIAN: TAKE TICKET */}
         {ticket.status === "Unassigned" &&
           !ticket.assigneeId &&
           user?.role === "Technician" && (
-            <button onClick={() => void onAssign()}>Take ticket</button>
+            <button
+              type="button"
+              onClick={() => void runAction(() => onAssign(user.id))}
+              disabled={isSaving}
+              className="rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isSaving ? "Taking ticket..." : "Take ticket"}
+            </button>
           )}
+
+        {/* IT ADMIN: ASSIGN OR REASSIGN TICKET */}
+        {isAdmin && ["Unassigned", "Assigned"].includes(ticket.status) && (
+          <div className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 p-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                {ticket.assigneeId ? "Reassign ticket" : "Assign ticket"}
+              </h3>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Select an active technician to handle this ticket.
+              </p>
+            </div>
+
+            {isLoadingTechnicians ? (
+              <p className="text-sm text-slate-500">Loading technicians...</p>
+            ) : techniciansError ? (
+              <p role="alert" className="text-sm text-red-600">
+                Could not load technicians. Please try again.
+              </p>
+            ) : technicians.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No active technicians are available.
+              </p>
+            ) : (
+              <>
+                <select
+                  value={selectedAssigneeId || ticket.assigneeId || ""}
+                  onChange={(event) =>
+                    setSelectedAssigneeId(event.target.value)
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="" disabled>
+                    Select a technician
+                  </option>
+
+                  {technicians.map((technician) => (
+                    <option key={technician.id} value={technician.id}>
+                      {technician.fullName} ·{" "}
+                      {technician.department?.name ?? "No department"}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void runAction(async () => {
+                      await onAssign(
+                        selectedAssigneeId || ticket.assigneeId || "",
+                      );
+                      setSelectedAssigneeId("");
+                    })
+                  }
+                  disabled={
+                    isSaving ||
+                    !(selectedAssigneeId || ticket.assigneeId) ||
+                    (selectedAssigneeId || ticket.assigneeId) ===
+                      ticket.assigneeId
+                  }
+                  className="w-fit rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSaving
+                    ? "Assigning..."
+                    : ticket.assigneeId
+                      ? "Reassign ticket"
+                      : "Assign ticket"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {ticket.status === "Resolved" && (
           <p className="text-sm text-slate-500">
             Waiting for the requester to confirm or reopen.
           </p>
+        )}
+
+        {ticket.status === "Closed" && (
+          <p className="text-sm text-slate-500">This ticket has been closed.</p>
         )}
       </div>
     </section>
   );
 }
 
-
-export default function TicketPage({ technicianView = false }: { technicianView?: boolean }) {
+export default function TicketPage({
+  technicianView = false,
+}: {
+  technicianView?: boolean;
+}) {
   const { user } = useAuth();
-  const assigneeId = user?.id ?? '';
+
+  const assigneeId = user?.id ?? "";
 
   const [searchParams, setSearchParams] = useSearchParams();
+
   const requestedTicketId = searchParams.get("ticket");
 
-  const [selectedId, setSelectedId] = useState(requestedTicketId ?? '');
+  const [selectedId, setSelectedId] = useState(requestedTicketId ?? "");
+
   const [tab, setTab] = useState(technicianView ? "Mine" : "All open");
-  const [department, setDepartment] = useState(technicianView ? "" : "Finance");
+
+  const [department, setDepartment] = useState("");
   const [priority, setPriority] = useState("");
   const [category, setCategory] = useState("");
   const [type, setType] = useState("");
   const [search, setSearch] = useState("");
 
-  const isUnassignedTab = technicianView && tab === "Unassigned";
+  // These filters apply to every staff view, not just technician routes.
+  const isUnassignedTab = tab === "Unassigned";
+  const isMineTab = tab === "Mine";
 
   const listArgs = {
     page: 1,
     pageSize: 100,
+
     ...(search ? { q: search } : {}),
+
     ...(priority && priority in priorityMap
-      ? { priority: priorityMap[priority as keyof typeof priorityMap] }
+      ? {
+          priority: priorityMap[priority as keyof typeof priorityMap],
+        }
       : {}),
+
     ...(category ? { category } : {}),
-    ...(technicianView && tab === "Mine" ? { assigneeId } : {}),
+
+    ...(isMineTab && assigneeId ? { assigneeId } : {}),
+
     ...(isUnassignedTab ? { assigneeId: "unassigned" as const } : {}),
   };
 
@@ -439,85 +630,89 @@ export default function TicketPage({ technicianView = false }: { technicianView?
     [listQuery.data],
   );
 
-  // Do not automatically select a ticket on the Unassigned tab.
+  const filteredTickets = useMemo(() => {
+    return availableTickets.filter((ticket) => {
+      const isOpen = ticket.status !== "Resolved" && ticket.status !== "Closed";
+
+      const matchesTab =
+        tab === "All open"
+          ? isOpen
+          : tab === "Mine"
+            ? ticket.assigneeId === assigneeId && isOpen
+            : tab === "Unassigned"
+              ? !ticket.assigneeId && isOpen
+              : true;
+
+      const matchesDepartment = !department || ticket.department === department;
+
+      const matchesPriority = !priority || ticket.priority === priority;
+
+      const matchesCategory = !category || ticket.category === category;
+
+      const matchesType = !type || ticket.type === type;
+
+      const matchesSearch = `${ticket.title} ${ticket.id} ${ticket.requester}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+      return (
+        matchesTab &&
+        matchesDepartment &&
+        matchesPriority &&
+        matchesCategory &&
+        matchesType &&
+        matchesSearch
+      );
+    });
+  }, [
+    availableTickets,
+    tab,
+    assigneeId,
+    department,
+    priority,
+    category,
+    type,
+    search,
+  ]);
+
+  // Never automatically open a ticket in the Unassigned tab.
   const activeTicketId =
     requestedTicketId ??
     selectedId ??
-    (isUnassignedTab ? '' : availableTickets[0]?.id ?? '');
+    (isUnassignedTab ? "" : (filteredTickets[0]?.id ?? ""));
 
   const detailQuery = useGetTicketQuery(activeTicketId, {
     skip: !activeTicketId,
   });
 
   const [addComment, commentState] = useAddTicketCommentMutation();
+
   const [changeStatus, statusState] = useChangeTicketStatusMutation();
+
   const [assignTicket, assignState] = useAssignTicketMutation();
 
   const isSaving =
-    commentState.isLoading ||
-    statusState.isLoading ||
-    assignState.isLoading;
+    commentState.isLoading || statusState.isLoading || assignState.isLoading;
 
   const mutationError =
     commentState.error ?? statusState.error ?? assignState.error;
 
-  const errorMessage =
-    mutationError &&
-    'data' in mutationError &&
-    mutationError.data &&
-    typeof mutationError.data === 'object' &&
-    'error' in mutationError.data
-      ? String(
-          (mutationError.data as { error?: { message?: string } }).error
-            ?.message ?? 'Ticket action failed.',
-        )
-      : mutationError
-        ? 'Ticket action failed. Try again.'
-        : undefined;
+  const errorMessage = mutationError
+    ? getApiErrorMessage(
+        mutationError,
+        "Ticket action failed. Please try again.",
+      )
+    : undefined;
 
-  const scopedTickets = availableTickets;
+  const selectedTicket = detailQuery.currentData
+    ? toView(toClientTicket(detailQuery.currentData))
+    : filteredTickets.find((ticket) => ticket.id === activeTicketId);
 
-  const selectedTicket = detailQuery.data
-    ? toView(toClientTicket(detailQuery.data))
-    : scopedTickets.find((ticket) => ticket.id === activeTicketId);
-
-  const filteredTickets = useMemo(() => {
-    return scopedTickets.filter((ticket) => {
-      const isOpen = ticket.status !== "Resolved";
-
-      return (
-        (tab === "All open"
-          ? isOpen
-          : tab === "Mine"
-            ? ticket.assigneeId === assigneeId && isOpen
-            : tab === "Unassigned"
-              ? !ticket.assigneeId && isOpen
-              : true) &&
-        (!department || ticket.department === department) &&
-        (!priority || ticket.priority === priority) &&
-        (!category || ticket.category === category) &&
-        (!type || ticket.type === type) &&
-        `${ticket.title} ${ticket.id} ${ticket.requester}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      );
-    });
-  }, [
-    scopedTickets,
-    tab,
-    department,
-    priority,
-    category,
-    type,
-    search,
-    assigneeId,
-  ]);
-
-  const groups = ["Breached", "Not overdue"];
+  const groups: TicketTimeState[] = ["Breached", "Not overdue"];
 
   const handleTabChange = (nextTab: string) => {
     setTab(nextTab);
-    setSelectedId('');
+    setSelectedId("");
     setSearchParams({});
   };
 
@@ -530,12 +725,11 @@ export default function TicketPage({ technicianView = false }: { technicianView?
     <main className="min-h-screen bg-[#0c194d]">
       <div
         className={`mx-auto grid max-w-[1800px] grid-cols-1 items-stretch gap-3 ${
-          isUnassignedTab && !activeTicketId
-            ? ''
-            : 'lg:grid-cols-[1.3fr_1fr]'
+          isUnassignedTab && !activeTicketId ? "" : "lg:grid-cols-[1.3fr_1fr]"
         }`}
       >
         {/* LEFT: TICKET LIST */}
+
         <section className="min-w-0 rounded-[26px] bg-[#f4f6fc] p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -545,8 +739,8 @@ export default function TicketPage({ technicianView = false }: { technicianView?
 
               <p className="mt-1 text-sm text-slate-500">
                 {listQuery.isLoading
-                  ? "Loading tickets…"
-                  : `${availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length} open · ${availableTickets.filter(ticket => !ticket.assigneeId).length} unassigned · sorted by time left`}
+                  ? "Loading tickets..."
+                  : `${filteredTickets.length} tickets displayed`}
               </p>
             </div>
 
@@ -556,21 +750,13 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                   key={item}
                   type="button"
                   onClick={() => handleTabChange(item)}
-                  className={`rounded-full px-3 py-2 text-xs font-semibold sm:px-4 ${
+                  className={`rounded-full px-3 py-2 text-xs font-semibold transition sm:px-4 ${
                     tab === item
                       ? "bg-[#101a50] text-white"
                       : "text-slate-600 hover:bg-slate-100"
                   }`}
                 >
                   {item}
-
-                  <span className="ml-1 opacity-70">
-                    {item === "Unassigned"
-                      ? availableTickets.filter(ticket => !ticket.assigneeId).length
-                      : item === "Mine"
-                        ? availableTickets.filter(ticket => ticket.assigneeId === assigneeId).length
-                        : availableTickets.filter(ticket => !["Resolved", "Closed"].includes(ticket.status)).length}
-                  </span>
                 </button>
               ))}
             </div>
@@ -583,9 +769,14 @@ export default function TicketPage({ technicianView = false }: { technicianView?
               className="rounded-full border border-blue-100 bg-blue-100 px-4 py-2.5 text-sm text-blue-800 outline-none"
             >
               <option value="">All departments</option>
-              {["Finance", "Admin", "Operations", "HR", "Security", "IT"].map((item) => (
-                <option key={item}>{item}</option>
-              ))}
+
+              {["Finance", "Admin", "Operations", "HR", "Security", "IT"].map(
+                (item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ),
+              )}
             </select>
 
             <Filter
@@ -599,7 +790,13 @@ export default function TicketPage({ technicianView = false }: { technicianView?
               label="Category"
               value={category}
               onChange={setCategory}
-              options={["PC hardware", "Network", "Accessories", "Printer", "Accounts"]}
+              options={[
+                "PC hardware",
+                "Network",
+                "Accessories",
+                "Printer",
+                "Accounts",
+              ]}
             />
 
             <Filter
@@ -627,7 +824,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
           <div className="mt-6 space-y-6">
             {listQuery.isFetching && !listQuery.isLoading && (
               <p role="status" className="text-sm text-slate-500">
-                Updating tickets…
+                Updating tickets...
               </p>
             )}
 
@@ -641,7 +838,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                   className="animate-spin"
                   aria-hidden="true"
                 />
-                Loading tickets…
+                Loading tickets...
               </p>
             ) : listQuery.isError ? (
               <div
@@ -666,8 +863,6 @@ export default function TicketPage({ technicianView = false }: { technicianView?
               </div>
             ) : filteredTickets.length > 0 ? (
               isUnassignedTab ? (
-                // UNASSIGNED: show a simple list.
-                // Details appear only after the user clicks a ticket.
                 <div className="space-y-3">
                   {filteredTickets.map((ticket) => (
                     <TicketRow
@@ -692,9 +887,11 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                         <span
                           className={`h-2.5 w-2.5 rounded-full ${groupStyles[group].dot}`}
                         />
+
                         <h3 className="text-sm font-bold text-slate-800">
                           {group}
                         </h3>
+
                         <span className="text-sm text-slate-500">
                           {groupTickets.length}
                         </span>
@@ -725,6 +922,7 @@ export default function TicketPage({ technicianView = false }: { technicianView?
         </section>
 
         {/* RIGHT: TICKET DETAILS */}
+
         {(!isUnassignedTab || activeTicketId) && (
           <div className="min-w-0">
             {detailQuery.isLoading ? (
@@ -732,9 +930,9 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                 role="status"
                 className="flex h-full min-h-96 items-center justify-center rounded-3xl bg-white text-slate-500"
               >
-                Loading ticket details…
+                Loading ticket details...
               </div>
-            ) : detailQuery.isError && !selectedTicket ? (
+            ) : detailQuery.isError && !detailQuery.currentData ? (
               <div
                 role="alert"
                 className="flex h-full min-h-96 flex-col items-center justify-center rounded-3xl bg-white px-6 text-center text-red-700"
@@ -774,12 +972,14 @@ export default function TicketPage({ technicianView = false }: { technicianView?
                     },
                   }).unwrap();
                 }}
-                onAssign={async () => {
+                onAssign={async (assigneeId) => {
+                  if (!assigneeId) {
+                    throw new Error("Please select a technician.");
+                  }
+
                   await assignTicket({
                     id: selectedTicket.serverId ?? selectedTicket.id,
-                    ...(user?.role === "IT Admin"
-                      ? { assigneeId: user.id }
-                      : {}),
+                    assigneeId,
                   }).unwrap();
                 }}
                 isSaving={isSaving}
@@ -796,4 +996,3 @@ export default function TicketPage({ technicianView = false }: { technicianView?
     </main>
   );
 }
-

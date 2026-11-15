@@ -39,7 +39,7 @@ export default function Reports() {
           <BarChart3 size={19} className="text-[#3155ff]" />
           <h1 className="text-2xl font-bold tracking-tight text-[#101a3b]">Reports</h1>
         </div>
-        <p className="mt-1 text-sm text-slate-500">Live metrics provided by the v1 dashboard and asset APIs.</p>
+        <p className="mt-1 text-sm text-slate-500">Live metrics</p>
       </header>
 
       {summaryQuery.isError && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">Dashboard report data could not be loaded.</p>}
