@@ -986,7 +986,7 @@ export default function TicketPage({
                 error={errorMessage}
               />
             ) : (
-              <div className="flex h-full text-[12px] min-h-12 items-center justify-center rounded-1xl bg-white text-slate-500">
+              <div className="flex h-full text-[12px] min-h-12 items-center justify-center rounded-md bg-white text-slate-600">
                 Select a ticket to view its details.
               </div>
             )}
