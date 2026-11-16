@@ -13,6 +13,10 @@ import { useAuth } from "../contexts/AuthContext";
 import { useGetDashboardSummaryQuery } from "../lib/api/dashboard/dashboard-api";
 import { useGetTicketsQuery } from "../lib/api/tickets/tickets-api";
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
+import {
+  getPriorityLabel,
+  getPriorityTextClass,
+} from "../lib/api/tickets/ticket-priority";
 import { getApiErrorMessage } from "../lib/api/error-message";
 import { getHomepageGreeting } from "../utils/get-homepage-greeting";
 import { useEffect, useState } from "react";
@@ -300,8 +304,13 @@ const greeting = getHomepageGreeting(currentTime);
                   </span>
 
                   <span className="mt-1 block truncate text-[8px] text-slate-500">
-                    {ticket.id} · {ticket.status} ·{" "}
-                    {ticket.requesterName ?? "Requester"}
+                    {ticket.id} ·{" "}
+                    <span
+                      className={`font-semibold ${getPriorityTextClass(ticket.priority)}`}
+                    >
+                      {ticket.priority}
+                    </span>{" "}
+                    · {ticket.status} · {ticket.requesterName ?? "Requester"}
                   </span>
                 </Link>
               ))}
@@ -337,7 +346,12 @@ const greeting = getHomepageGreeting(currentTime);
                   </span>
 
                   <span className="mt-1 block text-[8px] text-slate-500">
-                    {ticket.priority} ·{" "}
+                    <span
+                      className={`font-semibold ${getPriorityTextClass(getPriorityLabel(ticket.priority))}`}
+                    >
+                      {getPriorityLabel(ticket.priority)}
+                    </span>{" "}
+                    ·{" "}
                     {ticket.assignee?.fullName ?? "Unassigned"}
                   </span>
                 </Link>

@@ -30,7 +30,12 @@ export const ticketsApi = appApi.injectEndpoints({
     }),
     getTicket: builder.query<TicketApiRecord, string>({
       query: (id) => `/tickets/${encodeURIComponent(id)}`,
-      providesTags: (_result, _error, id) => [{ type: 'Ticket', id }],
+      // The detail can be requested by ticket number (IT-0001) while mutations
+      // invalidate by server id, so tag both to keep an open detail fresh.
+      providesTags: (result, _error, id) => [
+        { type: 'Ticket', id },
+        ...(result && result.id !== id ? [{ type: 'Ticket' as const, id: result.id }] : []),
+      ],
     }),
     createTicket: builder.mutation<TicketApiRecord, CreateTicketRequest>({
       query: (body) => ({ url: '/tickets', method: 'POST', body }),

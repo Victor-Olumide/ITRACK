@@ -25,6 +25,12 @@ import {
 } from '../lib/api/tickets/tickets-api'
 import { toCreateTicketRequest } from '../lib/api/tickets/ticket-form'
 import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
+import {
+  PRIORITY_SELECTED_CLASS,
+  TICKET_PRIORITY_OPTIONS,
+  toPriorityInputs,
+  type SelectableTicketPriority,
+} from '../lib/api/tickets/ticket-priority'
 import { getApiErrorMessage } from '../lib/api/error-message'
 
 function PageTitle({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
@@ -186,8 +192,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
   const [category, setCategory] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [impact, setImpact] = useState('Just me')
-  const [workState, setWorkState] = useState('It’s annoying')
+  const [priority, setPriority] = useState<SelectableTicketPriority | ''>('')
   const availableAssets = assetsQuery.data?.data ?? []
 
   if (submitted) {
@@ -218,6 +223,10 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
           onSubmit={async (event) => {
             event.preventDefault()
             setSubmitError('')
+            if (!priority) {
+              setSubmitError('Choose how serious the problem is.')
+              return
+            }
             try {
               const request = toCreateTicketRequest(
                 {
@@ -225,12 +234,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
                   description: description.trim(),
                   category: category === 'Request something' ? 'Request' : category,
                   type: category === 'Request something' ? 'REQUEST' : 'PROBLEM',
-                  impact: impact === 'Everyone' || impact === 'My team'
-                    ? 'HIGH'
-                    : impact === 'One person' ? 'MEDIUM' : 'LOW',
-                  urgency: workState === 'I’m stopped'
-                    ? 'HIGH'
-                    : workState === 'Work is harder' ? 'MEDIUM' : 'LOW',
+                  ...toPriorityInputs(priority),
                 },
                 selectedAssetId,
               )
@@ -319,32 +323,29 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
               />
             </label>
             <fieldset className="mt-4">
-              <legend className="text-xs font-semibold text-slate-600">Who is affected?</legend>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {['Just me', 'One person', 'My team', 'Everyone'].map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setImpact(item)}
-                    className={`rounded-full border px-3 py-2 text-xs ${impact === item ? 'border-[#3155ff] bg-[#edf1ff] text-[#3155ff]' : 'border-[#e4e9f2] text-slate-600'}`}
+              <legend className="text-xs font-semibold text-slate-600">How serious is it?</legend>
+              <p className="mt-1 text-xs text-slate-500">
+                Your first assessment. IT may adjust it after reviewing the problem.
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {TICKET_PRIORITY_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2.5 text-xs transition focus-within:ring-2 focus-within:ring-blue-100 ${priority === option.value ? PRIORITY_SELECTED_CLASS[option.value] : 'border-[#e4e9f2] text-slate-600 hover:bg-slate-50'}`}
                   >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <fieldset className="mt-4">
-              <legend className="text-xs font-semibold text-slate-600">Can you still work?</legend>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {['It’s annoying', 'Work is harder', 'I’m stopped'].map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setWorkState(item)}
-                    className={`rounded-full border px-3 py-2 text-xs ${workState === item ? 'border-[#3155ff] bg-[#edf1ff] text-[#3155ff]' : 'border-[#e4e9f2] text-slate-600'}`}
-                  >
-                    {item}
-                  </button>
+                    <input
+                      type="radio"
+                      name="ticket-priority"
+                      value={option.value}
+                      checked={priority === option.value}
+                      onChange={() => setPriority(option.value)}
+                      className="mt-0.5 accent-current"
+                    />
+                    <span>
+                      <span className="block font-semibold">{option.label}</span>
+                      <span className="mt-0.5 block font-normal opacity-80">{option.description}</span>
+                    </span>
+                  </label>
                 ))}
               </div>
             </fieldset>
@@ -354,7 +355,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
             </label>
             <button
               type="submit"
-              disabled={!category || title.trim().length < 5 || description.trim().length < 10 || createTicketState.isLoading}
+              disabled={!category || !priority || title.trim().length < 5 || description.trim().length < 10 || createTicketState.isLoading}
               className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#3155ff] px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               <Send size={15} />

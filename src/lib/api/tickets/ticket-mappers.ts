@@ -4,6 +4,7 @@ import type {
   ApiTicketStatus,
   TicketApiRecord,
 } from './types';
+import { getPriorityLabel } from './ticket-priority.ts';
 
 const statusLabels: Record<ApiTicketStatus, Ticket['status']> = {
   NEW: 'Unassigned',
@@ -27,7 +28,9 @@ function toHistory(entries: TicketApiRecord): TicketHistoryEntry[] {
     at: event.createdAt,
     item: {
       time: new Date(event.createdAt).toLocaleString(),
-      text: `${event.actor.fullName} ${event.type.toLowerCase()}${event.toValue ? `: ${event.toValue}` : ''}`,
+      text: event.type === 'PRIORITY'
+        ? `${event.actor.fullName} changed priority${event.fromValue ? ` from ${getPriorityLabel(event.fromValue)}` : ''}${event.toValue ? ` to ${getPriorityLabel(event.toValue)}` : ''}`
+        : `${event.actor.fullName} ${event.type.toLowerCase()}${event.toValue ? `: ${event.toValue}` : ''}`,
     },
   }));
   const comments = (entries.comments ?? []).map((comment) => ({

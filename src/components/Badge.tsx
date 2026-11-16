@@ -8,7 +8,8 @@
 //   Breached / Critical          -> red text on light red
 //   At risk / High               -> orange/amber text on light orange
 //   Medium / On track / Assigned -> blue text on light blue
-//   Low / In store                -> slate text on light gray
+//   Low priority                  -> green text on light green
+//   In store / Legacy             -> slate text on light gray
 
 const TONES = {
   red:    'bg-red-100 text-red-700',
@@ -23,7 +24,7 @@ const TONES = {
 // Maps known status / priority / type / time-state strings to a tone.
 const VALUE_TONE: Record<string, keyof typeof TONES> = {
   // Priorities
-  Critical: 'red', High: 'orange', Medium: 'blue', Low: 'slate',
+  Critical: 'red', High: 'orange', Medium: 'blue', Low: 'green', Legacy: 'slate',
   // Ticket types
   Problem: 'red', Request: 'blue',
   // Ticket statuses

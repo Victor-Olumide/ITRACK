@@ -19,11 +19,20 @@ import {
   useChangeTicketStatusMutation,
   useGetTicketQuery,
   useGetTicketsQuery,
+  useUpdateTicketMutation,
 } from "../lib/api/tickets/tickets-api";
 
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
 import type { ApiTicketStatus } from "../lib/api/tickets/types";
 import { getApiErrorMessage } from "../lib/api/error-message";
+import {
+  PRIORITY_SELECTED_CLASS,
+  TICKET_PRIORITY_OPTIONS,
+  getPriorityTextClass,
+  toApiPriority,
+  toPriorityUpdateRequest,
+  type SelectableTicketPriority,
+} from "../lib/api/tickets/ticket-priority";
 
 import {
   Drawer,
@@ -62,21 +71,6 @@ const groupStyles: Record<TicketTimeState, { dot: string }> = {
     dot: "bg-slate-400",
   },
 };
-
-const priorityStyles: Record<string, string> = {
-  Critical: "text-red-600",
-  High: "text-orange-600",
-  Medium: "text-blue-600",
-  Low: "text-slate-500",
-  Legacy: "text-slate-500",
-};
-
-const priorityMap = {
-  Critical: "P1_CRITICAL",
-  High: "P2_HIGH",
-  Medium: "P3_MEDIUM",
-  Low: "P4_LOW",
-} as const;
 
 const slaStyles: Record<TicketTimeState, string> = {
   Breached: "bg-red-100 text-red-700",
@@ -164,7 +158,7 @@ function TicketRow({
 
         <div className="hidden shrink-0 items-center gap-2 sm:flex">
           <span
-            className={`text-xs font-bold ${priorityStyles[ticket.priority]}`}
+            className={`text-xs font-bold ${getPriorityTextClass(ticket.priority)}`}
           >
             ▪ {ticket.priority}
           </span>
@@ -185,7 +179,7 @@ function TicketRow({
 
       <div className="mt-2 flex items-center gap-2 pl-9 sm:hidden">
         <span
-          className={`text-xs font-semibold ${priorityStyles[ticket.priority]}`}
+          className={`text-xs font-semibold ${getPriorityTextClass(ticket.priority)}`}
         >
           {ticket.priority}
         </span>
@@ -200,11 +194,126 @@ function TicketRow({
   );
 }
 
+function PriorityControl({
+  ticket,
+  onPriorityChange,
+  isSaving,
+}: {
+  ticket: TicketView;
+  onPriorityChange: (priority: SelectableTicketPriority) => Promise<void>;
+  isSaving: boolean;
+}) {
+  const currentPriority = toApiPriority(ticket.priority);
+  const [selected, setSelected] = useState<SelectableTicketPriority | "">(
+    currentPriority ?? "",
+  );
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [feedback, setFeedback] = useState<
+    { kind: "success" | "error"; text: string } | undefined
+  >();
+
+  const canSave = Boolean(selected) && selected !== currentPriority && !isSaving;
+
+  const save = async () => {
+    if (!selected || !canSave) return;
+    setIsUpdating(true);
+    setFeedback(undefined);
+    try {
+      await onPriorityChange(selected);
+      const label =
+        TICKET_PRIORITY_OPTIONS.find((option) => option.value === selected)
+          ?.label ?? selected;
+      setFeedback({ kind: "success", text: `Priority updated to ${label}.` });
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        text: getApiErrorMessage(
+          error,
+          "Priority could not be updated. Please try again.",
+        ),
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 p-4">
+      <div>
+        <h3 className="text-sm font-bold text-slate-900">Review priority</h3>
+        <p className="mt-1 text-xs text-slate-500">
+          Current:{" "}
+          <strong className={getPriorityTextClass(ticket.priority)}>
+            {ticket.priority}
+          </strong>
+          . Adjust it based on your assessment before assigning.
+        </p>
+      </div>
+
+      <div
+        role="radiogroup"
+        aria-label="Ticket priority"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+      >
+        {TICKET_PRIORITY_OPTIONS.map((option) => {
+          const isSelected = selected === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              onClick={() => {
+                setSelected(option.value);
+                setFeedback(undefined);
+              }}
+              disabled={isSaving}
+              className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
+                isSelected
+                  ? PRIORITY_SELECTED_CLASS[option.value]
+                  : `border-slate-200 bg-white hover:bg-slate-50 ${getPriorityTextClass(option.label)}`
+              }`}
+            >
+              {option.label}
+              {option.value === currentPriority && (
+                <span className="block text-[10px] font-medium opacity-70">
+                  Current
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void save()}
+        disabled={!canSave}
+        className="w-fit rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isUpdating ? "Updating priority..." : "Update priority"}
+      </button>
+
+      {feedback && (
+        <p
+          role={feedback.kind === "error" ? "alert" : "status"}
+          className={`text-sm ${
+            feedback.kind === "error" ? "text-red-700" : "text-emerald-700"
+          }`}
+        >
+          {feedback.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function TicketDetails({
   ticket,
   onComment,
   onStatusChange,
   onAssign,
+  onPriorityChange,
   isSaving,
   error,
 }: {
@@ -215,6 +324,7 @@ function TicketDetails({
     resolutionNote?: string,
   ) => Promise<void>;
   onAssign: (assigneeId: string) => Promise<void>;
+  onPriorityChange: (priority: SelectableTicketPriority) => Promise<void>;
   isSaving: boolean;
   error?: string;
 }) {
@@ -272,7 +382,9 @@ function TicketDetails({
           {ticket.status}
         </span>
 
-        <span className="text-xs font-semibold text-orange-600">
+        <span
+          className={`text-xs font-semibold ${getPriorityTextClass(ticket.priority)}`}
+        >
           {ticket.priority} priority
         </span>
       </div>
@@ -503,6 +615,15 @@ function TicketDetails({
             </button>
           )}
 
+        {/* IT ADMIN: REVIEW PRIORITY (before or after assignment, while open) */}
+        {isAdmin && !["Resolved", "Closed"].includes(ticket.status) && (
+          <PriorityControl
+            ticket={ticket}
+            onPriorityChange={onPriorityChange}
+            isSaving={isSaving}
+          />
+        )}
+
         {/* IT ADMIN: ASSIGN OR REASSIGN TICKET */}
         {isAdmin && ["Unassigned", "Assigned"].includes(ticket.status) && (
           <div className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 p-4">
@@ -624,10 +745,8 @@ export default function TicketPage({
 
     ...(search ? { q: search } : {}),
 
-    ...(priority && priority in priorityMap
-      ? {
-          priority: priorityMap[priority as keyof typeof priorityMap],
-        }
+    ...(toApiPriority(priority)
+      ? { priority: toApiPriority(priority) }
       : {}),
 
     ...(category ? { category } : {}),
@@ -696,10 +815,15 @@ export default function TicketPage({
   const [addComment, commentState] = useAddTicketCommentMutation();
   const [changeStatus, statusState] = useChangeTicketStatusMutation();
   const [assignTicket, assignState] = useAssignTicketMutation();
+  const [updateTicket, updateState] = useUpdateTicketMutation();
 
   const isSaving =
-    commentState.isLoading || statusState.isLoading || assignState.isLoading;
+    commentState.isLoading ||
+    statusState.isLoading ||
+    assignState.isLoading ||
+    updateState.isLoading;
 
+  // Priority update errors are shown inside the priority control itself.
   const mutationError =
     commentState.error ?? statusState.error ?? assignState.error;
 
@@ -1011,6 +1135,14 @@ export default function TicketPage({
                   await assignTicket({
                     id: selectedTicket.serverId ?? selectedTicket.id,
                     assigneeId,
+                  }).unwrap();
+                }}
+                onPriorityChange={async (nextPriority) => {
+                  // Sends only impact/urgency; title, description, category,
+                  // status and assignee are left untouched.
+                  await updateTicket({
+                    id: selectedTicket.serverId ?? selectedTicket.id,
+                    body: toPriorityUpdateRequest(nextPriority),
                   }).unwrap();
                 }}
                 isSaving={isSaving}

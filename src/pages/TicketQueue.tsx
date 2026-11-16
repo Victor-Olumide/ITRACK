@@ -39,7 +39,7 @@ const priorityStyles: Record<ApiTicketPriority, string> = {
   P1_CRITICAL: 'text-red-700',
   P2_HIGH: 'text-orange-700',
   P3_MEDIUM: 'text-blue-700',
-  P4_LOW: 'text-slate-600',
+  P4_LOW: 'text-green-700',
   P5_PLANNING: 'text-slate-500',
 }
 
