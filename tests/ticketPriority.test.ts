@@ -5,10 +5,13 @@ import {
   getPriorityLabel,
   getPriorityTextClass,
   toApiPriority,
+  toCreatePriorityFields,
   toPriorityInputs,
-  toPriorityUpdateRequest,
 } from '../src/lib/api/tickets/ticket-priority.ts'
-import { toCreateTicketRequest } from '../src/lib/api/tickets/ticket-form.ts'
+import {
+  toAssignTicketBody,
+  toCreateTicketRequest,
+} from '../src/lib/api/tickets/ticket-form.ts'
 import { toClientTicket } from '../src/lib/api/tickets/ticket-mappers.ts'
 import type { TicketApiRecord } from '../src/lib/api/tickets/types.ts'
 
@@ -33,25 +36,30 @@ test('every selectable priority maps to impact/urgency the server resolves to th
   }
 })
 
-test('priority update request contains only impact and urgency', () => {
-  const body = toPriorityUpdateRequest('P2_HIGH')
-  assert.deepEqual(Object.keys(body).sort(), ['impact', 'urgency'])
-  assert.deepEqual(body, { impact: 'HIGH', urgency: 'MEDIUM' })
+test('assign body carries suggestedPriority only when provided', () => {
+  assert.deepEqual(toAssignTicketBody({ assigneeId: 'tech-1' }), {
+    assigneeId: 'tech-1',
+  })
+  assert.deepEqual(
+    toAssignTicketBody({ assigneeId: 'tech-1', suggestedPriority: 'P1_CRITICAL' }),
+    { assigneeId: 'tech-1', suggestedPriority: 'P1_CRITICAL' },
+  )
+  assert.deepEqual(toAssignTicketBody({}), {})
 })
 
-test('ticket creation request carries the selected priority inputs', () => {
+test('ticket creation request sends the backend priority value plus matching impact/urgency', () => {
   const request = toCreateTicketRequest(
     {
       title: 'Printer offline',
       description: 'The third-floor printer is offline.',
       category: 'Printer',
       type: 'PROBLEM',
-      ...toPriorityInputs('P1_CRITICAL'),
+      ...toCreatePriorityFields('P2_HIGH'),
     },
     '',
   )
-  assert.equal(request.impact, 'HIGH')
-  assert.equal(request.urgency, 'HIGH')
+  assert.equal(request.priority, 'P2_HIGH')
+  assert.equal(serverMatrix[request.impact][request.urgency], request.priority)
   assert.equal('assetId' in request, false)
 })
 

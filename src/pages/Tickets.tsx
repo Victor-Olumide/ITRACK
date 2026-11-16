@@ -19,7 +19,6 @@ import {
   useChangeTicketStatusMutation,
   useGetTicketQuery,
   useGetTicketsQuery,
-  useUpdateTicketMutation,
 } from "../lib/api/tickets/tickets-api";
 
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
@@ -30,7 +29,6 @@ import {
   TICKET_PRIORITY_OPTIONS,
   getPriorityTextClass,
   toApiPriority,
-  toPriorityUpdateRequest,
   type SelectableTicketPriority,
 } from "../lib/api/tickets/ticket-priority";
 
@@ -194,126 +192,11 @@ function TicketRow({
   );
 }
 
-function PriorityControl({
-  ticket,
-  onPriorityChange,
-  isSaving,
-}: {
-  ticket: TicketView;
-  onPriorityChange: (priority: SelectableTicketPriority) => Promise<void>;
-  isSaving: boolean;
-}) {
-  const currentPriority = toApiPriority(ticket.priority);
-  const [selected, setSelected] = useState<SelectableTicketPriority | "">(
-    currentPriority ?? "",
-  );
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [feedback, setFeedback] = useState<
-    { kind: "success" | "error"; text: string } | undefined
-  >();
-
-  const canSave = Boolean(selected) && selected !== currentPriority && !isSaving;
-
-  const save = async () => {
-    if (!selected || !canSave) return;
-    setIsUpdating(true);
-    setFeedback(undefined);
-    try {
-      await onPriorityChange(selected);
-      const label =
-        TICKET_PRIORITY_OPTIONS.find((option) => option.value === selected)
-          ?.label ?? selected;
-      setFeedback({ kind: "success", text: `Priority updated to ${label}.` });
-    } catch (error) {
-      setFeedback({
-        kind: "error",
-        text: getApiErrorMessage(
-          error,
-          "Priority could not be updated. Please try again.",
-        ),
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  return (
-    <div className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 p-4">
-      <div>
-        <h3 className="text-sm font-bold text-slate-900">Review priority</h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Current:{" "}
-          <strong className={getPriorityTextClass(ticket.priority)}>
-            {ticket.priority}
-          </strong>
-          . Adjust it based on your assessment before assigning.
-        </p>
-      </div>
-
-      <div
-        role="radiogroup"
-        aria-label="Ticket priority"
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
-      >
-        {TICKET_PRIORITY_OPTIONS.map((option) => {
-          const isSelected = selected === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              onClick={() => {
-                setSelected(option.value);
-                setFeedback(undefined);
-              }}
-              disabled={isSaving}
-              className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
-                isSelected
-                  ? PRIORITY_SELECTED_CLASS[option.value]
-                  : `border-slate-200 bg-white hover:bg-slate-50 ${getPriorityTextClass(option.label)}`
-              }`}
-            >
-              {option.label}
-              {option.value === currentPriority && (
-                <span className="block text-[10px] font-medium opacity-70">
-                  Current
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => void save()}
-        disabled={!canSave}
-        className="w-fit rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isUpdating ? "Updating priority..." : "Update priority"}
-      </button>
-
-      {feedback && (
-        <p
-          role={feedback.kind === "error" ? "alert" : "status"}
-          className={`text-sm ${
-            feedback.kind === "error" ? "text-red-700" : "text-emerald-700"
-          }`}
-        >
-          {feedback.text}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function TicketDetails({
   ticket,
   onComment,
   onStatusChange,
   onAssign,
-  onPriorityChange,
   isSaving,
   error,
 }: {
@@ -323,8 +206,10 @@ function TicketDetails({
     status: ApiTicketStatus,
     resolutionNote?: string,
   ) => Promise<void>;
-  onAssign: (assigneeId: string) => Promise<void>;
-  onPriorityChange: (priority: SelectableTicketPriority) => Promise<void>;
+  onAssign: (
+    assigneeId: string,
+    suggestedPriority?: SelectableTicketPriority,
+  ) => Promise<void>;
   isSaving: boolean;
   error?: string;
 }) {
@@ -344,6 +229,11 @@ function TicketDetails({
   );
 
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
+  const currentPriority = ticket ? toApiPriority(ticket.priority) : undefined;
+  const [selectedPriority, setSelectedPriority] = useState<
+    SelectableTicketPriority | ""
+  >(currentPriority ?? "");
+  const [assignNotice, setAssignNotice] = useState("");
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [message, setMessage] = useState("");
   const [resolutionNote, setResolutionNote] = useState("");
@@ -615,26 +505,66 @@ function TicketDetails({
             </button>
           )}
 
-        {/* IT ADMIN: REVIEW PRIORITY (before or after assignment, while open) */}
-        {isAdmin && !["Resolved", "Closed"].includes(ticket.status) && (
-          <PriorityControl
-            ticket={ticket}
-            onPriorityChange={onPriorityChange}
-            isSaving={isSaving}
-          />
-        )}
-
         {/* IT ADMIN: ASSIGN OR REASSIGN TICKET */}
         {isAdmin && ["Unassigned", "Assigned"].includes(ticket.status) && (
           <div className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 p-4">
             <div>
               <h3 className="text-sm font-bold text-slate-900">
-                {ticket.assigneeId ? "Reassign ticket" : "Assign ticket"}
+                {ticket.assigneeId ? "Review and reassign" : "Review and assign"}
               </h3>
 
               <p className="mt-1 text-xs text-slate-500">
-                Select an active technician to handle this ticket.
+                Confirm the priority, then select an active technician to
+                handle this ticket.
               </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-slate-600">
+                Priority{" "}
+                <span className="font-normal text-slate-500">
+                  (currently{" "}
+                  <strong className={getPriorityTextClass(ticket.priority)}>
+                    {ticket.priority}
+                  </strong>
+                  )
+                </span>
+              </p>
+
+              <div
+                role="radiogroup"
+                aria-label="Ticket priority"
+                className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"
+              >
+                {TICKET_PRIORITY_OPTIONS.map((option) => {
+                  const isSelected = selectedPriority === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => {
+                        setSelectedPriority(option.value);
+                        setAssignNotice("");
+                      }}
+                      disabled={isSaving}
+                      className={`rounded-xl border px-3 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
+                        isSelected
+                          ? PRIORITY_SELECTED_CLASS[option.value]
+                          : `border-slate-200 bg-white hover:bg-slate-50 ${getPriorityTextClass(option.label)}`
+                      }`}
+                    >
+                      {option.label}
+                      {option.value === currentPriority && (
+                        <span className="block text-[10px] font-medium opacity-70">
+                          Current
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {isLoadingTechnicians ? (
@@ -651,9 +581,10 @@ function TicketDetails({
               <>
                 <select
                   value={selectedAssigneeId || ticket.assigneeId || ""}
-                  onChange={(event) =>
-                    setSelectedAssigneeId(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setSelectedAssigneeId(event.target.value);
+                    setAssignNotice("");
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="" disabled>
@@ -672,26 +603,53 @@ function TicketDetails({
                   type="button"
                   onClick={() =>
                     void runAction(async () => {
-                      await onAssign(
-                        selectedAssigneeId || ticket.assigneeId || "",
-                      );
+                      const nextAssigneeId =
+                        selectedAssigneeId || ticket.assigneeId || "";
+                      const priorityToSend =
+                        selectedPriority && selectedPriority !== currentPriority
+                          ? selectedPriority
+                          : undefined;
+                      setAssignNotice("");
+                      // Only reached on success; failures throw and are shown
+                      // by the parent's error message.
+                      await onAssign(nextAssigneeId, priorityToSend);
                       setSelectedAssigneeId("");
+                      setAssignNotice(
+                        priorityToSend
+                          ? `Saved. Priority set to ${
+                              TICKET_PRIORITY_OPTIONS.find(
+                                (option) => option.value === priorityToSend,
+                              )?.label ?? priorityToSend
+                            }.`
+                          : "Ticket assigned.",
+                      );
                     })
                   }
                   disabled={
                     isSaving ||
                     !(selectedAssigneeId || ticket.assigneeId) ||
-                    (selectedAssigneeId || ticket.assigneeId) ===
-                      ticket.assigneeId
+                    ((selectedAssigneeId || ticket.assigneeId) ===
+                      ticket.assigneeId &&
+                      (!selectedPriority || selectedPriority === currentPriority))
                   }
                   className="w-fit rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSaving
-                    ? "Assigning..."
-                    : ticket.assigneeId
-                      ? "Reassign ticket"
-                      : "Assign ticket"}
+                    ? "Saving..."
+                    : ticket.assigneeId &&
+                        (selectedAssigneeId || ticket.assigneeId) ===
+                          ticket.assigneeId
+                      ? "Save priority"
+                      : ticket.assigneeId
+                        ? "Reassign ticket"
+                        : "Assign ticket"}
                 </button>
+
+                {assignNotice && (
+                  <p role="status" className="text-sm text-emerald-700">
+                    {assignNotice}
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -815,15 +773,10 @@ export default function TicketPage({
   const [addComment, commentState] = useAddTicketCommentMutation();
   const [changeStatus, statusState] = useChangeTicketStatusMutation();
   const [assignTicket, assignState] = useAssignTicketMutation();
-  const [updateTicket, updateState] = useUpdateTicketMutation();
 
   const isSaving =
-    commentState.isLoading ||
-    statusState.isLoading ||
-    assignState.isLoading ||
-    updateState.isLoading;
+    commentState.isLoading || statusState.isLoading || assignState.isLoading;
 
-  // Priority update errors are shown inside the priority control itself.
   const mutationError =
     commentState.error ?? statusState.error ?? assignState.error;
 
@@ -1127,22 +1080,17 @@ export default function TicketPage({
                     },
                   }).unwrap();
                 }}
-                onAssign={async (assigneeId) => {
+                onAssign={async (assigneeId, suggestedPriority) => {
                   if (!assigneeId) {
                     throw new Error("Please select a technician.");
                   }
 
+                  // POST /tickets/:id/assign applies suggestedPriority together
+                  // with the assignment (server: AssignTicketDto).
                   await assignTicket({
                     id: selectedTicket.serverId ?? selectedTicket.id,
                     assigneeId,
-                  }).unwrap();
-                }}
-                onPriorityChange={async (nextPriority) => {
-                  // Sends only impact/urgency; title, description, category,
-                  // status and assignee are left untouched.
-                  await updateTicket({
-                    id: selectedTicket.serverId ?? selectedTicket.id,
-                    body: toPriorityUpdateRequest(nextPriority),
+                    ...(suggestedPriority ? { suggestedPriority } : {}),
                   }).unwrap();
                 }}
                 isSaving={isSaving}

@@ -2,7 +2,6 @@ import type {
   ApiTicketImpact,
   ApiTicketPriority,
   ApiTicketUrgency,
-  UpdateTicketRequest,
 } from './types';
 
 /** Priority levels a person can choose. P5_PLANNING is legacy-only. */
@@ -25,9 +24,11 @@ export const TICKET_PRIORITY_OPTIONS: readonly TicketPriorityOption[] = [
 ];
 
 /**
- * The server derives priority from impact × urgency (src/tickets/ticket-rules.ts)
- * and has no direct priority field. Each selectable priority maps to one
- * impact/urgency pair that the server's matrix resolves to that priority.
+ * POST /tickets accepts `priority` directly and stores it. The server still
+ * stores impact/urgency (default MEDIUM/MEDIUM) and PATCH /tickets/:id
+ * recalculates priority from them, so we also send the impact/urgency pair
+ * that the server's matrix (src/tickets/ticket-rules.ts) resolves to the
+ * same priority. That keeps the stored fields consistent.
  */
 const PRIORITY_INPUTS: Record<
   SelectableTicketPriority,
@@ -46,11 +47,13 @@ export function toPriorityInputs(priority: SelectableTicketPriority): {
   return { ...PRIORITY_INPUTS[priority] };
 }
 
-/** PATCH body that changes only the fields that drive priority. */
-export function toPriorityUpdateRequest(
-  priority: SelectableTicketPriority,
-): Pick<UpdateTicketRequest, 'impact' | 'urgency'> {
-  return toPriorityInputs(priority);
+/** Priority fields for POST /tickets. */
+export function toCreatePriorityFields(priority: SelectableTicketPriority): {
+  priority: SelectableTicketPriority;
+  impact: ApiTicketImpact;
+  urgency: ApiTicketUrgency;
+} {
+  return { priority, ...toPriorityInputs(priority) };
 }
 
 const API_PRIORITY_LABELS: Record<ApiTicketPriority, TicketPriorityLabel> = {

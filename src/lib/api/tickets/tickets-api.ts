@@ -1,5 +1,7 @@
 import { appApi } from '@/lib/api/app-api';
+import { toAssignTicketBody } from './ticket-form';
 import type {
+  AssignTicketRequest,
   ChangeTicketStatusRequest,
   CreateTicketRequest,
   TicketApiRecord,
@@ -74,12 +76,12 @@ export const ticketsApi = appApi.injectEndpoints({
     }),
     assignTicket: builder.mutation<
       TicketApiRecord,
-      { id: string; assigneeId?: string }
+      { id: string } & AssignTicketRequest
     >({
-      query: ({ id, assigneeId }) => ({
+      query: ({ id, ...body }) => ({
         url: `/tickets/${encodeURIComponent(id)}/assign`,
         method: 'POST',
-        body: assigneeId ? { assigneeId } : {},
+        body: toAssignTicketBody(body),
       }),
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Ticket', id },

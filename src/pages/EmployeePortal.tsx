@@ -28,7 +28,7 @@ import { toClientTicket } from '../lib/api/tickets/ticket-mappers'
 import {
   PRIORITY_SELECTED_CLASS,
   TICKET_PRIORITY_OPTIONS,
-  toPriorityInputs,
+  toCreatePriorityFields,
   type SelectableTicketPriority,
 } from '../lib/api/tickets/ticket-priority'
 import { getApiErrorMessage } from '../lib/api/error-message'
@@ -234,7 +234,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
                   description: description.trim(),
                   category: category === 'Request something' ? 'Request' : category,
                   type: category === 'Request something' ? 'REQUEST' : 'PROBLEM',
-                  ...toPriorityInputs(priority),
+                  ...toCreatePriorityFields(priority),
                 },
                 selectedAssetId,
               )
@@ -349,9 +349,20 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
                 ))}
               </div>
             </fieldset>
+            {/* The server has no attachment endpoint yet, so files cannot be sent.
+                Keep the field visible but disabled rather than silently dropping files. */}
             <label className="mt-4 block text-xs font-semibold text-slate-600">
               Add a photo or screenshot
-              <input type="file" accept="image/*,.pdf" className="mt-1.5 block w-full rounded-xl border border-dashed border-[#dce2ef] p-3 text-xs font-normal text-slate-500" />
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                disabled
+                aria-describedby="ticket-attachment-unavailable"
+                className="mt-1.5 block w-full cursor-not-allowed rounded-xl border border-dashed border-[#dce2ef] p-3 text-xs font-normal text-slate-400 opacity-60"
+              />
+              <span id="ticket-attachment-unavailable" className="mt-1 block font-normal text-slate-500">
+                Attachments aren’t available yet. Describe what you see in the details above.
+              </span>
             </label>
             <button
               type="submit"

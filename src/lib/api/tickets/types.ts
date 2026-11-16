@@ -107,6 +107,8 @@ export interface CreateTicketRequest {
   type: ApiTicketType;
   impact: ApiTicketImpact;
   urgency: ApiTicketUrgency;
+  /** Reporter's initial assessment; the server stores it as the priority. */
+  priority?: ApiTicketPriority;
   assetId?: string | null;
 }
 
@@ -116,6 +118,12 @@ export interface UpdateTicketRequest {
   category?: string;
   impact?: ApiTicketImpact;
   urgency?: ApiTicketUrgency;
+}
+
+export interface AssignTicketRequest {
+  assigneeId?: string;
+  /** IT Admin's reviewed priority, applied together with the assignment. */
+  suggestedPriority?: ApiTicketPriority;
 }
 
 export interface ChangeTicketStatusRequest {
