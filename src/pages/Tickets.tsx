@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   RefreshCw,
   Send,
+  X,
 } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
@@ -34,6 +35,7 @@ import {
 
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
@@ -47,6 +49,19 @@ interface TicketView extends Ticket {
   device: string;
   deviceName: string;
   group: TicketTimeState;
+}
+
+const VALID_STATUSES: ApiTicketStatus[] = [
+  "NEW",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "WAITING_ON_USER",
+  "RESOLVED",
+  "CLOSED",
+];
+
+function isApiTicketStatus(value: string | null): value is ApiTicketStatus {
+  return VALID_STATUSES.includes(value as ApiTicketStatus);
 }
 
 function toView(ticket: Ticket): TicketView {
@@ -132,7 +147,11 @@ function TicketRow({
       }`}
     >
       <div className="flex items-center gap-3">
-        <Circle size={25} className="shrink-0 text-blue-600" strokeWidth={2} />
+        <Circle
+          size={25}
+          className="shrink-0 text-blue-600"
+          strokeWidth={2}
+        />
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-slate-900">
@@ -230,9 +249,11 @@ function TicketDetails({
 
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const currentPriority = ticket ? toApiPriority(ticket.priority) : undefined;
+
   const [selectedPriority, setSelectedPriority] = useState<
     SelectableTicketPriority | ""
   >(currentPriority ?? "");
+
   const [assignNotice, setAssignNotice] = useState("");
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [message, setMessage] = useState("");
@@ -286,12 +307,16 @@ function TicketDetails({
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 p-4">
           <p className="text-sm text-slate-500">Response</p>
-          <p className="mt-1 font-bold text-emerald-600">{ticket.response}</p>
+          <p className="mt-1 font-bold text-emerald-600">
+            {ticket.response}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 p-4">
           <p className="text-sm text-slate-500">Resolution</p>
-          <p className="mt-1 font-bold text-slate-800">{ticket.resolution}</p>
+          <p className="mt-1 font-bold text-slate-800">
+            {ticket.resolution}
+          </p>
         </div>
       </div>
 
@@ -491,7 +516,6 @@ function TicketDetails({
           </button>
         )}
 
-        {/* TECHNICIAN: TAKE TICKET */}
         {ticket.status === "Unassigned" &&
           !ticket.assigneeId &&
           user?.role === "Technician" && (
@@ -505,7 +529,6 @@ function TicketDetails({
             </button>
           )}
 
-        {/* IT ADMIN: ASSIGN OR REASSIGN TICKET */}
         {isAdmin && ["Unassigned", "Assigned"].includes(ticket.status) && (
           <div className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 p-4">
             <div>
@@ -538,6 +561,7 @@ function TicketDetails({
               >
                 {TICKET_PRIORITY_OPTIONS.map((option) => {
                   const isSelected = selectedPriority === option.value;
+
                   return (
                     <button
                       key={option.value}
@@ -556,6 +580,7 @@ function TicketDetails({
                       }`}
                     >
                       {option.label}
+
                       {option.value === currentPriority && (
                         <span className="block text-[10px] font-medium opacity-70">
                           Current
@@ -605,15 +630,18 @@ function TicketDetails({
                     void runAction(async () => {
                       const nextAssigneeId =
                         selectedAssigneeId || ticket.assigneeId || "";
+
                       const priorityToSend =
                         selectedPriority && selectedPriority !== currentPriority
                           ? selectedPriority
                           : undefined;
+
                       setAssignNotice("");
-                      // Only reached on success; failures throw and are shown
-                      // by the parent's error message.
+
                       await onAssign(nextAssigneeId, priorityToSend);
+
                       setSelectedAssigneeId("");
+
                       setAssignNotice(
                         priorityToSend
                           ? `Saved. Priority set to ${
@@ -677,16 +705,25 @@ export default function TicketPage({
   technicianView?: boolean;
 }) {
   const { user } = useAuth();
-
   const assigneeId = user?.id ?? "";
 
   const [searchParams, setSearchParams] = useSearchParams();
 
   const requestedTicketId = searchParams.get("ticket");
+  const requestedQueue = searchParams.get("queue");
+  const requestedStatus = searchParams.get("status");
+
+  const initialTab =
+    requestedQueue === "unassigned"
+      ? "Unassigned"
+      : requestedQueue === "mine"
+        ? "Mine"
+        : technicianView
+          ? "Mine"
+          : "All open";
 
   const [selectedId, setSelectedId] = useState(requestedTicketId ?? "");
-
-  const [tab, setTab] = useState(technicianView ? "Mine" : "All open");
+  const [tab, setTab] = useState(initialTab);
 
   const [department, setDepartment] = useState("");
   const [priority, setPriority] = useState("");
@@ -697,11 +734,16 @@ export default function TicketPage({
   const isUnassignedTab = tab === "Unassigned";
   const isMineTab = tab === "Mine";
 
+  const statusFilter = isApiTicketStatus(requestedStatus)
+    ? requestedStatus
+    : undefined;
+
   const listArgs = {
     page: 1,
     pageSize: 100,
 
     ...(search ? { q: search } : {}),
+    ...(statusFilter ? { status: statusFilter } : {}),
 
     ...(toApiPriority(priority)
       ? { priority: toApiPriority(priority) }
@@ -723,25 +765,38 @@ export default function TicketPage({
 
   const filteredTickets = useMemo(() => {
     return availableTickets.filter((ticket) => {
-      const isOpen = ticket.status !== "Resolved" && ticket.status !== "Closed";
+      const isOpen =
+        ticket.status !== "Resolved" && ticket.status !== "Closed";
 
       const matchesTab =
         tab === "All open"
-          ? isOpen
+          ? statusFilter
+            ? true
+            : isOpen
           : tab === "Mine"
             ? ticket.assigneeId === assigneeId && isOpen
             : tab === "Unassigned"
               ? !ticket.assigneeId && isOpen
               : true;
 
-      const matchesDepartment = !department || ticket.department === department;
-      const matchesPriority = !priority || ticket.priority === priority;
-      const matchesCategory = !category || ticket.category === category;
-      const matchesType = !type || ticket.type === type;
+      const matchesDepartment =
+        !department || ticket.department === department;
+
+      const matchesPriority =
+        !priority || ticket.priority === priority;
+
+      const matchesCategory =
+        !category || ticket.category === category;
+
+      const matchesType =
+        !type || ticket.type === type;
 
       const matchesSearch = `${ticket.title} ${ticket.id} ${ticket.requester}`
         .toLowerCase()
         .includes(search.toLowerCase());
+
+      const matchesOverdue =
+        requestedQueue !== "overdue" || ticket.timeState === "Breached";
 
       return (
         matchesTab &&
@@ -749,7 +804,8 @@ export default function TicketPage({
         matchesPriority &&
         matchesCategory &&
         matchesType &&
-        matchesSearch
+        matchesSearch &&
+        matchesOverdue
       );
     });
   }, [
@@ -761,9 +817,11 @@ export default function TicketPage({
     category,
     type,
     search,
+    statusFilter,
+    requestedQueue,
   ]);
 
-  // Only open ticket details when a ticket is explicitly selected.
+  // Details open only when the user selects a ticket or a ticket URL is supplied.
   const activeTicketId = requestedTicketId ?? selectedId;
 
   const detailQuery = useGetTicketQuery(activeTicketId ?? "", {
@@ -775,7 +833,9 @@ export default function TicketPage({
   const [assignTicket, assignState] = useAssignTicketMutation();
 
   const isSaving =
-    commentState.isLoading || statusState.isLoading || assignState.isLoading;
+    commentState.isLoading ||
+    statusState.isLoading ||
+    assignState.isLoading;
 
   const mutationError =
     commentState.error ?? statusState.error ?? assignState.error;
@@ -793,27 +853,52 @@ export default function TicketPage({
 
   const groups: TicketTimeState[] = ["Breached", "Not overdue"];
 
+  const updateSearchParams = (updates: {
+    ticket?: string | null;
+    queue?: string | null;
+    status?: string | null;
+  }) => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        nextParams.set(key, value);
+      } else {
+        nextParams.delete(key);
+      }
+    });
+
+    setSearchParams(nextParams);
+  };
+
   const handleTabChange = (nextTab: string) => {
     setTab(nextTab);
     setSelectedId("");
-    setSearchParams({});
+
+    updateSearchParams({
+      ticket: null,
+      queue:
+        nextTab === "Unassigned"
+          ? "unassigned"
+          : nextTab === "Mine"
+            ? "mine"
+            : null,
+    });
   };
 
   const handleTicketSelect = (ticketId: string) => {
     setSelectedId(ticketId);
-    setSearchParams({ ticket: ticketId });
+    updateSearchParams({ ticket: ticketId });
   };
 
   const handleCloseDetails = () => {
     setSelectedId("");
-    setSearchParams({});
+    updateSearchParams({ ticket: null });
   };
 
   return (
     <main className="min-h-screen bg-[#0c194d]">
       <div className="mx-auto max-w-[1800px]">
-        {/* TICKET LIST */}
-
         <section className="min-w-0 rounded-[26px] bg-[#f4f6fc] p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -1006,25 +1091,32 @@ export default function TicketPage({
         </section>
       </div>
 
-      {/* RIGHT-SIDE TICKET DETAILS DRAWER */}
-
       <Drawer
-       swipeDirection="right"
+        swipeDirection="right"
         open={Boolean(activeTicketId)}
         onOpenChange={(open) => {
           if (!open) handleCloseDetails();
         }}
       >
         <DrawerContent className="h-full w-full max-w-none rounded-l-2xl rounded-r-none border-l border-slate-200 bg-white p-0 sm:max-w-xl">
-          <DrawerHeader className="border-b border-slate-100 px-6 py-4 text-left">
-            <DrawerTitle className="text-lg font-bold text-[#0B184C]">
-              Ticket details
-            </DrawerTitle>
+          <DrawerHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100 px-6 py-4 text-left">
+            <div>
+              <DrawerTitle className="text-lg font-bold text-[#0B184C]">
+                Ticket details
+              </DrawerTitle>
 
-            <DrawerDescription className="text-xs text-slate-500">
-              View ticket information, communicate with the requester and
-              manage its status.
-            </DrawerDescription>
+              <DrawerDescription className="text-xs text-slate-500">
+                View ticket information, communicate with the requester and
+                manage its status.
+              </DrawerDescription>
+            </div>
+
+            <DrawerClose
+              aria-label="Close ticket details"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <X size={18} aria-hidden="true" />
+            </DrawerClose>
           </DrawerHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -1085,8 +1177,6 @@ export default function TicketPage({
                     throw new Error("Please select a technician.");
                   }
 
-                  // POST /tickets/:id/assign applies suggestedPriority together
-                  // with the assignment (server: AssignTicketDto).
                   await assignTicket({
                     id: selectedTicket.serverId ?? selectedTicket.id,
                     assigneeId,
