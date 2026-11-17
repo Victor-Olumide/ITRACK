@@ -1036,7 +1036,7 @@ export default function TicketPage({
   return (
     <main className="min-h-screen bg-[#0c194d]">
       <div className="mx-auto max-w-[1800px]">
-        <section className="min-w-0 rounded-[26px] bg-[#f4f6fc] p-5 sm:p-7">
+        <section className="min-w-0  bg-[#f4f6fc] p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-[#101a3b]">
