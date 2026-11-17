@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { NavLink } from 'react-router'
 import {
@@ -50,11 +51,6 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
       { to: '/reports', label: 'Reports', Icon: BarChart3 },
     ],
   },
-  // {
-  //   label: 'OPERATIONS',
-  //   links: [
-  //   ],
-  // },
   {
     label: 'MANAGEMENT',
     links: [
@@ -92,82 +88,147 @@ interface NavigationProps {
   onNavigate?: () => void
   role: UserRole
   collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
-function Navigation({ onNavigate, role, collapsed = false }: NavigationProps) {
+function Navigation({
+  onNavigate,
+  role,
+  collapsed = false,
+  onToggleCollapse,
+}: NavigationProps) {
   const unassignedTicketsQuery = useGetTicketsQuery(
     { assigneeId: 'unassigned', page: 1, pageSize: 1 },
     { skip: role === 'Employee' || role === 'Security' },
   )
+
   const unassignedTickets = unassignedTicketsQuery.data?.total ?? 0
+
   const adminGroups = ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
-    links: group.links.map((link) => (
+    links: group.links.map((link) =>
       link.to === '/tickets'
-        ? { ...link, ...(unassignedTicketsQuery.data ? { badge: unassignedTickets } : {}) }
-        : link
-    )),
+        ? {
+            ...link,
+            ...(unassignedTicketsQuery.data
+              ? { badge: unassignedTickets }
+              : {}),
+          }
+        : link,
+    ),
   }))
+
   const groups = ROLE_NAV_GROUPS[role] ?? adminGroups
 
   return (
     <nav
       aria-label="Main navigation"
-      className={`flex-1 px-3 py-3 ${collapsed ? 'space-y-3' : 'space-y-6'}`}
+      className={`flex-1 px-3 py-3 ${
+        collapsed ? 'space-y-3' : 'space-y-6'
+      }`}
     >
-      {groups.map(({ label, links }, groupIndex) => (
-        <section
-          key={label}
-          className={collapsed && groupIndex > 0 ? 'border-t border-white/10 pt-3' : ''}
-        >
-          {!collapsed && (
-            <h2 className="mb-2 px-3 text-[8px] font-bold tracking-[0.14em] text-slate-500">
-              {label}
-            </h2>
+      {groups.map((group, groupIndex) => (
+        <div key={group.label}>
+          {!collapsed ? (
+            <div className="mb-2 flex min-h-8 items-center justify-between px-3">
+              <h2 className="text-[8px] font-bold tracking-[0.14em] text-slate-500">
+                {group.label}
+              </h2>
+
+              {groupIndex === 0 && onToggleCollapse && (
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="rounded-md p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Collapse sidebar"
+                  aria-expanded={!collapsed}
+                  title="Collapse sidebar"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+              )}
+            </div>
+          ) : (
+            groupIndex === 0 &&
+            onToggleCollapse && (
+              <div className="mb-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="rounded-md p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Expand sidebar"
+                  aria-expanded={!collapsed}
+                  title="Expand sidebar"
+                >
+                  <ChevronLeft
+                    size={16}
+                    className="rotate-180"
+                  />
+                </button>
+              </div>
+            )
           )}
+
           <div className="space-y-1">
-            {links.map(({ to, label: linkLabel, Icon, badge, end }) => {
+            {group.links.map(({ to, label, Icon, end, badge }) => {
               const link = (
                 <NavLink
                   to={to}
                   end={end}
                   onClick={onNavigate}
-                  aria-label={collapsed ? linkLabel : undefined}
                   className={({ isActive }) =>
-                    `relative flex w-full items-center rounded-xl py-2.5 text-[11px] font-medium transition-colors ${
-                      collapsed ? 'justify-center px-0' : 'gap-3 px-3'
+                    `group relative flex min-h-10 items-center rounded-lg text-xs font-medium transition-colors ${
+                      collapsed
+                        ? 'justify-center px-0'
+                        : 'gap-3 px-3'
                     } ${
                       isActive
-                        ? 'bg-[#3155ff] text-white shadow-sm shadow-blue-950/20'
-                        : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                        ? 'bg-white/12 text-white shadow-sm'
+                        : 'text-slate-300 hover:bg-white/8 hover:text-white'
                     }`
                   }
                 >
-                  <Icon size={17} strokeWidth={1.8} />
-                  {!collapsed && <span className="min-w-0 flex-1">{linkLabel}</span>}
-                  {(badge ?? 0) > 0 && (
-                    collapsed ? (
-                      <span className="absolute right-2 top-2 size-2 rounded-full bg-[#d2f54a]" />
-                    ) : (
-                      <span className="rounded-full bg-[#d2f54a] px-1.5 py-0.5 text-[8px] font-bold leading-none text-[#16214b]">
-                        {badge}
+                  <span className="relative flex shrink-0 items-center justify-center">
+                    <Icon size={17} strokeWidth={1.8} />
+
+                    {collapsed && badge !== undefined && badge > 0 && (
+                      <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                        {badge > 99 ? '99+' : badge}
                       </span>
-                    )
+                    )}
+                  </span>
+
+                  {!collapsed && (
+                    <>
+                      <span className="min-w-0 flex-1 truncate">
+                        {label}
+                      </span>
+
+                      {badge !== undefined && badge > 0 && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-semibold text-white">
+                          {badge > 99 ? '99+' : badge}
+                        </span>
+                      )}
+                    </>
                   )}
                 </NavLink>
               )
 
-              if (!collapsed) return <div key={to}>{link}</div>
-
-              return (
+              return collapsed ? (
                 <Tooltip key={to}>
-                  <TooltipTrigger render={<div />}>{link}</TooltipTrigger>
-                  <TooltipContent>{linkLabel}</TooltipContent>
+                  <TooltipTrigger>
+                    {link}
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    {label}
+                  </TooltipContent>
                 </Tooltip>
+              ) : (
+                <div key={to}>{link}</div>
               )
             })}
           </div>
-        </section>
+        </div>
       ))}
     </nav>
   )
@@ -177,19 +238,38 @@ interface SidebarContentProps {
   onNavigate?: () => void
   role: UserRole
   collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
-function SidebarContent({ onNavigate, role, collapsed = false }: SidebarContentProps) {
+function SidebarContent({
+  onNavigate,
+  role,
+  collapsed = false,
+  onToggleCollapse,
+}: SidebarContentProps) {
   const isEmployee = role === 'Employee'
+
   return (
     <div className="flex h-full flex-col bg-[#101c52]">
-      <Navigation onNavigate={onNavigate} role={role} collapsed={collapsed} />
+      <Navigation
+        onNavigate={onNavigate}
+        role={role}
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
+      />
+
       {/* TODO(v2): Restore the SLA summary panel when the server exposes an SLA reporting contract. */}
       {isEmployee && !collapsed && (
         <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/4 p-4">
-          <p className="text-xs font-semibold text-white">Need help fast?</p>
-          <p className="mt-2 text-xs text-slate-300">IT desk · ext. 2040</p>
-          <p className="mt-1 text-[8px] text-slate-400">Mon–Fri, 07:30–18:00</p>
+          <p className="text-xs font-semibold text-white">
+            Need help fast?
+          </p>
+          <p className="mt-2 text-xs text-slate-300">
+            IT desk · ext. 2040
+          </p>
+          <p className="mt-1 text-[8px] text-slate-400">
+            Mon–Fri, 07:30–18:00
+          </p>
         </div>
       )}
     </div>
@@ -202,8 +282,16 @@ interface SidebarProps {
   role?: UserRole
 }
 
-export default function Sidebar({ mobileOpen = false, onClose, role = 'IT Admin' }: SidebarProps) {
+export default function Sidebar({
+  mobileOpen = false,
+  onClose,
+  role = 'IT Admin',
+}: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
+
+  const toggleCollapse = () => {
+    setCollapsed((value) => !value)
+  }
 
   return (
     <TooltipProvider>
@@ -212,22 +300,11 @@ export default function Sidebar({ mobileOpen = false, onClose, role = 'IT Admin'
           collapsed ? 'w-16' : 'w-56'
         }`}
       >
-        <div className={`flex px-3 pt-3 ${collapsed ? 'justify-center' : 'justify-end'}`}>
-          <button
-            type="button"
-            onClick={() => setCollapsed((value) => !value)}
-            className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-expanded={!collapsed}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <ChevronLeft
-              size={18}
-              className={`transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`}
-            />
-          </button>
-        </div>
-        <SidebarContent role={role} collapsed={collapsed} />
+        <SidebarContent
+          role={role}
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
+        />
       </aside>
 
       <Drawer
@@ -238,7 +315,10 @@ export default function Sidebar({ mobileOpen = false, onClose, role = 'IT Admin'
         swipeDirection="left"
       >
         <DrawerContent className="w-72 max-w-[85vw] border-0 bg-[#101c52] text-white md:hidden">
-          <DrawerTitle className="sr-only">Navigation</DrawerTitle>
+          <DrawerTitle className="sr-only">
+            Navigation
+          </DrawerTitle>
+
           <DrawerClose
             className="absolute right-3 top-3 z-10 rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white"
             aria-label="Close navigation"
@@ -246,8 +326,12 @@ export default function Sidebar({ mobileOpen = false, onClose, role = 'IT Admin'
           >
             <X size={18} />
           </DrawerClose>
+
           <div className="overflow-y-auto pt-10">
-            <SidebarContent onNavigate={onClose} role={role} />
+            <SidebarContent
+              onNavigate={onClose}
+              role={role}
+            />
           </div>
         </DrawerContent>
       </Drawer>

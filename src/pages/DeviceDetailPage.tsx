@@ -56,7 +56,7 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
   if (assetQuery.isError || !asset) {
     return (
       <main className="flex min-h-full items-center justify-center px-4 py-10">
-        <section className="max-w-md rounded-2xl border border-[#e9edf6] bg-white p-6 text-center">
+        <section className="max-w-md border border-[#e9edf6] bg-white p-6 text-center">
           <h1 className="text-lg font-semibold text-[#111a3b]">{assetQuery.isError ? 'Asset could not be loaded' : 'Asset not found'}</h1>
           <p className="mt-2 text-sm text-slate-500">
             {assetQuery.isError ? 'The server request failed. Try again or return to the asset list.' : 'No asset matched this tag or ID.'}

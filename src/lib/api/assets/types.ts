@@ -1,3 +1,4 @@
+
 export type AssetType = 'LAPTOP' | 'DESKTOP' | 'PRINTER' | 'NETWORK' | 'OTHER';
 export type AssetCondition = 'NEW' | 'GOOD' | 'FAIR' | 'FAULTY' | 'RETIRED';
 
@@ -16,6 +17,7 @@ export interface AssetApiRecord {
   type: AssetType;
   make: string;
   model: string;
+  modelId?: string | null;
   purchaseDate: string | null;
   warrantyExpiry: string | null;
   condition: AssetCondition;
@@ -24,6 +26,32 @@ export interface AssetApiRecord {
   assignedTo?: AssetUser | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AssetModelRecord {
+  id: string;
+  type: AssetType;
+  make: string;
+  model: string;
+  modelFileName: string | null;
+  modelUrl: string | null;
+}
+
+export interface AssetModelsResponse {
+  data: AssetModelRecord[];
+  total: number;
+}
+
+export interface AvailableAssetTag {
+  id: string;
+  tag: string;
+  type: AssetType;
+  status: 'AVAILABLE';
+}
+
+export interface AvailableAssetTagsResponse {
+  data: AvailableAssetTag[];
+  total: number;
 }
 
 export interface AssetDetail extends AssetApiRecord {
@@ -70,6 +98,7 @@ export interface CreateAssetRequest {
   type: AssetType;
   make: string;
   model: string;
+  modelId?: string;
   purchaseDate?: string | null;
   warrantyExpiry?: string | null;
   condition?: AssetCondition;

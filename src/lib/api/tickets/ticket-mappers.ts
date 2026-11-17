@@ -3,6 +3,7 @@ import type { Ticket, TicketHistoryEntry } from "@/types/types";
 import type {
   ApiTicketPriority,
   ApiTicketStatus,
+  TicketApiEvent,
   TicketApiRecord,
 } from "./types";
 import { getPriorityLabel } from "./ticket-priority.ts";
@@ -24,18 +25,24 @@ const priorityLabels: Record<ApiTicketPriority, Ticket["priority"]> = {
   P5_PLANNING: "Legacy",
 };
 
+function formatEnum(value: string): string {
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function formatStatus(value: string | null): string {
   if (!value) return "Unknown status";
 
   const normalized = value.trim().toUpperCase() as ApiTicketStatus;
 
-  return statusLabels[normalized] ?? value.replace(/_/g, " ");
+  return statusLabels[normalized] ?? formatEnum(value);
 }
 
-function formatEvent(
-  event: NonNullable<TicketApiRecord["events"]>[number],
-): string {
-  const actor = event.actor.fullName;
+function formatEvent(event: TicketApiEvent): string {
+  const actor = event.actor?.fullName || "System";
 
   switch (event.type) {
     case "STATUS": {
@@ -51,19 +58,24 @@ function formatEvent(
     }
 
     case "ASSIGN": {
-      if (!event.toValue) {
-        return event.previousAssignee
-          ? `${actor} unassigned ${event.previousAssignee.fullName}`
+      const previousAssignee = event.previousAssignee?.fullName;
+      const nextAssignee = event.assignee?.fullName;
+
+      if (!nextAssignee) {
+        return previousAssignee
+          ? `${actor} unassigned ${previousAssignee}`
           : `${actor} unassigned the ticket`;
       }
 
-      const assignee = event.assignee?.fullName ?? "Unknown assignee";
+      if (previousAssignee) {
+        if (event.previousAssignee?.id === event.assignee?.id) {
+          return `${actor} confirmed the assignment to ${nextAssignee}`;
+        }
 
-      if (event.previousAssignee) {
-        return `${actor} reassigned the ticket from ${event.previousAssignee.fullName} to ${assignee}`;
+        return `${actor} reassigned the ticket from ${previousAssignee} to ${nextAssignee}`;
       }
 
-      return `${actor} assigned the ticket to ${assignee}`;
+      return `${actor} assigned the ticket to ${nextAssignee}`;
     }
 
     case "PRIORITY": {
@@ -118,10 +130,6 @@ function toHistory(ticket: TicketApiRecord): TicketHistoryEntry[] {
 }
 
 export function toClientTicket(ticket: TicketApiRecord): Ticket {
-  const status = statusLabels[ticket.status];
-
-  const timeState = ticket.overdue ? "Breached" : "Not overdue";
-
   const resolvedAt = ticket.resolvedAt
     ? new Date(ticket.resolvedAt)
     : null;
@@ -132,32 +140,43 @@ export function toClientTicket(ticket: TicketApiRecord): Ticket {
     id: ticket.number,
     serverId: ticket.id,
     title: ticket.title,
+
     type: ticket.type === "REQUEST" ? "Request" : "Problem",
-    category: ticket.category.name,
-    priority: priorityLabels[ticket.priority],
-    status,
-    timeState,
+    category: ticket.category?.name ?? "Uncategorized",
+
+    priority: priorityLabels[ticket.priority] ?? "Medium",
+    status: statusLabels[ticket.status] ?? "Unassigned",
+
+    timeState: ticket.overdue ? "Breached" : "Not overdue",
+
     assigneeId: ticket.assignee?.id ?? null,
     assigneeName: ticket.assignee?.fullName ?? null,
+
     requesterId: ticket.reporter.id,
     requesterName: ticket.reporter.fullName,
     requesterDepartment: ticket.reporter.department?.name ?? "",
+
     deviceId: ticket.asset?.id ?? null,
     deviceTag: ticket.asset?.assetTag ?? null,
     deviceName: ticket.asset
       ? `${ticket.asset.make} ${ticket.asset.model}`
       : null,
+
     description: ticket.description,
     response: "Not tracked",
+
     resolution:
       ticket.resolutionNote ?? (resolvedAt ? "Resolved" : "Not tracked"),
+
     sla: ticket.overdue ? "Overdue" : "Not overdue",
+
     ...(resolvedAt
       ? {
           resolutionHours:
             (resolvedAt.getTime() - createdAt.getTime()) / 3_600_000,
         }
       : {}),
+
     createdAt: ticket.createdAt,
     history: toHistory(ticket),
   };
