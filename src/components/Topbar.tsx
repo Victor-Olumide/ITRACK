@@ -4,7 +4,6 @@ import {
   ChevronDown,
   LogOut,
   Menu,
-  Plus,
   Ticket,
   UserRound,
 } from "lucide-react";
@@ -57,13 +56,13 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
-  const isSecurity = role === "Security";
-  const newTicketPath =
-    role === "Employee"
-      ? "/employee/report"
-      : role === "Technician"
-        ? "/technician/tickets"
-        : "/tickets/new";
+  // const isSecurity = role === "Security";
+  // const newTicketPath =
+  //   role === "Employee"
+  //     ? "/employee/report"
+  //     : role === "Technician"
+  //       ? "/technician/tickets"
+  //       : "/tickets/new";
   const ticketsPath =
     role === "Employee"
       ? "/employee/tickets"
@@ -201,16 +200,18 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
           </span>
         </Link>
 
-        {!isSecurity && (
+        {/* {!isSecurity && (
           <Link
             to={newTicketPath}
             aria-label="Create a new ticket"
             title="Create a new ticket"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d2f54a] text-[#16214b] transition hover:bg-[#e1ff72]"
+            className="inline-flex h-5 whitespace-nowrap gap-1 px-1 text-[12px] shrink-0 items-center justify-center rounded-[3px] bg-[#d2f54a] text-[#16214b] transition hover:bg-[#e1ff72]"
           >
-            <Plus size={20} />
+           
+              <Plus size={12} />
+              Create ticket
           </Link>
-        )}
+        )} */}
 
         <div className="flex-1" />
 

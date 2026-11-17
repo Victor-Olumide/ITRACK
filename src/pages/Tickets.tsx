@@ -8,6 +8,11 @@ import {
   LoaderCircle,
   RefreshCw,
   Send,
+  X,
+  Paperclip,
+  Download,
+  FileImage,
+  FileText,
 } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
@@ -22,7 +27,10 @@ import {
 } from "../lib/api/tickets/tickets-api";
 
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
-import type { ApiTicketStatus } from "../lib/api/tickets/types";
+import type {
+  ApiTicketStatus,
+  TicketApiAttachment,
+} from "../lib/api/tickets/types";
 import { getApiErrorMessage } from "../lib/api/error-message";
 import {
   PRIORITY_SELECTED_CLASS,
@@ -34,6 +42,7 @@ import {
 
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
@@ -49,9 +58,53 @@ interface TicketView extends Ticket {
   group: TicketTimeState;
 }
 
+const VALID_STATUSES: ApiTicketStatus[] = [
+  "NEW",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "WAITING_ON_USER",
+  "RESOLVED",
+  "CLOSED",
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  NEW: "New",
+  ASSIGNED: "Assigned",
+  IN_PROGRESS: "In progress",
+  WAITING_ON_USER: "Waiting on user",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
+  UNASSIGNED: "Unassigned",
+};
+
+function isApiTicketStatus(value: string | null): value is ApiTicketStatus {
+  return VALID_STATUSES.includes(value as ApiTicketStatus);
+}
+
+function toDisplayStatus(status: string): string {
+  const normalized = status.trim().toUpperCase().replace(/[\s-]+/g, "_");
+
+  if (STATUS_LABELS[normalized]) {
+    return STATUS_LABELS[normalized];
+  }
+
+  return status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function toDisplayValue(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function toView(ticket: Ticket): TicketView {
   return {
     ...ticket,
+    status: toDisplayStatus(ticket.status) as Ticket["status"],
     department: ticket.requesterDepartment ?? "—",
     requester: ticket.requesterName ?? "Unknown",
     assignee: ticket.assigneeName ?? "Unassigned",
@@ -59,6 +112,15 @@ function toView(ticket: Ticket): TicketView {
     deviceName: ticket.deviceName ?? "—",
     group: ticket.timeState,
   };
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+
+  return `${(kb / 1024).toFixed(1)} MB`;
 }
 
 const groupStyles: Record<TicketTimeState, { dot: string }> = {
@@ -132,7 +194,11 @@ function TicketRow({
       }`}
     >
       <div className="flex items-center gap-3">
-        <Circle size={25} className="shrink-0 text-blue-600" strokeWidth={2} />
+        <Circle
+          size={25}
+          className="shrink-0 text-blue-600"
+          strokeWidth={2}
+        />
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-slate-900">
@@ -145,7 +211,7 @@ function TicketRow({
             </span>
 
             <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-500">
-              {ticket.type} · {ticket.category}
+              {toDisplayValue(ticket.type)} · {toDisplayValue(ticket.category)}
             </span>
 
             <span className="text-slate-500">
@@ -192,8 +258,81 @@ function TicketRow({
   );
 }
 
+function TicketAttachments({
+  ticketId,
+  attachments,
+}: {
+  ticketId: string;
+  attachments: TicketApiAttachment[];
+}) {
+  if (attachments.length === 0) return null;
+
+  return (
+    <div className="mt-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Paperclip size={16} className="text-slate-500" />
+
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+          Attachments ({attachments.length})
+        </h3>
+      </div>
+
+      <div className="space-y-2">
+        {attachments.map((attachment) => {
+          const isImage = attachment.mimeType.startsWith("image/");
+
+          const downloadUrl =
+            `/api/v1/tickets/${encodeURIComponent(ticketId)}` +
+            `/attachments/${encodeURIComponent(attachment.id)}/download`;
+
+          return (
+            <div
+              key={attachment.id}
+              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                {isImage ? (
+                  <FileImage size={19} />
+                ) : (
+                  <FileText size={19} />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className="truncate text-sm font-semibold text-slate-800"
+                  title={attachment.fileName}
+                >
+                  {attachment.fileName}
+                </p>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {formatFileSize(attachment.fileSize)}
+                </p>
+              </div>
+
+              <a
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={attachment.fileName}
+                aria-label={`Download ${attachment.fileName}`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
+              >
+                <Download size={17} />
+              </a>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TicketDetails({
   ticket,
+  attachments,
+  attachmentTicketId,
   onComment,
   onStatusChange,
   onAssign,
@@ -201,6 +340,8 @@ function TicketDetails({
   error,
 }: {
   ticket: TicketView | undefined;
+  attachments: TicketApiAttachment[];
+  attachmentTicketId: string;
   onComment: (body: string, isInternal: boolean) => Promise<void>;
   onStatusChange: (
     status: ApiTicketStatus,
@@ -224,15 +365,21 @@ function TicketDetails({
     skip: !isAdmin,
   });
 
-  const technicians = (usersData?.users ?? []).filter(
-    (candidate) => candidate.role === "TECHNICIAN" && candidate.isActive,
+  // Include active technicians and the currently logged-in admin.
+  // This allows an admin to assign a ticket to himself.
+  const assignableUsers = (usersData?.users ?? []).filter(
+    (candidate) =>
+      candidate.isActive &&
+      (candidate.role === "TECHNICIAN" || candidate.id === user?.id),
   );
 
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const currentPriority = ticket ? toApiPriority(ticket.priority) : undefined;
+
   const [selectedPriority, setSelectedPriority] = useState<
     SelectableTicketPriority | ""
   >(currentPriority ?? "");
+
   const [assignNotice, setAssignNotice] = useState("");
   const [mode, setMode] = useState<"reply" | "note">("reply");
   const [message, setMessage] = useState("");
@@ -264,12 +411,8 @@ function TicketDetails({
   return (
     <section className="flex min-h-full flex-col bg-white p-5 sm:p-7">
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-sm font-semibold text-slate-500">
-          {ticket.id}
-        </span>
-
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-          {ticket.status}
+          {toDisplayStatus(ticket.status)}
         </span>
 
         <span
@@ -286,12 +429,16 @@ function TicketDetails({
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 p-4">
           <p className="text-sm text-slate-500">Response</p>
-          <p className="mt-1 font-bold text-emerald-600">{ticket.response}</p>
+          <p className="mt-1 font-bold text-emerald-600">
+            {ticket.response}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 p-4">
           <p className="text-sm text-slate-500">Resolution</p>
-          <p className="mt-1 font-bold text-slate-800">{ticket.resolution}</p>
+          <p className="mt-1 font-bold text-slate-800">
+            {ticket.resolution}
+          </p>
         </div>
       </div>
 
@@ -318,7 +465,7 @@ function TicketDetails({
 
         <span className="text-slate-500">Type</span>
         <strong>
-          {ticket.type} · {ticket.category}
+          {toDisplayValue(ticket.type)} · {toDisplayValue(ticket.category)}
         </strong>
 
         <span className="text-slate-500">Device</span>
@@ -337,6 +484,11 @@ function TicketDetails({
       <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
         {ticket.description}
       </div>
+
+      <TicketAttachments
+        ticketId={attachmentTicketId}
+        attachments={attachments}
+      />
 
       <div className="mt-5">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
@@ -491,7 +643,6 @@ function TicketDetails({
           </button>
         )}
 
-        {/* TECHNICIAN: TAKE TICKET */}
         {ticket.status === "Unassigned" &&
           !ticket.assigneeId &&
           user?.role === "Technician" && (
@@ -505,7 +656,6 @@ function TicketDetails({
             </button>
           )}
 
-        {/* IT ADMIN: ASSIGN OR REASSIGN TICKET */}
         {isAdmin && ["Unassigned", "Assigned"].includes(ticket.status) && (
           <div className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 p-4">
             <div>
@@ -514,8 +664,8 @@ function TicketDetails({
               </h3>
 
               <p className="mt-1 text-xs text-slate-500">
-                Confirm the priority, then select an active technician to
-                handle this ticket.
+                Confirm the priority, then select an active technician or
+                assign the ticket to yourself.
               </p>
             </div>
 
@@ -538,6 +688,7 @@ function TicketDetails({
               >
                 {TICKET_PRIORITY_OPTIONS.map((option) => {
                   const isSelected = selectedPriority === option.value;
+
                   return (
                     <button
                       key={option.value}
@@ -556,6 +707,7 @@ function TicketDetails({
                       }`}
                     >
                       {option.label}
+
                       {option.value === currentPriority && (
                         <span className="block text-[10px] font-medium opacity-70">
                           Current
@@ -568,14 +720,16 @@ function TicketDetails({
             </div>
 
             {isLoadingTechnicians ? (
-              <p className="text-sm text-slate-500">Loading technicians...</p>
+              <p className="text-sm text-slate-500">
+                Loading assignable users...
+              </p>
             ) : techniciansError ? (
               <p role="alert" className="text-sm text-red-600">
-                Could not load technicians. Please try again.
+                Could not load assignable users. Please try again.
               </p>
-            ) : technicians.length === 0 ? (
+            ) : assignableUsers.length === 0 ? (
               <p className="text-sm text-slate-500">
-                No active technicians are available.
+                No active technicians or eligible users are available.
               </p>
             ) : (
               <>
@@ -588,13 +742,15 @@ function TicketDetails({
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="" disabled>
-                    Select a technician
+                    Select an assignee
                   </option>
 
-                  {technicians.map((technician) => (
-                    <option key={technician.id} value={technician.id}>
-                      {technician.fullName} ·{" "}
-                      {technician.department?.name ?? "No department"}
+                  {assignableUsers.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.fullName}
+                      {candidate.id === user?.id
+                        ? " · You (IT Admin)"
+                        : ` · ${candidate.department?.name ?? "No department"}`}
                     </option>
                   ))}
                 </select>
@@ -605,15 +761,18 @@ function TicketDetails({
                     void runAction(async () => {
                       const nextAssigneeId =
                         selectedAssigneeId || ticket.assigneeId || "";
+
                       const priorityToSend =
                         selectedPriority && selectedPriority !== currentPriority
                           ? selectedPriority
                           : undefined;
+
                       setAssignNotice("");
-                      // Only reached on success; failures throw and are shown
-                      // by the parent's error message.
+
                       await onAssign(nextAssigneeId, priorityToSend);
+
                       setSelectedAssigneeId("");
+
                       setAssignNotice(
                         priorityToSend
                           ? `Saved. Priority set to ${
@@ -677,16 +836,25 @@ export default function TicketPage({
   technicianView?: boolean;
 }) {
   const { user } = useAuth();
-
   const assigneeId = user?.id ?? "";
 
   const [searchParams, setSearchParams] = useSearchParams();
 
   const requestedTicketId = searchParams.get("ticket");
+  const requestedQueue = searchParams.get("queue");
+  const requestedStatus = searchParams.get("status");
+
+  const initialTab =
+    requestedQueue === "unassigned"
+      ? "Unassigned"
+      : requestedQueue === "mine"
+        ? "Mine"
+        : technicianView
+          ? "Mine"
+          : "All open";
 
   const [selectedId, setSelectedId] = useState(requestedTicketId ?? "");
-
-  const [tab, setTab] = useState(technicianView ? "Mine" : "All open");
+  const [tab, setTab] = useState(initialTab);
 
   const [department, setDepartment] = useState("");
   const [priority, setPriority] = useState("");
@@ -697,11 +865,16 @@ export default function TicketPage({
   const isUnassignedTab = tab === "Unassigned";
   const isMineTab = tab === "Mine";
 
+  const statusFilter = isApiTicketStatus(requestedStatus)
+    ? requestedStatus
+    : undefined;
+
   const listArgs = {
     page: 1,
     pageSize: 100,
 
     ...(search ? { q: search } : {}),
+    ...(statusFilter ? { status: statusFilter } : {}),
 
     ...(toApiPriority(priority)
       ? { priority: toApiPriority(priority) }
@@ -723,25 +896,38 @@ export default function TicketPage({
 
   const filteredTickets = useMemo(() => {
     return availableTickets.filter((ticket) => {
-      const isOpen = ticket.status !== "Resolved" && ticket.status !== "Closed";
+      const isOpen =
+        ticket.status !== "Resolved" && ticket.status !== "Closed";
 
       const matchesTab =
         tab === "All open"
-          ? isOpen
+          ? statusFilter
+            ? true
+            : isOpen
           : tab === "Mine"
             ? ticket.assigneeId === assigneeId && isOpen
             : tab === "Unassigned"
               ? !ticket.assigneeId && isOpen
               : true;
 
-      const matchesDepartment = !department || ticket.department === department;
-      const matchesPriority = !priority || ticket.priority === priority;
-      const matchesCategory = !category || ticket.category === category;
-      const matchesType = !type || ticket.type === type;
+      const matchesDepartment =
+        !department || ticket.department === department;
+
+      const matchesPriority =
+        !priority || ticket.priority === priority;
+
+      const matchesCategory =
+        !category || ticket.category === category;
+
+      const matchesType =
+        !type || ticket.type === type;
 
       const matchesSearch = `${ticket.title} ${ticket.id} ${ticket.requester}`
         .toLowerCase()
         .includes(search.toLowerCase());
+
+      const matchesOverdue =
+        requestedQueue !== "overdue" || ticket.timeState === "Breached";
 
       return (
         matchesTab &&
@@ -749,7 +935,8 @@ export default function TicketPage({
         matchesPriority &&
         matchesCategory &&
         matchesType &&
-        matchesSearch
+        matchesSearch &&
+        matchesOverdue
       );
     });
   }, [
@@ -761,9 +948,10 @@ export default function TicketPage({
     category,
     type,
     search,
+    statusFilter,
+    requestedQueue,
   ]);
 
-  // Only open ticket details when a ticket is explicitly selected.
   const activeTicketId = requestedTicketId ?? selectedId;
 
   const detailQuery = useGetTicketQuery(activeTicketId ?? "", {
@@ -775,7 +963,9 @@ export default function TicketPage({
   const [assignTicket, assignState] = useAssignTicketMutation();
 
   const isSaving =
-    commentState.isLoading || statusState.isLoading || assignState.isLoading;
+    commentState.isLoading ||
+    statusState.isLoading ||
+    assignState.isLoading;
 
   const mutationError =
     commentState.error ?? statusState.error ?? assignState.error;
@@ -791,29 +981,61 @@ export default function TicketPage({
     ? toView(toClientTicket(detailQuery.currentData))
     : filteredTickets.find((ticket) => ticket.id === activeTicketId);
 
+  const attachments = detailQuery.currentData?.attachments ?? [];
+
+  // Use the database ID for attachment download routes.
+  const attachmentTicketId =
+    detailQuery.currentData?.id ?? selectedTicket?.serverId ?? "";
+
   const groups: TicketTimeState[] = ["Breached", "Not overdue"];
+
+  const updateSearchParams = (updates: {
+    ticket?: string | null;
+    queue?: string | null;
+    status?: string | null;
+  }) => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        nextParams.set(key, value);
+      } else {
+        nextParams.delete(key);
+      }
+    });
+
+    setSearchParams(nextParams);
+  };
 
   const handleTabChange = (nextTab: string) => {
     setTab(nextTab);
     setSelectedId("");
-    setSearchParams({});
+
+    updateSearchParams({
+      ticket: null,
+      status: null,
+      queue:
+        nextTab === "Unassigned"
+          ? "unassigned"
+          : nextTab === "Mine"
+            ? "mine"
+            : null,
+    });
   };
 
   const handleTicketSelect = (ticketId: string) => {
     setSelectedId(ticketId);
-    setSearchParams({ ticket: ticketId });
+    updateSearchParams({ ticket: ticketId });
   };
 
   const handleCloseDetails = () => {
     setSelectedId("");
-    setSearchParams({});
+    updateSearchParams({ ticket: null });
   };
 
   return (
     <main className="min-h-screen bg-[#0c194d]">
       <div className="mx-auto max-w-[1800px]">
-        {/* TICKET LIST */}
-
         <section className="min-w-0 rounded-[26px] bg-[#f4f6fc] p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -1006,29 +1228,37 @@ export default function TicketPage({
         </section>
       </div>
 
-      {/* RIGHT-SIDE TICKET DETAILS DRAWER */}
-
       <Drawer
-       swipeDirection="right"
+        swipeDirection="right"
         open={Boolean(activeTicketId)}
         onOpenChange={(open) => {
           if (!open) handleCloseDetails();
         }}
       >
         <DrawerContent className="h-full w-full max-w-none rounded-l-2xl rounded-r-none border-l border-slate-200 bg-white p-0 sm:max-w-xl">
-          <DrawerHeader className="border-b border-slate-100 px-6 py-4 text-left">
-            <DrawerTitle className="text-lg font-bold text-[#0B184C]">
-              Ticket details
-            </DrawerTitle>
+          <DrawerHeader className="flex flex-row items-start justify-between gap-4 border-b border-slate-100 px-6 py-4 text-left">
+            <div>
+              <DrawerTitle className="text-lg font-bold text-[#0B184C]">
+                Ticket details
+              </DrawerTitle>
 
-            <DrawerDescription className="text-xs text-slate-500">
-              View ticket information, communicate with the requester and
-              manage its status.
-            </DrawerDescription>
+              <DrawerDescription className="text-xs text-slate-500">
+                View ticket information, communicate with the requester and
+                manage its status.
+              </DrawerDescription>
+            </div>
+
+            <DrawerClose
+              aria-label="Close ticket details"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <X size={18} aria-hidden="true" />
+            </DrawerClose>
           </DrawerHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {detailQuery.isLoading ? (
+            {detailQuery.isLoading ||
+            (detailQuery.isFetching && !detailQuery.currentData) ? (
               <div
                 role="status"
                 className="flex min-h-48 items-center justify-center text-sm text-slate-500"
@@ -1064,6 +1294,8 @@ export default function TicketPage({
               <TicketDetails
                 key={selectedTicket.id}
                 ticket={selectedTicket}
+                attachments={attachments}
+                attachmentTicketId={attachmentTicketId}
                 onComment={async (body, isInternal) => {
                   await addComment({
                     id: selectedTicket.serverId ?? selectedTicket.id,
@@ -1082,11 +1314,9 @@ export default function TicketPage({
                 }}
                 onAssign={async (assigneeId, suggestedPriority) => {
                   if (!assigneeId) {
-                    throw new Error("Please select a technician.");
+                    throw new Error("Please select an assignee.");
                   }
 
-                  // POST /tickets/:id/assign applies suggestedPriority together
-                  // with the assignment (server: AssignTicketDto).
                   await assignTicket({
                     id: selectedTicket.serverId ?? selectedTicket.id,
                     assigneeId,

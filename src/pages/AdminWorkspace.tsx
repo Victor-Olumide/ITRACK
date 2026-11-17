@@ -72,10 +72,7 @@ function Categories() {
           <p className="p-8 text-center text-sm text-slate-500">No ticket category data is available.</p>
         ) : null}
       </section>
-      {/* TODO(v2): Re-enable category management and SLA policy controls after those APIs are implemented. */}
-      <p role="status" className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-        Category editing and SLA policies are not available in the current v1 API.
-      </p>
+      
     </main>
   )
 }

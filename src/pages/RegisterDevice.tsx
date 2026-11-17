@@ -90,7 +90,7 @@ export default function RegisterDevicePage({ basePath = '/devices' }: RegisterDe
           </div>
         </header>
 
-        <section className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.6fr)]">
+        <section className="mt-5 gap-4 ">
           <div className="rounded-2xl border border-[#e9edf6] bg-white p-5 sm:p-6">
             <h2 className="text-base font-bold text-[#111a38]">Asset details</h2>
             {saveError && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{saveError}</p>}
@@ -131,18 +131,6 @@ export default function RegisterDevicePage({ basePath = '/devices' }: RegisterDe
               </label>
             </div>
           </div>
-
-          <aside className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
-            <div className="flex items-center gap-2">
-              <Laptop size={18} />
-              <h2 className="text-sm font-semibold">Additional workflows unavailable</h2>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-amber-900">
-              Location assignment and the 3D model library are not in the current asset API contract.
-              This form only submits supported asset fields.
-            </p>
-            {/* TODO(v2): Restore location assignment and model-library UI once their APIs are available. */}
-          </aside>
         </section>
       </div>
     </main>
