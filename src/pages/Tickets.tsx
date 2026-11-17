@@ -60,13 +60,44 @@ const VALID_STATUSES: ApiTicketStatus[] = [
   "CLOSED",
 ];
 
+const STATUS_LABELS: Record<string, string> = {
+  NEW: "New",
+  ASSIGNED: "Assigned",
+  IN_PROGRESS: "In progress",
+  WAITING_ON_USER: "Waiting on user",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
+  UNASSIGNED: "Unassigned",
+};
+
 function isApiTicketStatus(value: string | null): value is ApiTicketStatus {
   return VALID_STATUSES.includes(value as ApiTicketStatus);
+}
+
+function toDisplayStatus(status: string): string {
+  const normalized = status.trim().toUpperCase().replace(/[\s-]+/g, "_");
+
+  if (STATUS_LABELS[normalized]) {
+    return STATUS_LABELS[normalized];
+  }
+
+  return status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function toDisplayValue(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function toView(ticket: Ticket): TicketView {
   return {
     ...ticket,
+    status: toDisplayStatus(ticket.status) as Ticket["status"],
     department: ticket.requesterDepartment ?? "—",
     requester: ticket.requesterName ?? "Unknown",
     assignee: ticket.assigneeName ?? "Unassigned",
@@ -164,7 +195,7 @@ function TicketRow({
             </span>
 
             <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-500">
-              {ticket.type} · {ticket.category}
+              {toDisplayValue(ticket.type)} · {toDisplayValue(ticket.category)}
             </span>
 
             <span className="text-slate-500">
@@ -285,12 +316,8 @@ function TicketDetails({
   return (
     <section className="flex min-h-full flex-col bg-white p-5 sm:p-7">
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <span className="font-mono text-sm font-semibold text-slate-500">
-          {ticket.id}
-        </span>
-
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-          {ticket.status}
+          {toDisplayStatus(ticket.status)}
         </span>
 
         <span
@@ -343,7 +370,7 @@ function TicketDetails({
 
         <span className="text-slate-500">Type</span>
         <strong>
-          {ticket.type} · {ticket.category}
+          {toDisplayValue(ticket.type)} · {toDisplayValue(ticket.category)}
         </strong>
 
         <span className="text-slate-500">Device</span>
@@ -821,7 +848,6 @@ export default function TicketPage({
     requestedQueue,
   ]);
 
-  // Details open only when the user selects a ticket or a ticket URL is supplied.
   const activeTicketId = requestedTicketId ?? selectedId;
 
   const detailQuery = useGetTicketQuery(activeTicketId ?? "", {
@@ -877,6 +903,7 @@ export default function TicketPage({
 
     updateSearchParams({
       ticket: null,
+      status: null,
       queue:
         nextTab === "Unassigned"
           ? "unassigned"
@@ -1120,7 +1147,8 @@ export default function TicketPage({
           </DrawerHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {detailQuery.isLoading ? (
+            {detailQuery.isLoading ||
+            (detailQuery.isFetching && !detailQuery.currentData) ? (
               <div
                 role="status"
                 className="flex min-h-48 items-center justify-center text-sm text-slate-500"

@@ -206,12 +206,11 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
             to={newTicketPath}
             aria-label="Create a new ticket"
             title="Create a new ticket"
-            className="flex h-6 w-20 px-1 py-0.5 shrink-0 items-center justify-center rounded-sm bg-[#d2f54a] text-[#16214b] transition hover:bg-[#e1ff72]"
+            className="inline-flex h-6 whitespace-nowrap shrink-0 items-center justify-center rounded-sm bg-[#d2f54a] text-[#16214b] transition hover:bg-[#e1ff72]"
           >
-            <div className="flex flex-row gap-0.5">
+           
               <Plus size={16} />
-              <span className="text-[12px] font-semibold">Create ticket</span>
-            </div>
+              Create ticket
           </Link>
         )}
 
