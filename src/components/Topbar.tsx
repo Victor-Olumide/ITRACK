@@ -208,7 +208,10 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
             title="Create a new ticket"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d2f54a] text-[#16214b] transition hover:bg-[#e1ff72]"
           >
-            <Plus size={20} />
+            <div className="flex flex-row gap-0.5">
+              <Plus size={16} />
+              <span className="text-[15px] font-semibold">Create ticket</span>
+            </div>
           </Link>
         )}
 
