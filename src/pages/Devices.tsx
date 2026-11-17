@@ -1,6 +1,5 @@
-// Grid and list views of server-backed assets.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 import {
   Plus,
   Search,
@@ -9,26 +8,20 @@ import {
   Monitor,
   Laptop,
   Printer,
-} from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router";
-import type { LucideIcon } from "lucide-react";
-import { useGetAssetsQuery } from "@/lib/api/assets/assets-api";
+} from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router';
+import type { LucideIcon } from 'lucide-react';
+
+import { useGetAssetsQuery } from '@/lib/api/assets/assets-api';
+
 import type {
   AssetApiRecord,
   AssetCondition,
   AssetListArgs,
   AssetType,
-} from "@/lib/api/assets/types";
+} from '@/lib/api/assets/types';
 
-type AssetListStatus = "Assigned" | "Unassigned" | "Retired";
-
-const initials = (name = "") =>
-  name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+type AssetListStatus = 'Assigned' | 'Unassigned' | 'Retired';
 
 interface DeviceCardData {
   id: string;
@@ -40,155 +33,158 @@ interface DeviceCardData {
   initials: string;
   notes: string;
   warranty: string;
+  imageUrl: string | null;
+  modelUrl: string | null;
 }
+
+const initials = (name = '') =>
+  name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
 function formatWarranty(warrantyEnds: string) {
   const end = new Date(warrantyEnds);
 
-  if (Number.isNaN(end.getTime())) return "—";
+  if (Number.isNaN(end.getTime())) return '—';
 
-  const diffDays = Math.round((end.getTime() - Date.now()) / 86400000);
+  const diffDays = Math.round(
+    (end.getTime() - Date.now()) / 86400000,
+  );
 
-  if (diffDays < 0) return "Expired";
+  if (diffDays < 0) return 'Expired';
 
   if (diffDays <= 30) {
-    return `Ends ${end.getDate()} ${end.toLocaleDateString("en-GB", {
-      month: "short",
+    return `Ends ${end.getDate()} ${end.toLocaleDateString('en-GB', {
+      month: 'short',
     })}`;
   }
 
-  return end.toLocaleDateString("en-GB", {
-    month: "short",
-    year: "numeric",
+  return end.toLocaleDateString('en-GB', {
+    month: 'short',
+    year: 'numeric',
   });
 }
 
-function toCard(d: AssetApiRecord): DeviceCardData {
-  const categoryByType: Record<AssetApiRecord["type"], string> = {
-    LAPTOP: "Laptops",
-    DESKTOP: "Desktops",
-    PRINTER: "Printers",
-    NETWORK: "Network",
-    OTHER: "Other",
+function toCard(asset: AssetApiRecord): DeviceCardData {
+  const categoryByType: Record<AssetType, string> = {
+    LAPTOP: 'Laptops',
+    DESKTOP: 'Desktops',
+    PRINTER: 'Printers',
+    NETWORK: 'Network',
+    OTHER: asset.customType || 'Other',
   };
 
-  const owner = d.assignedTo;
+  const owner = asset.assignedTo;
 
   return {
-    id: d.id,
-    name: `${d.make} ${d.model}`,
-    tag: d.assetTag,
-    category: categoryByType[d.type],
-    condition: d.condition,
-    assignedTo: owner?.fullName ?? "Not assigned",
-    initials: owner ? initials(owner.fullName) : "—",
-    notes: d.notes ?? "No notes recorded",
-    warranty: d.warrantyExpiry ? formatWarranty(d.warrantyExpiry) : "—",
+    id: asset.id,
+    name: `${asset.make} ${asset.model}`,
+    tag: asset.assetTag,
+    category: categoryByType[asset.type],
+    condition: asset.condition,
+    assignedTo: owner?.fullName ?? 'Not assigned',
+    initials: owner ? initials(owner.fullName) : '—',
+    notes: asset.notes ?? 'No notes recorded',
+    warranty: asset.warrantyExpiry
+      ? formatWarranty(asset.warrantyExpiry)
+      : '—',
+    imageUrl: asset.imageUrl ?? null,
+    modelUrl: asset.modelUrl ?? null,
   };
 }
 
 const conditionStyles: Record<AssetCondition, string> = {
-  NEW: "bg-blue-100 text-blue-800",
-  GOOD: "bg-emerald-100 text-emerald-800",
-  FAIR: "bg-amber-100 text-amber-800",
-  FAULTY: "bg-red-100 text-red-800",
-  RETIRED: "bg-slate-200 text-slate-600",
+  NEW: 'bg-blue-100 text-blue-800',
+  GOOD: 'bg-emerald-100 text-emerald-800',
+  FAIR: 'bg-amber-100 text-amber-800',
+  FAULTY: 'bg-red-100 text-red-800',
+  RETIRED: 'bg-slate-200 text-slate-600',
 };
 
-const tabs: Array<"All" | AssetListStatus> = [
-  "All",
-  "Assigned",
-  "Unassigned",
-  "Retired",
+const tabs: Array<'All' | AssetListStatus> = [
+  'All',
+  'Assigned',
+  'Unassigned',
+  'Retired',
 ];
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function getDeviceModel(device: DeviceCardData) {
-  const name = device.name.toLowerCase();
-
-  if (/\b(galaxy|s22|smartphone|phone)\b/.test(name)) {
-    return "/samsung_galaxy_s22_ultra.glb";
-  }
-
-  if (/\b(monitor|ultrawide|display)\b/.test(name)) {
-    return "/ultrawide_monitor.glb";
-  }
-
-  switch (device.category) {
-    case "Laptops":
-      return "/gaming_laptop.glb";
-    case "Desktops":
-      return "/ultrawide_monitor.glb";
-    case "Network":
-      return undefined;
-    case "Printers":
-      return "/mfp_office_printer.glb";
-    default:
-      return undefined;
-  }
-}
 
 function DeviceImage({
   device,
   modelViewerStatus,
 }: {
   device: DeviceCardData;
-  modelViewerStatus: "loading" | "ready" | "error";
+  modelViewerStatus: 'loading' | 'ready' | 'error';
 }) {
   const [modelFailed, setModelFailed] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   const Icon =
-    (
-      {
-        Laptops: Laptop,
-        Desktops: Monitor,
-        Printers: Printer,
-        Network: Monitor,
-        Other: Monitor,
-      } as Record<string, LucideIcon>
-    )[device.category] || Monitor;
+    ({
+      Laptops: Laptop,
+      Desktops: Monitor,
+      Printers: Printer,
+      Network: Monitor,
+    } as Record<string, LucideIcon>)[device.category] ?? Monitor;
 
-  const model = getDeviceModel(device);
-  const isNetworkDevice = device.category === "Network";
+  const hasImage = Boolean(device.imageUrl && !imageFailed);
+  const canShowModel =
+    Boolean(device.modelUrl) &&
+    !modelFailed &&
+    modelViewerStatus === 'ready';
 
   return (
     <div className="device-image relative flex h-43.5 items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
-      {isNetworkDevice ? (
-        <iframe
-          title="8 Way Network Switch 3D model"
-          src="https://sketchfab.com/models/ce7e4661641f4f318275d81d2c06b5aa/embed"
-          allow="autoplay; fullscreen; xr-spatial-tracking"
-          allowFullScreen
+      {hasImage ? (
+        <img
+          src={device.imageUrl!}
+          alt={`${device.name} device`}
           loading="lazy"
-          referrerPolicy="strict-origin-when-cross-origin"
-          className="h-full w-full border-0"
+          onError={() => setImageFailed(true)}
+          className="absolute inset-0 h-full w-full object-contain p-4"
         />
-      ) : model && !modelFailed && modelViewerStatus === "ready" ? (
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
+          <Icon size={60} strokeWidth={1} />
+          <span className="text-xs">{device.category}</span>
+        </div>
+      )}
+
+      {canShowModel && (
         <model-viewer
-          src={model}
+          key={device.modelUrl}
+          src={device.modelUrl!}
           alt={`${device.name} 3D model`}
           loading="lazy"
+          camera-controls
           auto-rotate
           rotation-per-second="20deg"
           shadow-intensity="1"
           onError={() => setModelFailed(true)}
-          className="h-full w-full"
+          className="relative z-10 h-full w-full bg-transparent"
         />
-      ) : (
-        <div className="flex flex-col items-center gap-2 text-slate-400">
-          <Icon size={60} strokeWidth={1} />
-          <span className="text-xs">
-            {modelFailed || modelViewerStatus === "error"
-              ? "3D preview unavailable"
-              : device.category}
-          </span>
-        </div>
       )}
 
+      {device.modelUrl && modelViewerStatus === 'loading' && (
+        <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">
+          Loading 3D preview...
+        </span>
+      )}
+
+      {device.modelUrl &&
+        (modelFailed || modelViewerStatus === 'error') && (
+          <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">
+            Image preview
+          </span>
+        )}
+
       <span
-        className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold ${conditionStyles[device.condition]}`}
+        className={`absolute left-3 top-3 z-20 rounded-full px-2.5 py-1 text-[10px] font-semibold ${conditionStyles[device.condition]}`}
       >
         {device.condition}
       </span>
@@ -202,7 +198,7 @@ function DeviceCard({
   onClick,
 }: {
   device: DeviceCardData;
-  modelViewerStatus: "loading" | "ready" | "error";
+  modelViewerStatus: 'loading' | 'ready' | 'error';
   onClick: (device: DeviceCardData) => void;
 }) {
   return (
@@ -228,7 +224,9 @@ function DeviceCard({
           </span>
         </div>
 
-        <p className="mt-0.5 text-[11px] text-slate-500">{device.category}</p>
+        <p className="mt-0.5 text-[11px] text-slate-500">
+          {device.category}
+        </p>
 
         <div className="mt-3 flex min-w-0 items-center gap-2">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#edf1fa] text-[9px] font-bold text-slate-600">
@@ -239,6 +237,7 @@ function DeviceCard({
             <p className="truncate text-xs font-semibold text-[#111a38]">
               {device.assignedTo}
             </p>
+
             <p className="truncate text-[11px] text-slate-500">
               {device.notes}
             </p>
@@ -247,11 +246,12 @@ function DeviceCard({
 
         <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[11px]">
           <span className="text-slate-500">Warranty</span>
+
           <span
             className={`font-semibold ${
-              device.warranty.startsWith("Ends")
-                ? "text-orange-700"
-                : "text-slate-800"
+              device.warranty.startsWith('Ends')
+                ? 'text-orange-700'
+                : 'text-slate-800'
             }`}
           >
             {device.warranty}
@@ -263,28 +263,29 @@ function DeviceCard({
 }
 
 export default function DevicesPage({
-  basePath = "/devices",
+  basePath = '/devices',
 }: {
   basePath?: string;
 }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const requestedStatus = searchParams.get("status");
+  const requestedStatus = searchParams.get('status');
 
-  const activeTab = tabs.find((status) => status === requestedStatus) ?? "All";
+  const activeTab =
+    tabs.find((status) => status === requestedStatus) ?? 'All';
 
-  const [view, setView] = useState<"Grid" | "List">("Grid");
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState<AssetType | "">("");
-  const [condition, setCondition] = useState<AssetCondition | "">("");
-  const [assigneeId, setAssigneeId] = useState("");
+  const [view, setView] = useState<'Grid' | 'List'>('Grid');
+  const [search, setSearch] = useState('');
+  const [type, setType] = useState<AssetType | ''>('');
+  const [condition, setCondition] = useState<AssetCondition | ''>('');
+  const [assigneeId, setAssigneeId] = useState('');
   const [warrantyExpiring, setWarrantyExpiring] = useState(false);
   const [page, setPage] = useState(1);
 
   const [modelViewerStatus, setModelViewerStatus] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
+    'loading' | 'ready' | 'error'
+  >('loading');
 
   const pageSize = 20;
 
@@ -296,16 +297,22 @@ export default function DevicesPage({
     pageSize,
     ...(search.trim() ? { q: search.trim() } : {}),
     ...(type ? { type } : {}),
-    ...(condition && activeTab !== "Retired" ? { condition } : {}),
-    ...(activeTab === "Retired"
-      ? { condition: "RETIRED" as const, includeRetired: true }
+    ...(condition && activeTab !== 'Retired' ? { condition } : {}),
+    ...(activeTab === 'Retired'
+      ? { condition: 'RETIRED' as const, includeRetired: true }
       : {}),
-    ...(activeTab === "Assigned" ? { assignedToId: "assigned" as const } : {}),
-    ...(activeTab === "Unassigned"
-      ? { assignedToId: "unassigned" as const }
+    ...(activeTab === 'Assigned'
+      ? { assignedToId: 'assigned' as const }
       : {}),
-    ...(assigneeId.trim() ? { assignedToId: assigneeId.trim() } : {}),
-    ...(warrantyExpiring ? { warrantyExpiringWithinDays: 30 } : {}),
+    ...(activeTab === 'Unassigned'
+      ? { assignedToId: 'unassigned' as const }
+      : {}),
+    ...(assigneeId.trim()
+      ? { assignedToId: assigneeId.trim() }
+      : {}),
+    ...(warrantyExpiring
+      ? { warrantyExpiringWithinDays: 30 }
+      : {}),
   };
 
   const {
@@ -320,45 +327,44 @@ export default function DevicesPage({
   const total = assets?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const hasPreviewableDevice = devices.some((device) => getDeviceModel(device));
-
-  // Keep the selected tab in sync when navigation changes the status query.
+  const has3DModels = devices.some((device) => Boolean(device.modelUrl));
 
   useEffect(() => {
     if (
-      view !== "Grid" ||
-      !hasPreviewableDevice ||
-      modelViewerStatus !== "loading"
+      view !== 'Grid' ||
+      !has3DModels ||
+      modelViewerStatus !== 'loading'
     ) {
       return;
     }
 
     let active = true;
 
-    import("@google/model-viewer").then(
+    import('@google/model-viewer').then(
       () => {
-        if (active) setModelViewerStatus("ready");
+        if (active) setModelViewerStatus('ready');
       },
       (error: unknown) => {
-        console.error("Unable to load the 3D model viewer.", error);
-        if (active) setModelViewerStatus("error");
+        console.error('Unable to load the 3D model viewer.', error);
+
+        if (active) setModelViewerStatus('error');
       },
     );
 
     return () => {
       active = false;
     };
-  }, [hasPreviewableDevice, modelViewerStatus, view]);
+  }, [has3DModels, modelViewerStatus, view]);
 
   return (
     <div className="min-h-full bg-[#f3f5fc] p-4 sm:p-5 lg:p-6">
-      {/* PAGE HEADER */}
       <section className="mb-5">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#101a3b]">
               Devices
             </h1>
+
             <p className="mt-1 text-xs text-slate-500">
               Live asset records filtered and paginated by the server.
             </p>
@@ -371,12 +377,12 @@ export default function DevicesPage({
             >
               <button
                 type="button"
-                onClick={() => setView("Grid")}
-                aria-pressed={view === "Grid"}
+                onClick={() => setView('Grid')}
+                aria-pressed={view === 'Grid'}
                 className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition ${
-                  view === "Grid"
-                    ? "bg-[#101a50] text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-50"
+                  view === 'Grid'
+                    ? 'bg-[#101a50] text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <Grid2X2 size={14} />
@@ -385,12 +391,12 @@ export default function DevicesPage({
 
               <button
                 type="button"
-                onClick={() => setView("List")}
-                aria-pressed={view === "List"}
+                onClick={() => setView('List')}
+                aria-pressed={view === 'List'}
                 className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition ${
-                  view === "List"
-                    ? "bg-[#101a50] text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-50"
+                  view === 'List'
+                    ? 'bg-[#101a50] text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <List size={14} />
@@ -401,7 +407,7 @@ export default function DevicesPage({
             <button
               type="button"
               onClick={() => navigate(`${basePath}/register`)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#3155ff] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3155ff]"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#3155ff] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
               <Plus size={16} />
               Register device
@@ -410,7 +416,6 @@ export default function DevicesPage({
         </div>
       </section>
 
-      {/* SEARCH AND STATUS FILTERS */}
       <section className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div className="flex flex-wrap gap-1.5">
           {tabs.map((tab) => (
@@ -420,10 +425,10 @@ export default function DevicesPage({
               onClick={() => {
                 const nextParams = new URLSearchParams(searchParams);
 
-                if (tab === "All") {
-                  nextParams.delete("status");
+                if (tab === 'All') {
+                  nextParams.delete('status');
                 } else {
-                  nextParams.set("status", tab);
+                  nextParams.set('status', tab);
                 }
 
                 navigate(
@@ -438,8 +443,8 @@ export default function DevicesPage({
               aria-pressed={activeTab === tab}
               className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                 activeTab === tab
-                  ? "border-[#101a50] bg-[#101a50] text-white"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-[#3155ff]"
+                  ? 'border-[#101a50] bg-[#101a50] text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-[#3155ff]'
               }`}
             >
               {tab}
@@ -452,6 +457,7 @@ export default function DevicesPage({
             size={15}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
+
           <input
             value={search}
             onChange={(event) => {
@@ -465,17 +471,17 @@ export default function DevicesPage({
         </div>
       </section>
 
-      {/* ADDITIONAL FILTERS */}
       <section
         aria-label="Asset filters"
         className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-xl border border-slate-200/80 bg-white p-3"
       >
         <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
           Type
+
           <select
             value={type}
             onChange={(event) => {
-              setType(event.target.value as AssetType | "");
+              setType(event.target.value as AssetType | '');
               setPage(1);
             }}
             className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
@@ -491,10 +497,11 @@ export default function DevicesPage({
 
         <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
           Condition
+
           <select
             value={condition}
             onChange={(event) => {
-              setCondition(event.target.value as AssetCondition | "");
+              setCondition(event.target.value as AssetCondition | '');
               setPage(1);
             }}
             className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
@@ -510,6 +517,7 @@ export default function DevicesPage({
 
         <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
           Assignee ID
+
           <input
             value={assigneeId}
             onChange={(event) => {
@@ -550,7 +558,7 @@ export default function DevicesPage({
 
       {isLoading && (
         <div className="rounded-xl border border-slate-100 bg-white p-10 text-center text-sm text-slate-500">
-          Loading devices…
+          Loading devices...
         </div>
       )}
 
@@ -560,19 +568,18 @@ export default function DevicesPage({
         </div>
       )}
 
-      {/* DEVICE CARDS */}
       {!isLoading &&
         !isError &&
-        (view === "Grid" ? (
+        (view === 'Grid' ? (
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {devices.map((device) => (
               <DeviceCard
                 key={device.id}
                 device={device}
                 modelViewerStatus={modelViewerStatus}
-                onClick={(d) =>
-                  navigate(`${basePath}/${d.tag}`, {
-                    state: { device: d },
+                onClick={(selected) =>
+                  navigate(`${basePath}/${selected.tag}`, {
+                    state: { device: selected },
                   })
                 }
               />
@@ -585,12 +592,12 @@ export default function DevicesPage({
                 <thead className="bg-slate-50 text-slate-500">
                   <tr>
                     {[
-                      "Device",
-                      "Asset tag",
-                      "Condition",
-                      "Assigned to",
-                      "Notes",
-                      "Warranty",
+                      'Device',
+                      'Asset tag',
+                      'Condition',
+                      'Assigned to',
+                      'Notes',
+                      'Warranty',
                     ].map((heading) => (
                       <th
                         key={heading}
@@ -612,8 +619,12 @@ export default function DevicesPage({
                         })
                       }
                       onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
+                        if (
+                          event.key === 'Enter' ||
+                          event.key === ' '
+                        ) {
                           event.preventDefault();
+
                           navigate(`${basePath}/${device.tag}`, {
                             state: { device },
                           });
@@ -625,11 +636,22 @@ export default function DevicesPage({
                       className="cursor-pointer border-t border-slate-100 outline-none transition hover:bg-blue-50/50 focus-visible:bg-blue-50"
                     >
                       <td className="px-4 py-3 font-semibold text-[#111a38]">
-                        {device.name}
+                        <div className="flex items-center gap-3">
+                          {device.imageUrl && (
+                            <img
+                              src={device.imageUrl}
+                              alt=""
+                              className="size-10 rounded-md object-contain"
+                            />
+                          )}
+                          {device.name}
+                        </div>
                       </td>
+
                       <td className="px-4 py-3 font-mono text-xs text-slate-600">
                         {device.tag}
                       </td>
+
                       <td className="px-4 py-3">
                         <span
                           className={`rounded-full px-2.5 py-1 text-xs font-medium ${conditionStyles[device.condition]}`}
@@ -637,12 +659,15 @@ export default function DevicesPage({
                           {device.condition}
                         </span>
                       </td>
+
                       <td className="px-4 py-3 text-xs text-slate-700">
                         {device.assignedTo}
                       </td>
+
                       <td className="max-w-56 truncate px-4 py-3 text-xs text-slate-500">
                         {device.notes}
                       </td>
+
                       <td className="px-4 py-3 text-xs text-slate-700">
                         {device.warranty}
                       </td>
@@ -654,46 +679,57 @@ export default function DevicesPage({
           </section>
         ))}
 
-      {!isLoading && !isError && isAssigneeIdValid && devices.length === 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-          <Monitor className="mx-auto mb-3 text-slate-300" size={36} />
-          <p className="text-sm font-semibold text-slate-700">
-            No devices found
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Try changing your filters or search term.
-          </p>
-        </div>
-      )}
+      {!isLoading &&
+        !isError &&
+        isAssigneeIdValid &&
+        devices.length === 0 && (
+          <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
+            <Monitor
+              className="mx-auto mb-3 text-slate-300"
+              size={36}
+            />
 
-      {!isLoading && !isError && isAssigneeIdValid && total > 0 && (
-        <nav
-          aria-label="Asset pages"
-          className="mt-5 flex items-center justify-center gap-3"
-        >
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => current - 1)}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            <p className="text-sm font-semibold text-slate-700">
+              No devices found
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Try changing your filters or search term.
+            </p>
+          </div>
+        )}
+
+      {!isLoading &&
+        !isError &&
+        isAssigneeIdValid &&
+        total > 0 && (
+          <nav
+            aria-label="Asset pages"
+            className="mt-5 flex items-center justify-center gap-3"
           >
-            Previous
-          </button>
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => current - 1)}
+              className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
 
-          <span className="text-xs tabular-nums text-slate-600">
-            Page {page} of {totalPages}
-          </span>
+            <span className="text-xs tabular-nums text-slate-600">
+              Page {page} of {totalPages}
+            </span>
 
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => setPage((current) => current + 1)}
-            className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Next
-          </button>
-        </nav>
-      )}
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((current) => current + 1)}
+              className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </nav>
+        )}
     </div>
   );
 }

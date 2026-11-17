@@ -1,7 +1,13 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronLeft, Search, X, Check } from 'lucide-react';
+import {
+  ChevronLeft,
+  Search,
+  X,
+  Check,
+  ImagePlus,
+} from 'lucide-react';
 
 import {
   useCreateAssetMutation,
@@ -23,6 +29,7 @@ interface RegisterDevicePageProps {
 interface AssetForm {
   assetTag: string;
   type: AssetType;
+  customType: string;
   make: string;
   model: string;
   serialNumber: string;
@@ -52,26 +59,8 @@ function messageFromError(error: unknown): string {
     if (data && typeof data === 'object' && 'message' in data) {
       const message = data.message;
 
-      if (typeof message === 'string') {
-        return message;
-      }
-
-      if (Array.isArray(message)) {
-        return message.join(', ');
-      }
-    }
-
-    if (data && typeof data === 'object' && 'error' in data) {
-      const nested = data.error;
-
-      if (
-        nested &&
-        typeof nested === 'object' &&
-        'message' in nested &&
-        typeof nested.message === 'string'
-      ) {
-        return nested.message;
-      }
+      if (typeof message === 'string') return message;
+      if (Array.isArray(message)) return message.join(', ');
     }
   }
 
@@ -93,6 +82,7 @@ export default function RegisterDevicePage({
   const [form, setForm] = useState<AssetForm>({
     assetTag: '',
     type: 'LAPTOP',
+    customType: '',
     make: '',
     model: '',
     serialNumber: '',
@@ -107,9 +97,11 @@ export default function RegisterDevicePage({
 
   const [modelSearch, setModelSearch] = useState('');
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-
   const [registrationMode, setRegistrationMode] =
     useState<'catalogue' | 'manual'>('catalogue');
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState('');
 
   const [saveError, setSaveError] = useState('');
 
@@ -154,6 +146,7 @@ export default function RegisterDevicePage({
     setForm((current) => ({
       ...current,
       type,
+      customType: '',
       assetTag: '',
       make: '',
       model: '',
@@ -190,12 +183,47 @@ export default function RegisterDevicePage({
     setRegistrationMode('catalogue');
     setSelectedModel(null);
     setModelSearch('');
+    setModelDropdownOpen(false);
 
     setForm((current) => ({
       ...current,
       make: '',
       model: '',
     }));
+  };
+
+  const handleImageChange = (file?: File) => {
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!allowedTypes.includes(file.type)) {
+      setSaveError('Choose a JPEG, PNG, or WebP image.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setSaveError('The device image must not exceed 10 MB.');
+      return;
+    }
+
+    setSaveError('');
+    setImageFile(file);
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setImagePreview(reader.result);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview('');
   };
 
   const saveAsset = async (
@@ -209,18 +237,19 @@ export default function RegisterDevicePage({
       return;
     }
 
-    if (registrationMode === 'catalogue' && !selectedModel) {
+    const make = form.make.trim();
+    const model = form.model.trim();
+    const customType = form.customType.trim();
+
+    if (!make || !model) {
       setSaveError(
-        'Select a catalogue model or switch to manual entry.',
+        "Manufacturer's name and manufacturer's model are required.",
       );
       return;
     }
 
-    const make = form.make.trim();
-    const model = form.model.trim();
-
-    if (!make || !model) {
-      setSaveError('Manufacturer and model are required.');
+    if (form.type === 'OTHER' && !customType) {
+      setSaveError('Specify the device type.');
       return;
     }
 
@@ -233,16 +262,17 @@ export default function RegisterDevicePage({
       condition: form.condition,
       purchaseDate: form.purchaseDate || null,
       warrantyExpiry: form.warrantyExpiry || null,
-      ...(form.notes.trim()
-        ? { notes: form.notes.trim() }
-        : {}),
-      ...(selectedModel
-        ? { modelId: selectedModel.id }
-        : {}),
+      ...(form.type === 'OTHER' ? { customType } : {}),
+      ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
+      ...(selectedModel ? { modelId: selectedModel.id } : {}),
     };
 
     try {
-      const asset = await createAsset(payload).unwrap();
+      const asset = await createAsset({
+        data: payload,
+        imageFile,
+      }).unwrap();
+
       navigate(`${basePath}/${asset.id}`);
     } catch (error) {
       setSaveError(messageFromError(error));
@@ -359,6 +389,23 @@ export default function RegisterDevicePage({
                     </span>
                   )}
               </label>
+
+              {form.type === 'OTHER' && (
+                <label className={labelClass}>
+                  Specify device type
+
+                  <input
+                    required
+                    maxLength={120}
+                    value={form.customType}
+                    onChange={(event) =>
+                      updateForm('customType', event.target.value)
+                    }
+                    placeholder="e.g. Projector, Scanner"
+                    className={inputClass}
+                  />
+                </label>
+              )}
             </div>
           </section>
 
@@ -369,8 +416,8 @@ export default function RegisterDevicePage({
               </h2>
 
               <p className="mt-0.5 text-xs text-slate-500">
-                Catalogue selection is optional. You can register a
-                device even when its model is not in the catalogue.
+                Catalogue selection is optional. You can enter a model
+                manually if it is not listed.
               </p>
             </div>
 
@@ -400,7 +447,7 @@ export default function RegisterDevicePage({
               </button>
             </div>
 
-            {registrationMode === 'catalogue' ? (
+            {registrationMode === 'catalogue' && (
               <div>
                 <label className={labelClass}>
                   Search model catalogue
@@ -453,7 +500,7 @@ export default function RegisterDevicePage({
                 </label>
 
                 {modelDropdownOpen && (
-                  <div className="mt-1 max-h-52 overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                  <div className="mt-1 max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
                     {isLoadingModels && (
                       <p className="px-3 py-2.5 text-xs text-slate-500">
                         Loading catalogue models...
@@ -481,10 +528,22 @@ export default function RegisterDevicePage({
                         type="button"
                         key={item.id}
                         onClick={() => selectCatalogueModel(item)}
-                        className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition hover:bg-blue-50"
+                        className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm transition hover:bg-blue-50"
                       >
-                        <span>
-                          <span className="block font-semibold text-slate-800">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt=""
+                            className="size-10 rounded-md border border-slate-100 object-contain"
+                          />
+                        ) : (
+                          <div className="flex size-10 items-center justify-center rounded-md bg-slate-100">
+                            <ImagePlus size={16} className="text-slate-400" />
+                          </div>
+                        )}
+
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-semibold text-slate-800">
                             {item.make} {item.model}
                           </span>
 
@@ -494,10 +553,7 @@ export default function RegisterDevicePage({
                         </span>
 
                         {selectedModel?.id === item.id && (
-                          <Check
-                            size={15}
-                            className="text-[#3155ff]"
-                          />
+                          <Check size={15} className="text-[#3155ff]" />
                         )}
                       </button>
                     ))}
@@ -505,25 +561,38 @@ export default function RegisterDevicePage({
                 )}
 
                 {selectedModel && (
-                  <div className="mt-2 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2">
-                    <p className="text-[11px] font-semibold text-blue-900">
-                      Selected catalogue model
-                    </p>
+                  <div className="mt-2 flex items-center gap-3 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2">
+                    {selectedModel.imageUrl && (
+                      <img
+                        src={selectedModel.imageUrl}
+                        alt=""
+                        className="size-12 rounded-md object-contain"
+                      />
+                    )}
 
-                    <p className="mt-0.5 text-xs font-medium text-blue-800">
-                      {selectedModel.make} {selectedModel.model}
-                    </p>
+                    <div>
+                      <p className="text-[11px] font-semibold text-blue-900">
+                        Selected catalogue model
+                      </p>
+
+                      <p className="mt-0.5 text-xs font-medium text-blue-800">
+                        {selectedModel.make} {selectedModel.model}
+                      </p>
+                    </div>
                   </div>
                 )}
 
                 <p className="mt-2 text-[11px] text-slate-500">
-                  Can't find the model? Switch to manual entry.
+                  Catalogue selection is optional. Switch to manual
+                  entry if the model is not available.
                 </p>
               </div>
-            ) : (
+            )}
+
+            {registrationMode === 'manual' && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className={labelClass}>
-                  Manufacturer
+                  Manufacturer's name
 
                   <input
                     required
@@ -538,7 +607,7 @@ export default function RegisterDevicePage({
                 </label>
 
                 <label className={labelClass}>
-                  Model
+                  Manufacturer's model
 
                   <input
                     required
@@ -557,6 +626,58 @@ export default function RegisterDevicePage({
 
           <section className="rounded-lg border border-[#e9edf6] bg-white p-4">
             <h2 className="mb-3 text-sm font-bold text-[#111a38]">
+              Device image
+            </h2>
+
+            <p className="mb-3 text-xs text-slate-500">
+              Upload an image of this particular device. If you do
+              not upload one, the catalogue image will be used when
+              available.
+            </p>
+
+            {imagePreview ? (
+              <div className="relative w-fit">
+                <img
+                  src={imagePreview}
+                  alt="Device preview"
+                  className="h-36 w-48 rounded-lg border border-slate-200 bg-slate-50 object-contain"
+                />
+
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  aria-label="Remove selected image"
+                  className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1.5 text-white shadow"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
+                <ImagePlus size={24} className="mb-2 text-slate-400" />
+
+                <span className="text-xs font-semibold text-slate-700">
+                  Choose device image
+                </span>
+
+                <span className="mt-1 text-[11px] text-slate-500">
+                  JPEG, PNG or WebP. Maximum 10 MB.
+                </span>
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(event) =>
+                    handleImageChange(event.target.files?.[0])
+                  }
+                />
+              </label>
+            )}
+          </section>
+
+          <section className="rounded-lg border border-[#e9edf6] bg-white p-4">
+            <h2 className="mb-3 text-sm font-bold text-[#111a38]">
               Additional information
             </h2>
 
@@ -566,7 +687,7 @@ export default function RegisterDevicePage({
 
                 <input
                   required
-                  maxLength={120}
+                  maxLength={128}
                   value={form.serialNumber}
                   onChange={(event) =>
                     updateForm('serialNumber', event.target.value)
@@ -627,7 +748,7 @@ export default function RegisterDevicePage({
 
                 <textarea
                   rows={3}
-                  maxLength={1000}
+                  maxLength={5000}
                   value={form.notes}
                   onChange={(event) =>
                     updateForm('notes', event.target.value)

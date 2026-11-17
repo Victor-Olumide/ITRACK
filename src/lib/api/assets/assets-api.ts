@@ -1,5 +1,6 @@
 
 import { appApi } from '@/lib/api/app-api';
+
 import type {
   AssetDetail,
   AssetListArgs,
@@ -7,8 +8,10 @@ import type {
   AssetApiRecord,
   AssetModelsResponse,
   AvailableAssetTagsResponse,
-  CreateAssetRequest,
+  CreateAssetMutationArgs,
+  CreateAssetModelRequest,
   UpdateAssetRequest,
+  AssetModelRecord,
   AssetType,
 } from './types';
 
@@ -22,7 +25,45 @@ function assetListUrl(args: AssetListArgs = {}) {
   });
 
   const query = params.toString();
+
   return `/assets${query ? `?${query}` : ''}`;
+}
+
+function createAssetFormData({
+  data,
+  imageFile,
+}: CreateAssetMutationArgs) {
+  const formData = new FormData();
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      formData.append(key, String(value));
+    }
+  });
+
+  if (imageFile) {
+    formData.append('imageFile', imageFile);
+  }
+
+  return formData;
+}
+
+function createAssetModelFormData(data: CreateAssetModelRequest) {
+  const formData = new FormData();
+
+  formData.append('type', data.type);
+  formData.append('make', data.make);
+  formData.append('model', data.model);
+
+  if (data.modelFile) {
+    formData.append('modelFile', data.modelFile);
+  }
+
+  if (data.imageFile) {
+    formData.append('imageFile', data.imageFile);
+  }
+
+  return formData;
 }
 
 export const assetsApi = appApi.injectEndpoints({
@@ -45,15 +86,18 @@ export const assetsApi = appApi.injectEndpoints({
       ],
     }),
 
-    createAsset: builder.mutation<AssetApiRecord, CreateAssetRequest>({
-      query: (body) => ({
+    createAsset: builder.mutation<
+      AssetApiRecord,
+      CreateAssetMutationArgs
+    >({
+      query: (args) => ({
         url: '/assets',
         method: 'POST',
-        body,
+        body: createAssetFormData(args),
       }),
-      invalidatesTags: (_result, _error, body) => [
+      invalidatesTags: (_result, _error, { data }) => [
         { type: 'Device', id: 'LIST' },
-        { type: 'Device', id: `TAGS-${body.type}` },
+        { type: 'Device', id: `TAGS-${data.type}` },
       ],
     }),
 
@@ -78,6 +122,25 @@ export const assetsApi = appApi.injectEndpoints({
           : '/assets/models',
       providesTags: (_result, _error, type) => [
         { type: 'Device', id: `MODELS-${type ?? 'ALL'}` },
+      ],
+    }),
+
+    createAssetModel: builder.mutation<
+      AssetModelRecord,
+      CreateAssetModelRequest
+    >({
+      query: (data) => ({
+        url: '/assets/models',
+        method: 'POST',
+        body: createAssetModelFormData(data),
+      }),
+      invalidatesTags: [
+        { type: 'Device', id: 'MODELS-ALL' },
+        { type: 'Device', id: 'MODELS-LAPTOP' },
+        { type: 'Device', id: 'MODELS-DESKTOP' },
+        { type: 'Device', id: 'MODELS-PRINTER' },
+        { type: 'Device', id: 'MODELS-NETWORK' },
+        { type: 'Device', id: 'MODELS-OTHER' },
       ],
     }),
 
@@ -115,6 +178,7 @@ export const {
   useCreateAssetMutation,
   useGetAvailableAssetTagsQuery,
   useGetAssetModelsQuery,
+  useCreateAssetModelMutation,
   useUpdateAssetMutation,
   useRetireAssetMutation,
 } = assetsApi;
