@@ -14,6 +14,7 @@ import {
 
 import Badge from '../components/Badge'
 import AssetTag from '../components/AssetTag'
+import Dropdown from '../components/Dropdown'
 import FileUpload from '../components/FileUpload'
 import { useAuth } from '../contexts/AuthContext'
 import type { PublicUser } from '../types/types'
@@ -488,21 +489,20 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
 
             <label className="mt-3 block text-xs font-semibold text-slate-600">
               Link an asset (optional)
-              <select
+              <Dropdown
                 value={selectedAssetId}
-                onChange={(event) => setSelectedAssetId(event.target.value)}
-                disabled={
-                  assetsQuery.isLoading || availableAssets.length === 0
-                }
-                className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-blue-400 disabled:bg-slate-50"
-              >
-                <option value="">No specific device</option>
-                {availableAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id}>
-                    {asset.assetTag} · {asset.make} {asset.model}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedAssetId}
+                placeholder="No specific device"
+                ariaLabel="Link an asset"
+                disabled={assetsQuery.isLoading || availableAssets.length === 0}
+                options={[
+                  { value: '', label: 'No specific device' },
+                  ...availableAssets.map((asset) => ({
+                    value: asset.id,
+                    label: `${asset.assetTag} · ${asset.make} ${asset.model}`,
+                  })),
+                ]}
+              />
             </label>
 
             {assetsQuery.isLoading && (
@@ -949,6 +949,23 @@ function MyTickets() {
               </span>
               <Badge label={selected.priority} />
               <Badge label={selected.category} />
+              {selected.status === 'Resolved' && (
+                <button
+                  type="button"
+                  disabled={changeStatusState.isLoading}
+                  onClick={() =>
+                    void changeStatus({
+                      id: selected.serverId ?? selected.id,
+                      body: { to: 'CLOSED' },
+                    })
+                      .unwrap()
+                      .catch(() => setActionError('Could not confirm ticket closure.'))
+                  }
+                  className="ml-auto rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Confirm resolved
+                </button>
+              )}
             </div>
 
             <h2 className="mt-3 text-xl font-bold text-[#18203e]">
@@ -1011,24 +1028,6 @@ function MyTickets() {
 
             {selected.status === 'Resolved' && (
               <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={changeStatusState.isLoading}
-                  onClick={() =>
-                    void changeStatus({
-                      id: selected.serverId ?? selected.id,
-                      body: { to: 'CLOSED' },
-                    })
-                      .unwrap()
-                      .catch(() =>
-                        setActionError('Could not confirm ticket closure.'),
-                      )
-                  }
-                  className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                >
-                  Confirm resolved
-                </button>
-
                 <button
                   type="button"
                   disabled={changeStatusState.isLoading || !reply.trim()}

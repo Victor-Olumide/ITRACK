@@ -8,6 +8,8 @@ import {
   Check,
   ImagePlus,
 } from 'lucide-react';
+import Dropdown from '../components/Dropdown';
+import DatePicker from '../components/DatePicker';
 
 import {
   useCreateAssetMutation,
@@ -700,47 +702,31 @@ export default function RegisterDevicePage({
               <label className={labelClass}>
                 Condition
 
-                <select
-                  value={form.condition}
-                  onChange={(event) =>
-                    updateForm(
-                      'condition',
-                      event.target.value as AssetCondition,
-                    )
-                  }
-                  className={inputClass}
-                >
-                  <option value="NEW">New</option>
-                  <option value="GOOD">Good</option>
-                  <option value="FAIR">Fair</option>
-                  <option value="FAULTY">Faulty</option>
-                </select>
+                <div className="mt-1">
+                  <Dropdown
+                    value={form.condition}
+                    onChange={(value) => updateForm('condition', value as AssetCondition)}
+                    options={[
+                      { value: 'NEW', label: 'New' },
+                      { value: 'GOOD', label: 'Good' },
+                      { value: 'FAIR', label: 'Fair' },
+                      { value: 'FAULTY', label: 'Faulty' },
+                    ]}
+                    ariaLabel="Condition"
+                  />
+                </div>
               </label>
 
               <label className={labelClass}>
                 Purchase date
 
-                <input
-                  type="date"
-                  value={form.purchaseDate}
-                  onChange={(event) =>
-                    updateForm('purchaseDate', event.target.value)
-                  }
-                  className={inputClass}
-                />
+                <DatePicker value={form.purchaseDate} onChange={(value) => updateForm('purchaseDate', value)} />
               </label>
 
               <label className={labelClass}>
                 Warranty expiry
 
-                <input
-                  type="date"
-                  value={form.warrantyExpiry}
-                  onChange={(event) =>
-                    updateForm('warrantyExpiry', event.target.value)
-                  }
-                  className={inputClass}
-                />
+                <DatePicker value={form.warrantyExpiry} onChange={(value) => updateForm('warrantyExpiry', value)} />
               </label>
 
               <label className={`${labelClass} sm:col-span-2`}>
