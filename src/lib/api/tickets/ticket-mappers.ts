@@ -1,43 +1,113 @@
-import type { Ticket, TicketHistoryEntry } from '@/types/types';
+
+import type { Ticket, TicketHistoryEntry } from "@/types/types";
 import type {
   ApiTicketPriority,
   ApiTicketStatus,
   TicketApiRecord,
-} from './types';
-import { getPriorityLabel } from './ticket-priority.ts';
+} from "./types";
+import { getPriorityLabel } from "./ticket-priority.ts";
 
-const statusLabels: Record<ApiTicketStatus, Ticket['status']> = {
-  NEW: 'Unassigned',
-  ASSIGNED: 'Assigned',
-  IN_PROGRESS: 'In progress',
-  WAITING_ON_USER: 'Waiting on user',
-  RESOLVED: 'Resolved',
-  CLOSED: 'Closed',
+const statusLabels: Record<ApiTicketStatus, Ticket["status"]> = {
+  NEW: "Unassigned",
+  ASSIGNED: "Assigned",
+  IN_PROGRESS: "In progress",
+  WAITING_ON_USER: "Waiting on user",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
 };
 
-const priorityLabels: Record<ApiTicketPriority, Ticket['priority']> = {
-  P1_CRITICAL: 'Critical',
-  P2_HIGH: 'High',
-  P3_MEDIUM: 'Medium',
-  P4_LOW: 'Low',
-  P5_PLANNING: 'Legacy',
+const priorityLabels: Record<ApiTicketPriority, Ticket["priority"]> = {
+  P1_CRITICAL: "Critical",
+  P2_HIGH: "High",
+  P3_MEDIUM: "Medium",
+  P4_LOW: "Low",
+  P5_PLANNING: "Legacy",
 };
 
-function toHistory(entries: TicketApiRecord): TicketHistoryEntry[] {
-  const events = (entries.events ?? []).map((event) => ({
+function formatStatus(value: string | null): string {
+  if (!value) return "Unknown status";
+
+  const normalized = value.trim().toUpperCase() as ApiTicketStatus;
+
+  return statusLabels[normalized] ?? value.replace(/_/g, " ");
+}
+
+function formatEvent(
+  event: NonNullable<TicketApiRecord["events"]>[number],
+): string {
+  const actor = event.actor.fullName;
+
+  switch (event.type) {
+    case "STATUS": {
+      const previousStatus = event.fromValue
+        ? formatStatus(event.fromValue)
+        : null;
+
+      const nextStatus = formatStatus(event.toValue);
+
+      return previousStatus
+        ? `${actor} changed status from ${previousStatus} to ${nextStatus}`
+        : `${actor} changed status to ${nextStatus}`;
+    }
+
+    case "ASSIGN": {
+      if (!event.toValue) {
+        return event.previousAssignee
+          ? `${actor} unassigned ${event.previousAssignee.fullName}`
+          : `${actor} unassigned the ticket`;
+      }
+
+      const assignee = event.assignee?.fullName ?? "Unknown assignee";
+
+      if (event.previousAssignee) {
+        return `${actor} reassigned the ticket from ${event.previousAssignee.fullName} to ${assignee}`;
+      }
+
+      return `${actor} assigned the ticket to ${assignee}`;
+    }
+
+    case "PRIORITY": {
+      const previousPriority = event.fromValue
+        ? getPriorityLabel(event.fromValue)
+        : null;
+
+      const nextPriority = event.toValue
+        ? getPriorityLabel(event.toValue)
+        : null;
+
+      if (previousPriority && nextPriority) {
+        return `${actor} changed priority from ${previousPriority} to ${nextPriority}`;
+      }
+
+      if (nextPriority) {
+        return `${actor} set priority to ${nextPriority}`;
+      }
+
+      return `${actor} updated the ticket priority`;
+    }
+
+    case "DELETE":
+      return `${actor} deleted the ticket`;
+
+    default:
+      return `${actor} updated the ticket`;
+  }
+}
+
+function toHistory(ticket: TicketApiRecord): TicketHistoryEntry[] {
+  const events = (ticket.events ?? []).map((event) => ({
     at: event.createdAt,
     item: {
       time: new Date(event.createdAt).toLocaleString(),
-      text: event.type === 'PRIORITY'
-        ? `${event.actor.fullName} changed priority${event.fromValue ? ` from ${getPriorityLabel(event.fromValue)}` : ''}${event.toValue ? ` to ${getPriorityLabel(event.toValue)}` : ''}`
-        : `${event.actor.fullName} ${event.type.toLowerCase()}${event.toValue ? `: ${event.toValue}` : ''}`,
+      text: formatEvent(event),
     },
   }));
-  const comments = (entries.comments ?? []).map((comment) => ({
+
+  const comments = (ticket.comments ?? []).map((comment) => ({
     at: comment.createdAt,
     item: {
       time: new Date(comment.createdAt).toLocaleString(),
-      text: `${comment.isInternal ? 'Internal note' : 'Reply'} by ${comment.author.fullName}: ${comment.body}`,
+      text: `${comment.isInternal ? "Internal note" : "Reply"} by ${comment.author.fullName}: ${comment.body}`,
       note: comment.isInternal,
     },
   }));
@@ -49,17 +119,20 @@ function toHistory(entries: TicketApiRecord): TicketHistoryEntry[] {
 
 export function toClientTicket(ticket: TicketApiRecord): Ticket {
   const status = statusLabels[ticket.status];
-  const timeState = ticket.overdue
-    ? 'Breached'
-    : 'Not overdue';
-  const resolvedAt = ticket.resolvedAt ? new Date(ticket.resolvedAt) : null;
+
+  const timeState = ticket.overdue ? "Breached" : "Not overdue";
+
+  const resolvedAt = ticket.resolvedAt
+    ? new Date(ticket.resolvedAt)
+    : null;
+
   const createdAt = new Date(ticket.createdAt);
 
   return {
     id: ticket.number,
     serverId: ticket.id,
     title: ticket.title,
-    type: ticket.type === 'REQUEST' ? 'Request' : 'Problem',
+    type: ticket.type === "REQUEST" ? "Request" : "Problem",
     category: ticket.category.name,
     priority: priorityLabels[ticket.priority],
     status,
@@ -68,18 +141,22 @@ export function toClientTicket(ticket: TicketApiRecord): Ticket {
     assigneeName: ticket.assignee?.fullName ?? null,
     requesterId: ticket.reporter.id,
     requesterName: ticket.reporter.fullName,
-    requesterDepartment: ticket.reporter.department?.name ?? '',
+    requesterDepartment: ticket.reporter.department?.name ?? "",
     deviceId: ticket.asset?.id ?? null,
     deviceTag: ticket.asset?.assetTag ?? null,
     deviceName: ticket.asset
       ? `${ticket.asset.make} ${ticket.asset.model}`
       : null,
     description: ticket.description,
-    response: 'Not tracked',
-    resolution: ticket.resolutionNote ?? (resolvedAt ? 'Resolved' : 'Not tracked'),
-    sla: ticket.overdue ? 'Overdue' : 'Not overdue',
+    response: "Not tracked",
+    resolution:
+      ticket.resolutionNote ?? (resolvedAt ? "Resolved" : "Not tracked"),
+    sla: ticket.overdue ? "Overdue" : "Not overdue",
     ...(resolvedAt
-      ? { resolutionHours: (resolvedAt.getTime() - createdAt.getTime()) / 3_600_000 }
+      ? {
+          resolutionHours:
+            (resolvedAt.getTime() - createdAt.getTime()) / 3_600_000,
+        }
       : {}),
     createdAt: ticket.createdAt,
     history: toHistory(ticket),

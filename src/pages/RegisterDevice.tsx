@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { ChevronLeft, Laptop } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { useCreateAssetMutation } from '../lib/api/assets/assets-api'
 import type { AssetType } from '../lib/api/assets/types'
 

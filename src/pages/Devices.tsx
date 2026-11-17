@@ -106,7 +106,7 @@ function DeviceImage({
   const isNetworkDevice = device.category === "Network";
 
   return (
-    <div className="device-image relative flex h-[174px] items-center justify-center overflow-hidden bg-gradient-to-b from-[#f1f4fc] to-[#e8edf9]">
+    <div className="device-image relative flex h-43.5 items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
       {isNetworkDevice ? (
         <iframe
           title="8 Way Network Switch 3D model"

@@ -42,11 +42,25 @@ export interface TicketApiComment {
 
 export interface TicketApiEvent {
   id: string;
-  type: 'STATUS' | 'ASSIGN' | 'PRIORITY' | 'DELETE';
+  type: "STATUS" | "ASSIGN" | "PRIORITY" | "DELETE";
   fromValue: string | null;
   toValue: string | null;
   createdAt: string;
-  actor: Pick<TicketApiUser, 'id' | 'staffId' | 'fullName' | 'role'>;
+
+  actor: Pick<
+    TicketApiUser,
+    "id" | "staffId" | "fullName" | "role"
+  >;
+
+  previousAssignee?: Pick<
+    TicketApiUser,
+    "id" | "staffId" | "fullName"
+  > | null;
+
+  assignee?: Pick<
+    TicketApiUser,
+    "id" | "staffId" | "fullName"
+  > | null;
 }
 
 export interface TicketApiAttachment {

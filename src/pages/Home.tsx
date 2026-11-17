@@ -146,8 +146,8 @@ export default function Home() {
 
           <p className="mt-2 text-sm text-slate-500">{greeting.subtitle}</p>
 
-          <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-            {today} · Live workspace data
+          <p className="mt-1.5 -mb-0.5 text-xs text-slate-500 sm:text-sm">
+            {today}
           </p>
         </div>
 

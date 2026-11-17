@@ -460,7 +460,7 @@ function TicketDetails({
           {ticket.requester} · {ticket.department}
         </strong>
 
-        <span className="text-slate-500">Assignee</span>
+        <span className="text-slate-500">Assigned to</span>
         <strong>{ticket.assignee}</strong>
 
         <span className="text-slate-500">Type</span>
