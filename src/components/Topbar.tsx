@@ -202,7 +202,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
           to={homePath}
           className="flex w-auto shrink-0 items-center gap-2 md:w-44"
         >
-          <Logo size={30} className="rounded-lg" />
+          <Logo size={30} className="rounded-[3.5px]" />
 
           <span className="text-[15px] font-bold tracking-tight text-white">
             ITrack

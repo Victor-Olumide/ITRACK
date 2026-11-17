@@ -20,6 +20,7 @@ import type {
   AssetListArgs,
   AssetType,
 } from '@/lib/api/assets/types';
+import { categoryDeviceImage } from '@/lib/device-images';
 
 type AssetListStatus = 'Assigned' | 'Unassigned' | 'Retired';
 
@@ -33,7 +34,7 @@ interface DeviceCardData {
   initials: string;
   notes: string;
   warranty: string;
-  imageUrl: string | null;
+  imageUrl: string;
   modelUrl: string | null;
 }
 
@@ -91,7 +92,7 @@ function toCard(asset: AssetApiRecord): DeviceCardData {
     warranty: asset.warrantyExpiry
       ? formatWarranty(asset.warrantyExpiry)
       : '—',
-    imageUrl: asset.imageUrl ?? null,
+    imageUrl: asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType),
     modelUrl: asset.modelUrl ?? null,
   };
 }
@@ -116,13 +117,13 @@ const uuidPattern =
 
 function DeviceImage({
   device,
-  modelViewerStatus,
 }: {
   device: DeviceCardData;
-  modelViewerStatus: 'loading' | 'ready' | 'error';
 }) {
   const [modelFailed, setModelFailed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [showModel, setShowModel] = useState(false);
+  const [modelViewerStatus, setModelViewerStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
   const Icon =
     ({
@@ -133,10 +134,15 @@ function DeviceImage({
     } as Record<string, LucideIcon>)[device.category] ?? Monitor;
 
   const hasImage = Boolean(device.imageUrl && !imageFailed);
-  const canShowModel =
-    Boolean(device.modelUrl) &&
-    !modelFailed &&
-    modelViewerStatus === 'ready';
+  useEffect(() => {
+    if (!showModel || !device.modelUrl || modelViewerStatus !== 'loading') return;
+    import('@google/model-viewer').then(
+      () => setModelViewerStatus('ready'),
+      () => setModelViewerStatus('error'),
+    );
+  }, [device.modelUrl, modelViewerStatus, showModel]);
+
+  const canShowModel = Boolean(showModel && device.modelUrl && !modelFailed && modelViewerStatus === 'ready');
 
   return (
     <div className="device-image relative flex h-43.5 items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
@@ -170,18 +176,11 @@ function DeviceImage({
         />
       )}
 
-      {device.modelUrl && modelViewerStatus === 'loading' && (
-        <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">
-          Loading 3D preview...
-        </span>
-      )}
+      {device.modelUrl && !showModel && <button type="button" onClick={(event) => { event.stopPropagation(); setModelViewerStatus('loading'); setShowModel(true) }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#3155ff] shadow-sm hover:bg-white">View 3D model</button>}
 
-      {device.modelUrl &&
-        (modelFailed || modelViewerStatus === 'error') && (
-          <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">
-            Image preview
-          </span>
-        )}
+      {showModel && modelViewerStatus === 'loading' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
+
+      {showModel && (modelFailed || modelViewerStatus === 'error') && <button type="button" onClick={(event) => { event.stopPropagation(); setShowModel(false); setModelFailed(false); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm">Back to image</button>}
 
       <span
         className={`absolute left-3 top-3 z-20 rounded-full px-2.5 py-1 text-[10px] font-semibold ${conditionStyles[device.condition]}`}
@@ -194,11 +193,9 @@ function DeviceImage({
 
 function DeviceCard({
   device,
-  modelViewerStatus,
   onClick,
 }: {
   device: DeviceCardData;
-  modelViewerStatus: 'loading' | 'ready' | 'error';
   onClick: (device: DeviceCardData) => void;
 }) {
   return (
@@ -210,7 +207,6 @@ function DeviceCard({
       <DeviceImage
         key={device.tag}
         device={device}
-        modelViewerStatus={modelViewerStatus}
       />
 
       <div className="p-3">
@@ -283,9 +279,6 @@ export default function DevicesPage({
   const [warrantyExpiring, setWarrantyExpiring] = useState(false);
   const [page, setPage] = useState(1);
 
-  const [modelViewerStatus, setModelViewerStatus] = useState<
-    'loading' | 'ready' | 'error'
-  >('loading');
 
   const pageSize = 20;
 
@@ -327,34 +320,6 @@ export default function DevicesPage({
   const total = assets?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const has3DModels = devices.some((device) => Boolean(device.modelUrl));
-
-  useEffect(() => {
-    if (
-      view !== 'Grid' ||
-      !has3DModels ||
-      modelViewerStatus !== 'loading'
-    ) {
-      return;
-    }
-
-    let active = true;
-
-    import('@google/model-viewer').then(
-      () => {
-        if (active) setModelViewerStatus('ready');
-      },
-      (error: unknown) => {
-        console.error('Unable to load the 3D model viewer.', error);
-
-        if (active) setModelViewerStatus('error');
-      },
-    );
-
-    return () => {
-      active = false;
-    };
-  }, [has3DModels, modelViewerStatus, view]);
 
   return (
     <div className="min-h-full bg-[#f3f5fc] p-4 sm:p-5 lg:p-6">
@@ -576,7 +541,6 @@ export default function DevicesPage({
               <DeviceCard
                 key={device.id}
                 device={device}
-                modelViewerStatus={modelViewerStatus}
                 onClick={(selected) =>
                   navigate(`${basePath}/${selected.tag}`, {
                     state: { device: selected },

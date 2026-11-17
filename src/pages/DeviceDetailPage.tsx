@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from '../lib/api/assets/assets-api'
 import type { AssetCondition } from '../lib/api/assets/types'
+import { categoryDeviceImage } from '../lib/device-images'
 
 const CONDITION_LABELS: Record<AssetCondition, string> = {
   NEW: 'New',
@@ -88,7 +89,15 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
 
         {actionError && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}
 
-        <section className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="mt-5 overflow-hidden rounded-2xl border border-[#e9edf6] bg-white">
+          <img
+            src={asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType)}
+            alt={`${asset.make} ${asset.model}`}
+            className="h-52 w-full bg-[#f1f4fc] object-contain p-5"
+          />
+        </section>
+
+        <section className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <article className="rounded-2xl border border-[#e9edf6] bg-white p-5">
             <h2 className="text-sm font-bold text-[#202844]">Asset details</h2>
             <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

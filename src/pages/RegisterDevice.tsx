@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   ChevronLeft,
@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import Dropdown from '../components/Dropdown';
 import DatePicker from '../components/DatePicker';
+import { useAuth } from '../contexts/AuthContext';
+import { useGetUsersQuery } from '../lib/api/users/users-api';
 
 import {
   useCreateAssetMutation,
@@ -38,6 +40,7 @@ interface AssetForm {
   purchaseDate: string;
   warrantyExpiry: string;
   condition: AssetCondition;
+  assignedToId: string;
   notes: string;
 }
 
@@ -77,6 +80,7 @@ export default function RegisterDevicePage({
   basePath = '/devices',
 }: RegisterDevicePageProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [createAsset, { isLoading: isSaving }] =
     useCreateAssetMutation();
@@ -91,6 +95,7 @@ export default function RegisterDevicePage({
     purchaseDate: '',
     warrantyExpiry: '',
     condition: 'GOOD',
+    assignedToId: '',
     notes: '',
   });
 
@@ -106,6 +111,7 @@ export default function RegisterDevicePage({
   const [imagePreview, setImagePreview] = useState('');
 
   const [saveError, setSaveError] = useState('');
+  const customTypeRef = useRef<HTMLInputElement>(null);
 
   const {
     data: tagResponse,
@@ -120,9 +126,19 @@ export default function RegisterDevicePage({
   } = useGetAssetModelsQuery(form.type);
 
   const availableTags = tagResponse?.data ?? [];
-  const catalogueModels = modelResponse?.data ?? [];
+  const usersQuery = useGetUsersQuery(undefined, {
+    skip: user?.role !== 'IT Admin',
+  });
+  const assignableUsers = (usersQuery.data?.users ?? []).filter(
+    (candidate) => candidate.isActive && candidate.role !== 'SECURITY',
+  );
+
+  useEffect(() => {
+    if (form.type === 'OTHER') customTypeRef.current?.focus();
+  }, [form.type]);
 
   const filteredModels = useMemo(() => {
+    const catalogueModels = modelResponse?.data ?? [];
     const query = modelSearch.trim().toLowerCase();
 
     if (!query) return catalogueModels.slice(0, 8);
@@ -132,7 +148,7 @@ export default function RegisterDevicePage({
         `${item.make} ${item.model}`.toLowerCase().includes(query),
       )
       .slice(0, 8);
-  }, [catalogueModels, modelSearch]);
+  }, [modelResponse?.data, modelSearch]);
 
   const updateForm = <K extends keyof AssetForm>(
     key: K,
@@ -187,11 +203,6 @@ export default function RegisterDevicePage({
     setModelSearch('');
     setModelDropdownOpen(false);
 
-    setForm((current) => ({
-      ...current,
-      make: '',
-      model: '',
-    }));
   };
 
   const handleImageChange = (file?: File) => {
@@ -239,6 +250,11 @@ export default function RegisterDevicePage({
       return;
     }
 
+    if (!availableTags.some((tag) => tag.tag === form.assetTag)) {
+      setSaveError('Select a currently available asset tag.');
+      return;
+    }
+
     const make = form.make.trim();
     const model = form.model.trim();
     const customType = form.customType.trim();
@@ -267,6 +283,7 @@ export default function RegisterDevicePage({
       ...(form.type === 'OTHER' ? { customType } : {}),
       ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
       ...(selectedModel ? { modelId: selectedModel.id } : {}),
+      ...(form.assignedToId ? { assignedToId: form.assignedToId } : {}),
     };
 
     try {
@@ -352,29 +369,18 @@ export default function RegisterDevicePage({
               <label className={labelClass}>
                 Available asset tag
 
-                <select
-                  required
-                  value={form.assetTag}
-                  onChange={(event) =>
-                    updateForm('assetTag', event.target.value)
-                  }
-                  disabled={isLoadingTags || availableTags.length === 0}
-                  className={inputClass}
-                >
-                  <option value="">
-                    {isLoadingTags
-                      ? 'Loading available tags...'
-                      : availableTags.length === 0
-                        ? 'No available tags'
-                        : 'Select an asset tag'}
-                  </option>
-
-                  {availableTags.map((tag) => (
-                    <option key={tag.id} value={tag.tag}>
-                      {tag.tag}
-                    </option>
-                  ))}
-                </select>
+                <div className="mt-1">
+                  <Dropdown
+                    value={form.assetTag}
+                    onChange={(value) => updateForm('assetTag', value)}
+                    placeholder={isLoadingTags ? 'Loading available tags...' : 'Select an asset tag'}
+                    ariaLabel="Available asset tag"
+                    searchable
+                    searchPlaceholder="Search available tags"
+                    disabled={isLoadingTags || availableTags.length === 0}
+                    options={availableTags.map((tag) => ({ value: tag.tag, label: tag.tag }))}
+                  />
+                </div>
 
                 {tagsError && (
                   <span className="mt-1 block text-xs font-normal text-red-600">
@@ -386,8 +392,7 @@ export default function RegisterDevicePage({
                   !tagsError &&
                   availableTags.length === 0 && (
                     <span className="mt-1 block text-xs font-normal text-amber-700">
-                      No available tags exist for this device type.
-                      Ask an IT administrator to generate asset tags.
+                      No available asset tags for this device type. Contact your IT administrator to generate more tags.
                     </span>
                   )}
               </label>
@@ -397,6 +402,7 @@ export default function RegisterDevicePage({
                   Specify device type
 
                   <input
+                    ref={customTypeRef}
                     required
                     maxLength={120}
                     value={form.customType}
@@ -467,11 +473,6 @@ export default function RegisterDevicePage({
                         setModelDropdownOpen(true);
                         setSelectedModel(null);
 
-                        setForm((current) => ({
-                          ...current,
-                          make: '',
-                          model: '',
-                        }));
                       }}
                       onFocus={() => setModelDropdownOpen(true)}
                       placeholder="Search manufacturer or model..."
@@ -486,11 +487,6 @@ export default function RegisterDevicePage({
                           setSelectedModel(null);
                           setModelDropdownOpen(false);
 
-                          setForm((current) => ({
-                            ...current,
-                            make: '',
-                            model: '',
-                          }));
                         }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                         aria-label="Clear model search"
@@ -716,6 +712,31 @@ export default function RegisterDevicePage({
                   />
                 </div>
               </label>
+
+              {user?.role === 'IT Admin' && (
+              <label className={labelClass}>
+                Assigned to <span className="font-normal text-slate-400">(optional)</span>
+                <div className="mt-1">
+                  <Dropdown
+                    value={form.assignedToId}
+                    onChange={(value) => updateForm('assignedToId', value)}
+                    placeholder={usersQuery.isLoading ? 'Loading employees...' : 'Leave unassigned'}
+                    ariaLabel="Assign device to an employee"
+                    disabled={usersQuery.isLoading || usersQuery.isError}
+                    searchable
+                    searchPlaceholder="Search people"
+                    options={[
+                      { value: '', label: 'Leave unassigned' },
+                      ...assignableUsers.map((candidate) => ({
+                        value: candidate.id,
+                        label: `${candidate.fullName} · ${candidate.staffId}`,
+                      })),
+                    ]}
+                  />
+                </div>
+                {usersQuery.isError && <span className="mt-1 block text-xs font-normal text-red-600">People could not be loaded.</span>}
+              </label>
+              )}
 
               <label className={labelClass}>
                 Purchase date
