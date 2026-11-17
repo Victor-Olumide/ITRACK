@@ -365,8 +365,12 @@ function TicketDetails({
     skip: !isAdmin,
   });
 
-  const technicians = (usersData?.users ?? []).filter(
-    (candidate) => candidate.role === "TECHNICIAN" && candidate.isActive,
+  // Include active technicians and the currently logged-in admin.
+  // This allows an admin to assign a ticket to himself.
+  const assignableUsers = (usersData?.users ?? []).filter(
+    (candidate) =>
+      candidate.isActive &&
+      (candidate.role === "TECHNICIAN" || candidate.id === user?.id),
   );
 
   const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
@@ -660,8 +664,8 @@ function TicketDetails({
               </h3>
 
               <p className="mt-1 text-xs text-slate-500">
-                Confirm the priority, then select an active technician to
-                handle this ticket.
+                Confirm the priority, then select an active technician or
+                assign the ticket to yourself.
               </p>
             </div>
 
@@ -716,14 +720,16 @@ function TicketDetails({
             </div>
 
             {isLoadingTechnicians ? (
-              <p className="text-sm text-slate-500">Loading technicians...</p>
+              <p className="text-sm text-slate-500">
+                Loading assignable users...
+              </p>
             ) : techniciansError ? (
               <p role="alert" className="text-sm text-red-600">
-                Could not load technicians. Please try again.
+                Could not load assignable users. Please try again.
               </p>
-            ) : technicians.length === 0 ? (
+            ) : assignableUsers.length === 0 ? (
               <p className="text-sm text-slate-500">
-                No active technicians are available.
+                No active technicians or eligible users are available.
               </p>
             ) : (
               <>
@@ -736,13 +742,15 @@ function TicketDetails({
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="" disabled>
-                    Select a technician
+                    Select an assignee
                   </option>
 
-                  {technicians.map((technician) => (
-                    <option key={technician.id} value={technician.id}>
-                      {technician.fullName} ·{" "}
-                      {technician.department?.name ?? "No department"}
+                  {assignableUsers.map((candidate) => (
+                    <option key={candidate.id} value={candidate.id}>
+                      {candidate.fullName}
+                      {candidate.id === user?.id
+                        ? " · You (IT Admin)"
+                        : ` · ${candidate.department?.name ?? "No department"}`}
                     </option>
                   ))}
                 </select>
@@ -1306,7 +1314,7 @@ export default function TicketPage({
                 }}
                 onAssign={async (assigneeId, suggestedPriority) => {
                   if (!assigneeId) {
-                    throw new Error("Please select a technician.");
+                    throw new Error("Please select an assignee.");
                   }
 
                   await assignTicket({
