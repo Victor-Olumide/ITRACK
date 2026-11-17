@@ -4,7 +4,6 @@ import {
   ChevronDown,
   LogOut,
   Menu,
-  Plus,
   Ticket,
   UserRound,
 } from "lucide-react";
@@ -57,13 +56,13 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
-  const isSecurity = role === "Security";
-  const newTicketPath =
-    role === "Employee"
-      ? "/employee/report"
-      : role === "Technician"
-        ? "/technician/tickets"
-        : "/tickets/new";
+  // const isSecurity = role === "Security";
+  // const newTicketPath =
+  //   role === "Employee"
+  //     ? "/employee/report"
+  //     : role === "Technician"
+  //       ? "/technician/tickets"
+  //       : "/tickets/new";
   const ticketsPath =
     role === "Employee"
       ? "/employee/tickets"
@@ -201,7 +200,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
           </span>
         </Link>
 
-        {!isSecurity && (
+        {/* {!isSecurity && (
           <Link
             to={newTicketPath}
             aria-label="Create a new ticket"
@@ -212,7 +211,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
               <Plus size={12} />
               Create ticket
           </Link>
-        )}
+        )} */}
 
         <div className="flex-1" />
 
