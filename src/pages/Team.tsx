@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext'
 const ROLES = [
   { label: 'IT Admin', value: 'IT Admin' },
   { label: 'Technician', value: 'Technician' },
+  { label: 'Department Head', value: 'Department Head' },
   { label: 'Employee', value: 'Employee' },
 ] as const
 import { useGetDepartmentsQuery } from '@/lib/api/auth/auth-api'
@@ -52,6 +53,7 @@ function getCreateUserErrorMessage(error: unknown): string {
 const ROLE_TONES = {
   'IT Admin': 'bg-violet-50 text-violet-700',
   Technician: 'bg-blue-50 text-blue-700',
+  'Department Head': 'bg-amber-50 text-amber-700',
   Employee: 'bg-slate-100 text-slate-600',
   Security: 'bg-amber-50 text-amber-700',
 }
@@ -87,8 +89,8 @@ export default function Team({ showCreateForm = false }) {
   const [editName, setEditName] = useState('')
   const [editRole, setEditRole] = useState<DisplayUserRole>('Employee')
   const [editError, setEditError] = useState('')
-  const apiRoleLabels: Record<ApiUserRole, DisplayUserRole> = { EMPLOYEE: 'Employee', TECHNICIAN: 'Technician', IT_ADMIN: 'IT Admin', SECURITY: 'Security' }
-  const apiRoleValues: Record<DisplayUserRole, ApiUserRole> = { Employee: 'EMPLOYEE', Technician: 'TECHNICIAN', 'IT Admin': 'IT_ADMIN', Security: 'SECURITY' }
+  const apiRoleLabels: Record<ApiUserRole, DisplayUserRole> = { EMPLOYEE: 'Employee', DEPARTMENT_HEAD: 'Department Head', TECHNICIAN: 'Technician', IT_ADMIN: 'IT Admin', SECURITY: 'Security' }
+  const apiRoleValues: Record<DisplayUserRole, ApiUserRole> = { Employee: 'EMPLOYEE', 'Department Head': 'DEPARTMENT_HEAD', Technician: 'TECHNICIAN', 'IT Admin': 'IT_ADMIN', Security: 'SECURITY' }
   const allUsers = usersResponse?.users.filter((user) => user.role !== 'SECURITY').map((user) => ({
     id: user.id,
     name: user.fullName,

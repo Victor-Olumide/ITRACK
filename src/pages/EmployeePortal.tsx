@@ -399,7 +399,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
         )}
 
         <Link
-          to={`${viewer.role === 'Employee' ? '/employee/tickets' : '/tickets'}?ticket=${submittedTicketId}`}
+          to={`${viewer.role === 'Employee' ? '/employee/tickets' : viewer.role === 'Department Head' ? '/department/tickets' : '/tickets'}?ticket=${submittedTicketId}`}
           className="mt-6 inline-flex rounded-full bg-[#3155ff] px-5 py-2.5 text-sm font-semibold text-white"
         >
           View tickets

@@ -5,6 +5,7 @@ import {
   BarChart3,
   ChevronLeft,
   ClipboardCheck,
+  BriefcaseBusiness,
   Home,
   Monitor,
   Tags,
@@ -81,6 +82,18 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
       ],
     },
   ],
+  'Department Head': [
+    {
+      label: 'DEPARTMENT WORKSPACE',
+      links: [
+        { to: '/department', label: 'Overview', Icon: BriefcaseBusiness, end: true },
+        { to: '/department/employees', label: 'Employees', Icon: Users },
+        { to: '/department/assets', label: 'Department assets', Icon: Monitor },
+        { to: '/department/tickets', label: 'My tickets', Icon: ClipboardCheck },
+        { to: '/department/tickets/new', label: 'Create ticket', Icon: Ticket },
+      ],
+    },
+  ],
   Security: [],
 }
 
@@ -99,7 +112,7 @@ function Navigation({
 }: NavigationProps) {
   const unassignedTicketsQuery = useGetTicketsQuery(
     { assigneeId: 'unassigned', page: 1, pageSize: 1 },
-    { skip: role === 'Employee' || role === 'Security' },
+    { skip: role === 'Employee' || role === 'Department Head' || role === 'Security' },
   )
 
   const unassignedTickets = unassignedTicketsQuery.data?.total ?? 0

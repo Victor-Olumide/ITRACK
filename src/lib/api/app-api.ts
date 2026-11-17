@@ -16,6 +16,7 @@ export const appApi = createApi({
     "Location",
     "Category",
     "Dashboard",
+    "Department",
   ],
   endpoints: () => ({}),
 });

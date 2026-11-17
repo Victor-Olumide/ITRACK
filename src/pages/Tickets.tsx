@@ -388,6 +388,7 @@ function TicketDetails({
   if (!ticket) return null;
 
   const isStaff = user?.role === "Technician" || user?.role === "IT Admin";
+  const canWorkTicket = isStaff && ticket.assigneeId === user?.id;
 
   const runAction = async (action: () => Promise<void>) => {
     try {
@@ -584,7 +585,7 @@ function TicketDetails({
       )}
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-6">
-        {ticket.status === "Assigned" && isStaff && (
+        {ticket.status === "Assigned" && canWorkTicket && (
           <button
             type="button"
             onClick={() => void runAction(() => onStatusChange("IN_PROGRESS"))}
@@ -595,7 +596,7 @@ function TicketDetails({
           </button>
         )}
 
-        {ticket.status === "In progress" && isStaff && (
+        {ticket.status === "In progress" && canWorkTicket && (
           <>
             <button
               type="button"
@@ -632,7 +633,7 @@ function TicketDetails({
           </>
         )}
 
-        {ticket.status === "Waiting on user" && isStaff && (
+        {ticket.status === "Waiting on user" && canWorkTicket && (
           <button
             type="button"
             onClick={() => void runAction(() => onStatusChange("IN_PROGRESS"))}

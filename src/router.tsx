@@ -33,6 +33,7 @@ import AdminWorkspace from './pages/AdminWorkspace'
 import EmployeePortal from './pages/EmployeePortal'
 import TechnicianHome from './pages/TechnicianHome'
 import UnavailableWorkspace from './pages/UnavailableWorkspace'
+import DepartmentWorkspace from './pages/DepartmentWorkspace'
 
 function LoginRoute() {
   const {
@@ -65,6 +66,22 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: 'login', element: <LoginRoute /> },
+
+      {
+        element: (
+          <RequireAuth roles={['Department Head']}>
+            <Layout />
+          </RequireAuth>
+        ),
+        children: [
+          { path: 'department', element: <DepartmentWorkspace section="overview" /> },
+          { path: 'department/employees', element: <DepartmentWorkspace section="employees" /> },
+          { path: 'department/assets', element: <DepartmentWorkspace section="assets" /> },
+          { path: 'department/assets/:tag', element: <DeviceDetailPage basePath="/department/assets" /> },
+          { path: 'department/tickets', element: <EmployeePortal section="tickets" /> },
+          { path: 'department/tickets/new', element: <EmployeePortal section="report" /> },
+        ],
+      },
 
       {
         element: (

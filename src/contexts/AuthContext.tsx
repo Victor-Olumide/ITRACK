@@ -51,6 +51,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 const roleFromApi: Record<AuthenticatedUser['role'], UserRole> = {
   EMPLOYEE: 'Employee',
+  DEPARTMENT_HEAD: 'Department Head',
   TECHNICIAN: 'Technician',
   IT_ADMIN: 'IT Admin',
   SECURITY: 'Security',
@@ -78,6 +79,7 @@ function isUnauthorizedError(error: unknown): boolean {
 }
 
 export function homePathForRole(role: UserRole) {
+  if (role === 'Department Head') return '/department'
   if (role === 'Technician') return '/technician'
   if (role === 'Employee') return '/employee'
   if (role === 'Security') return '/workspace-unavailable'
