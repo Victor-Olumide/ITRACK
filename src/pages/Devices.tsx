@@ -1,6 +1,6 @@
 // Grid and list views of server-backed assets.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus, Search, Grid2X2, List, Monitor, Laptop,
   Printer
@@ -68,7 +68,33 @@ const conditionStyles: Record<AssetCondition, string> = {
 const tabs: Array<'All' | AssetListStatus> = ["All", "Assigned", "Unassigned", "Retired"];
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function DeviceImage({ device }: { device: DeviceCardData }) {
+function getDeviceModel(device: DeviceCardData) {
+  const name = device.name.toLowerCase();
+  if (/\b(galaxy|s22|smartphone|phone)\b/.test(name)) return "/samsung_galaxy_s22_ultra.glb";
+  if (/\b(monitor|ultrawide|display)\b/.test(name)) return "/ultrawide_monitor.glb";
+
+  switch (device.category) {
+    case "Laptops":
+      return "/gaming_laptop.glb";
+    case "Desktops":
+      return "/ultrawide_monitor.glb";
+    case "Network":
+      return undefined;
+    case "Printers":
+      return "/mfp_office_printer.glb";
+    default:
+      return undefined;
+  }
+}
+
+function DeviceImage({
+  device,
+  modelViewerStatus,
+}: {
+  device: DeviceCardData;
+  modelViewerStatus: "loading" | "ready" | "error";
+}) {
+  const [modelFailed, setModelFailed] = useState(false);
   const Icon = ({
     Laptops: Laptop,
     Desktops: Monitor,
@@ -76,13 +102,40 @@ function DeviceImage({ device }: { device: DeviceCardData }) {
     Network: Monitor,
     Other: Monitor,
   } as Record<string, LucideIcon>)[device.category] || Monitor;
+  const model = getDeviceModel(device);
+  const isNetworkDevice = device.category === "Network";
 
   return (
     <div className="device-image relative flex h-[174px] items-center justify-center overflow-hidden bg-gradient-to-b from-[#f1f4fc] to-[#e8edf9]">
-      <div className="flex flex-col items-center gap-2 text-slate-400">
-        <Icon size={65} strokeWidth={1} />
-        <span className="text-xs">{device.category}</span>
-      </div>
+      {isNetworkDevice ? (
+        <iframe
+          title="8 Way Network Switch 3D model"
+          src="https://sketchfab.com/models/ce7e4661641f4f318275d81d2c06b5aa/embed"
+          allow="autoplay; fullscreen; xr-spatial-tracking"
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="strict-origin-when-cross-origin"
+          className="h-full w-full border-0"
+        />
+      ) : model && !modelFailed && modelViewerStatus === "ready" ? (
+        <model-viewer
+          src={model}
+          alt={`${device.name} 3D model`}
+          loading="lazy"
+          auto-rotate
+          rotation-per-second="20deg"
+          shadow-intensity="1"
+          onError={() => setModelFailed(true)}
+          className="h-full w-full"
+        />
+      ) : (
+        <div className="flex flex-col items-center gap-2 text-slate-400">
+          <Icon size={65} strokeWidth={1} />
+          <span className="text-xs">
+            {modelFailed || modelViewerStatus === "error" ? "3D preview unavailable" : device.category}
+          </span>
+        </div>
+      )}
 
       <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold ${conditionStyles[device.condition]}`}>
         {device.condition}
@@ -92,13 +145,21 @@ function DeviceImage({ device }: { device: DeviceCardData }) {
   );
 }
 
-function DeviceCard({ device, onClick }: { device: DeviceCardData; onClick: (device: DeviceCardData) => void }) {
+function DeviceCard({
+  device,
+  modelViewerStatus,
+  onClick,
+}: {
+  device: DeviceCardData;
+  modelViewerStatus: "loading" | "ready" | "error";
+  onClick: (device: DeviceCardData) => void;
+}) {
   return (
     <button
       onClick={() => onClick(device)}
       className="group min-w-0 overflow-hidden rounded-[22px] border border-transparent bg-white text-left transition-all duration-200 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg"
     >
-      <DeviceImage key={device.tag} device={device} />
+      <DeviceImage key={device.tag} device={device} modelViewerStatus={modelViewerStatus} />
 
       <div className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -155,6 +216,7 @@ export default function DevicesPage({ basePath = "/devices" }) {
   const [assigneeId, setAssigneeId] = useState("");
   const [warrantyExpiring, setWarrantyExpiring] = useState(false);
   const [page, setPage] = useState(1);
+  const [modelViewerStatus, setModelViewerStatus] = useState<"loading" | "ready" | "error">("loading");
   const pageSize = 20;
   const isAssigneeIdValid = !assigneeId.trim() || uuidPattern.test(assigneeId.trim());
   const args: AssetListArgs = {
@@ -173,6 +235,26 @@ export default function DevicesPage({ basePath = "/devices" }) {
   const devices = (assets?.data ?? []).map(toCard);
   const total = assets?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasPreviewableDevice = devices.some((device) => getDeviceModel(device));
+
+  useEffect(() => {
+    if (view !== "Grid" || !hasPreviewableDevice || modelViewerStatus !== "loading") return;
+
+    let active = true;
+    import("@google/model-viewer").then(
+      () => {
+        if (active) setModelViewerStatus("ready");
+      },
+      (error: unknown) => {
+        console.error("Unable to load the 3D model viewer.", error);
+        if (active) setModelViewerStatus("error");
+      },
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [hasPreviewableDevice, modelViewerStatus, view]);
 
   return (
     <main className="min-h-screen bg-[#0c194d]">
@@ -294,6 +376,7 @@ export default function DevicesPage({ basePath = "/devices" }) {
               <DeviceCard
                 key={device.id}
                 device={device}
+                modelViewerStatus={modelViewerStatus}
                 onClick={d => navigate(`${basePath}/${d.tag}`, { state: { device: d } })}
               />
             ))}
