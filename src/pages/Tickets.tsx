@@ -9,6 +9,10 @@ import {
   RefreshCw,
   Send,
   X,
+  Paperclip,
+  Download,
+  FileImage,
+  FileText,
 } from "lucide-react";
 
 import { useAuth } from "../contexts/AuthContext";
@@ -23,7 +27,10 @@ import {
 } from "../lib/api/tickets/tickets-api";
 
 import { toClientTicket } from "../lib/api/tickets/ticket-mappers";
-import type { ApiTicketStatus } from "../lib/api/tickets/types";
+import type {
+  ApiTicketStatus,
+  TicketApiAttachment,
+} from "../lib/api/tickets/types";
 import { getApiErrorMessage } from "../lib/api/error-message";
 import {
   PRIORITY_SELECTED_CLASS,
@@ -105,6 +112,15 @@ function toView(ticket: Ticket): TicketView {
     deviceName: ticket.deviceName ?? "—",
     group: ticket.timeState,
   };
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+
+  return `${(kb / 1024).toFixed(1)} MB`;
 }
 
 const groupStyles: Record<TicketTimeState, { dot: string }> = {
@@ -242,8 +258,81 @@ function TicketRow({
   );
 }
 
+function TicketAttachments({
+  ticketId,
+  attachments,
+}: {
+  ticketId: string;
+  attachments: TicketApiAttachment[];
+}) {
+  if (attachments.length === 0) return null;
+
+  return (
+    <div className="mt-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Paperclip size={16} className="text-slate-500" />
+
+        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+          Attachments ({attachments.length})
+        </h3>
+      </div>
+
+      <div className="space-y-2">
+        {attachments.map((attachment) => {
+          const isImage = attachment.mimeType.startsWith("image/");
+
+          const downloadUrl =
+            `/api/v1/tickets/${encodeURIComponent(ticketId)}` +
+            `/attachments/${encodeURIComponent(attachment.id)}/download`;
+
+          return (
+            <div
+              key={attachment.id}
+              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                {isImage ? (
+                  <FileImage size={19} />
+                ) : (
+                  <FileText size={19} />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p
+                  className="truncate text-sm font-semibold text-slate-800"
+                  title={attachment.fileName}
+                >
+                  {attachment.fileName}
+                </p>
+
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {formatFileSize(attachment.fileSize)}
+                </p>
+              </div>
+
+              <a
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={attachment.fileName}
+                aria-label={`Download ${attachment.fileName}`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
+              >
+                <Download size={17} />
+              </a>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TicketDetails({
   ticket,
+  attachments,
+  attachmentTicketId,
   onComment,
   onStatusChange,
   onAssign,
@@ -251,6 +340,8 @@ function TicketDetails({
   error,
 }: {
   ticket: TicketView | undefined;
+  attachments: TicketApiAttachment[];
+  attachmentTicketId: string;
   onComment: (body: string, isInternal: boolean) => Promise<void>;
   onStatusChange: (
     status: ApiTicketStatus,
@@ -389,6 +480,11 @@ function TicketDetails({
       <div className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
         {ticket.description}
       </div>
+
+      <TicketAttachments
+        ticketId={attachmentTicketId}
+        attachments={attachments}
+      />
 
       <div className="mt-5">
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">
@@ -877,6 +973,12 @@ export default function TicketPage({
     ? toView(toClientTicket(detailQuery.currentData))
     : filteredTickets.find((ticket) => ticket.id === activeTicketId);
 
+  const attachments = detailQuery.currentData?.attachments ?? [];
+
+  // Use the database ID for attachment download routes.
+  const attachmentTicketId =
+    detailQuery.currentData?.id ?? selectedTicket?.serverId ?? "";
+
   const groups: TicketTimeState[] = ["Breached", "Not overdue"];
 
   const updateSearchParams = (updates: {
@@ -1184,6 +1286,8 @@ export default function TicketPage({
               <TicketDetails
                 key={selectedTicket.id}
                 ticket={selectedTicket}
+                attachments={attachments}
+                attachmentTicketId={attachmentTicketId}
                 onComment={async (body, isInternal) => {
                   await addComment({
                     id: selectedTicket.serverId ?? selectedTicket.id,

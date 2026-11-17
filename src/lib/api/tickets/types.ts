@@ -1,3 +1,4 @@
+
 export type ApiTicketType = 'PROBLEM' | 'REQUEST';
 export type ApiTicketStatus =
   | 'NEW'
@@ -48,6 +49,28 @@ export interface TicketApiEvent {
   actor: Pick<TicketApiUser, 'id' | 'staffId' | 'fullName' | 'role'>;
 }
 
+export interface TicketApiAttachment {
+  id: string;
+  ticketId: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  createdAt: string;
+  uploadedBy: Pick<
+    TicketApiUser,
+    'id' | 'staffId' | 'fullName' | 'role'
+  >;
+}
+
+export interface TicketApiAttachmentDetail extends TicketApiAttachment {
+  downloadUrl: string;
+}
+
+export interface DeleteTicketAttachmentResponse {
+  success: boolean;
+  id: string;
+}
+
 export interface TicketApiRecord {
   id: string;
   number: string;
@@ -63,6 +86,7 @@ export interface TicketApiRecord {
   reporter: TicketApiUser;
   assignee: TicketApiUser | null;
   asset: TicketApiAsset | null;
+  attachments?: TicketApiAttachment[];
   comments?: TicketApiComment[];
   events?: TicketApiEvent[];
   resolvedAt: string | null;
@@ -130,4 +154,28 @@ export interface ChangeTicketStatusRequest {
   to: ApiTicketStatus;
   resolutionNote?: string;
   comment?: string;
+}
+
+
+
+export interface TicketApiAttachment {
+  id: string;
+  ticketId: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  createdAt: string;
+  uploadedBy: Pick<
+    TicketApiUser,
+    'id' | 'staffId' | 'fullName' | 'role'
+  >;
+}
+
+export interface TicketApiAttachmentDetail extends TicketApiAttachment {
+  downloadUrl: string;
+}
+
+export interface DeleteTicketAttachmentResponse {
+  success: boolean;
+  id: string;
 }
