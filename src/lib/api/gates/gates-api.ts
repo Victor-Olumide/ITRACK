@@ -8,4 +8,4 @@ export const gatesApi = appApi.injectEndpoints({ endpoints: builder => ({
   markGateExit: builder.mutation<GatePass, string>({ query: id => ({ url: `/gate-passes/${id}/exit`, method: 'POST' }), invalidatesTags: ['GatePass', 'Dashboard'] }),
   markGateReturn: builder.mutation<GatePass, string>({ query: id => ({ url: `/gate-passes/${id}/return`, method: 'POST' }), invalidatesTags: ['GatePass', 'Dashboard'] }),
 }) })
-export const { useGetGatePassesQuery, useReviewGatePassMutation, useMarkGateExitMutation, useMarkGateReturnMutation } = gatesApi
+export const { useGetGatePassesQuery, useCreateGatePassMutation, useReviewGatePassMutation, useMarkGateExitMutation, useMarkGateReturnMutation } = gatesApi

@@ -84,6 +84,8 @@ const router = createBrowserRouter([
           { path: 'department/assets/:tag', ...lazyPage(() => import('./pages/DeviceDetailPage'), { basePath: '/department/assets' }) },
           { path: 'department/tickets', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'tickets' as const }) },
           { path: 'department/tickets/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'report' as const }) },
+          { path: 'department/passes', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }) },
+          { path: 'department/passes/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }) },
         ],
       },
 
@@ -98,6 +100,8 @@ const router = createBrowserRouter([
           { path: 'tickets', ...lazyPage(() => import('./pages/Tickets')) },
           { path: 'tickets/queue', ...lazyPage(() => import('./pages/TicketQueue')) },
           { path: 'tickets/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'report' as const }) },
+          { path: 'passes', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }) },
+          { path: 'passes/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }) },
           { path: 'devices', ...lazyPage(() => import('./pages/Devices')) },
           { path: 'devices/register', ...lazyPage(() => import('./pages/RegisterDevice')) },
           { path: 'devices/:tag', ...lazyPage(() => import('./pages/DeviceDetailPage')) },
