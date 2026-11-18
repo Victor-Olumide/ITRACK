@@ -55,7 +55,7 @@ pnpm run preview
 
 The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, sign-out, profile name/password changes, IT-admin user/department management, department-head workspace data, tickets, assets, and dashboard summary use implemented `/api/v1` endpoints. Password changes require the current password and end all active sessions; IT Admins can update other users' names and roles. Password recovery is not available, so contact an IT administrator if you cannot sign in.
 
-Department Heads can view their department's employees and assigned assets, and use the department-scoped ticket workspace. The server enforces department and organization scope; the client route guard is navigation UX only.
+Department Heads can view their department's employees and assigned assets, and use the department-scoped ticket workspace. The server enforces department and organization scope; the client route guard is navigation UX only. Seeded Department Head accounts use the `@abuad.edu.ng` domain.
 
 Device registration uses searchable shared controls for available asset tags, shared date pickers, optional catalogue selection, optional IT-admin assignment, and `customType` for Other devices. Manual manufacturer/model values are preserved when switching modes. Local category images are used when no asset or catalogue image exists, and 3D model code loads only after an explicit preview click.
 

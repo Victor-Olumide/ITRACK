@@ -28,7 +28,6 @@ import RegisterDevice from './pages/RegisterDevice'
 import DeviceDetailPage from './pages/DeviceDetailPage'
 import Reports from './pages/Reports'
 import Team from './pages/Team'
-import NewTicket from './pages/NewTicket'
 import AdminWorkspace from './pages/AdminWorkspace'
 import EmployeePortal from './pages/EmployeePortal'
 import TechnicianHome from './pages/TechnicianHome'
@@ -93,7 +92,7 @@ const router = createBrowserRouter([
           { index: true, element: <Home /> },
           { path: 'tickets', element: <Tickets /> },
           { path: 'tickets/queue', element: <TicketQueue /> },
-          { path: 'tickets/new', element: <NewTicket /> },
+          { path: 'tickets/new', element: <EmployeePortal section="report" /> },
           { path: 'devices', element: <Devices /> },
           { path: 'devices/register', element: <RegisterDevice /> },
           { path: 'devices/:tag', element: <DeviceDetailPage /> },
