@@ -622,12 +622,10 @@ export default function RegisterDevicePage({
               <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-[#f8f9fd] to-[#e8edf9]">
                 <div className="flex items-center justify-between px-3 pt-3">
                   <span className="rounded-full bg-[#101a50] px-2 py-1 text-[10px] font-semibold text-white">Live preview</span>
-                  {selectedModel?.modelUrl && (
-                    <div className="flex overflow-hidden rounded-full border border-white/80 bg-white/90 text-[10px] font-bold shadow-sm">
-                      <button type="button" onClick={() => { setShowModelPreview(false); setModelViewerStatus('idle'); }} className={`px-2.5 py-1.5 ${!showModelPreview ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500'}`}>2D</button>
-                      <button type="button" onClick={() => { setModelPreviewFailed(false); setModelViewerStatus('loading'); setShowModelPreview(true); }} className={`px-2.5 py-1.5 ${showModelPreview ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500'}`}>3D</button>
-                    </div>
-                  )}
+                  <div className="flex overflow-hidden rounded-full border border-white/80 bg-white/90 text-[10px] font-bold shadow-sm">
+                    <button type="button" onClick={() => { setShowModelPreview(false); setModelViewerStatus('idle'); }} className={`px-2.5 py-1.5 ${!showModelPreview ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500'}`}>2D</button>
+                    <button type="button" disabled={!selectedModel?.modelUrl} onClick={() => { setModelPreviewFailed(false); setModelViewerStatus('loading'); setShowModelPreview(true); }} className={`px-2.5 py-1.5 ${showModelPreview ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500'} disabled:cursor-not-allowed disabled:opacity-40`}>3D</button>
+                  </div>
                 </div>
                 <div className="relative flex h-64 items-center justify-center p-4">
                   {showModelPreview && selectedModel?.modelUrl && modelViewerStatus === 'ready' && !modelPreviewFailed ? (
