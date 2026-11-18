@@ -103,6 +103,9 @@ export default function RegisterDevicePage({
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
+  const [showModelPreview, setShowModelPreview] = useState(false);
+  const [modelViewerStatus, setModelViewerStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [modelPreviewFailed, setModelPreviewFailed] = useState(false);
 
   const [saveError, setSaveError] = useState('');
   const customTypeRef = useRef<HTMLInputElement>(null);
@@ -135,6 +138,15 @@ export default function RegisterDevicePage({
     return () => { active = false; };
   }, [allocateAssetTag, form.type]);
 
+  useEffect(() => {
+    if (!showModelPreview || !selectedModel?.modelUrl || modelViewerStatus !== 'loading') return;
+
+    import('@google/model-viewer').then(
+      () => setModelViewerStatus('ready'),
+      () => setModelViewerStatus('error'),
+    );
+  }, [modelViewerStatus, selectedModel?.modelUrl, showModelPreview]);
+
   const updateForm = <K extends keyof AssetForm>(
     key: K,
     value: AssetForm[K],
@@ -161,6 +173,9 @@ export default function RegisterDevicePage({
 
   const selectCatalogueModel = (model: AssetModelRecord) => {
     setSelectedModel(model);
+    setShowModelPreview(false);
+    setModelPreviewFailed(false);
+    setModelViewerStatus('idle');
 
     setForm((current) => ({
       ...current,
@@ -239,6 +254,7 @@ export default function RegisterDevicePage({
 
     const payload: CreateAssetRequest = {
       serialNumber: form.serialNumber.trim(),
+      assetTag: form.assetTag,
       type: form.type,
       make,
       model,
@@ -301,6 +317,8 @@ export default function RegisterDevicePage({
             </div>
           )}
 
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.86fr)] lg:items-start">
+            <div className="space-y-3">
           <section className="rounded-lg border border-[#e9edf6] bg-white p-4">
             <div className="mb-3">
               <h2 className="text-sm font-bold text-[#111a38]">
@@ -328,7 +346,7 @@ export default function RegisterDevicePage({
                 Asset tag
 
                 <div className="mt-1">
-                  <div className="flex h-10 items-center rounded-xl border border-[#e3e8f2] bg-slate-50 px-3 font-mono text-sm text-slate-700">
+                  <div className="flex h-10 items-center rounded-xl border border-[#cbe86b] bg-[#f1ffc7] px-3 font-mono text-sm font-semibold text-[#344500]">
                     {isAllocatingTag ? 'Allocating tag…' : form.assetTag || 'Tag unavailable'}
                   </div>
                 </div>
@@ -355,6 +373,29 @@ export default function RegisterDevicePage({
                 </label>
               )}
             </div>
+          </section>
+
+          <section className="rounded-lg border border-[#e9edf6] bg-white p-4">
+            <h2 className="mb-1 text-sm font-bold text-[#111a38]">Device image</h2>
+            <p className="mb-3 text-xs text-slate-500">
+              Upload an image of this particular device. The catalogue image remains available when no image is uploaded.
+            </p>
+
+            {imagePreview ? (
+              <div className="relative w-fit">
+                <img src={imagePreview} alt="Device preview" className="h-36 w-48 rounded-lg border border-slate-200 bg-slate-50 object-contain" />
+                <button type="button" onClick={clearImage} aria-label="Remove selected image" className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1.5 text-white shadow">
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
+                <ImagePlus size={24} className="mb-2 text-slate-400" />
+                <span className="text-xs font-semibold text-slate-700">Choose device image</span>
+                <span className="mt-1 text-[11px] text-slate-500">JPEG, PNG or WebP. Maximum 10 MB.</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => handleImageChange(event.target.files?.[0])} />
+              </label>
+            )}
           </section>
 
           <section className="rounded-lg border border-[#e9edf6] bg-white p-4">
@@ -477,58 +518,6 @@ export default function RegisterDevicePage({
 
           <section className="rounded-lg border border-[#e9edf6] bg-white p-4">
             <h2 className="mb-3 text-sm font-bold text-[#111a38]">
-              Device image
-            </h2>
-
-            <p className="mb-3 text-xs text-slate-500">
-              Upload an image of this particular device. If you do
-              not upload one, the catalogue image will be used when
-              available.
-            </p>
-
-            {imagePreview ? (
-              <div className="relative w-fit">
-                <img
-                  src={imagePreview}
-                  alt="Device preview"
-                  className="h-36 w-48 rounded-lg border border-slate-200 bg-slate-50 object-contain"
-                />
-
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  aria-label="Remove selected image"
-                  className="absolute -right-2 -top-2 rounded-full bg-red-600 p-1.5 text-white shadow"
-                >
-                  <X size={13} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
-                <ImagePlus size={24} className="mb-2 text-slate-400" />
-
-                <span className="text-xs font-semibold text-slate-700">
-                  Choose device image
-                </span>
-
-                <span className="mt-1 text-[11px] text-slate-500">
-                  JPEG, PNG or WebP. Maximum 10 MB.
-                </span>
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="sr-only"
-                  onChange={(event) =>
-                    handleImageChange(event.target.files?.[0])
-                  }
-                />
-              </label>
-            )}
-          </section>
-
-          <section className="rounded-lg border border-[#e9edf6] bg-white p-4">
-            <h2 className="mb-3 text-sm font-bold text-[#111a38]">
               Additional information
             </h2>
 
@@ -619,6 +608,64 @@ export default function RegisterDevicePage({
               </label>
             </div>
           </section>
+            </div>
+
+            <section className="rounded-lg border border-[#e9edf6] bg-white p-4 lg:sticky lg:top-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-bold text-[#111a38]">3D model</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">Choose an existing model from the ITrack catalogue.</p>
+                </div>
+                <span className="rounded-full bg-[#101a50] px-2 py-1 text-[10px] font-semibold text-white">Existing models</span>
+              </div>
+
+              <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-b from-[#f8f9fd] to-[#e8edf9]">
+                <div className="flex items-center justify-between px-3 pt-3">
+                  <span className="rounded-full bg-[#101a50] px-2 py-1 text-[10px] font-semibold text-white">Live preview</span>
+                  {selectedModel?.modelUrl && (
+                    <div className="flex overflow-hidden rounded-full border border-white/80 bg-white/90 text-[10px] font-bold shadow-sm">
+                      <button type="button" onClick={() => { setShowModelPreview(false); setModelViewerStatus('idle'); }} className={`px-2.5 py-1.5 ${!showModelPreview ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500'}`}>2D</button>
+                      <button type="button" onClick={() => { setModelPreviewFailed(false); setModelViewerStatus('loading'); setShowModelPreview(true); }} className={`px-2.5 py-1.5 ${showModelPreview ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500'}`}>3D</button>
+                    </div>
+                  )}
+                </div>
+                <div className="relative flex h-64 items-center justify-center p-4">
+                  {showModelPreview && selectedModel?.modelUrl && modelViewerStatus === 'ready' && !modelPreviewFailed ? (
+                    <model-viewer key={selectedModel.modelUrl} src={selectedModel.modelUrl} alt={`${selectedModel.make} ${selectedModel.model} 3D model`} loading="lazy" camera-controls onError={() => setModelPreviewFailed(true)} className="h-full w-full bg-transparent" />
+                  ) : selectedModel?.imageUrl ? (
+                    <img src={selectedModel.imageUrl} alt={`${selectedModel.make} ${selectedModel.model}`} className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="text-center text-xs text-slate-400">Select a catalogue model to preview it here.</div>
+                  )}
+                  {showModelPreview && modelViewerStatus === 'loading' && <span className="absolute bottom-3 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] text-slate-500 shadow-sm">Loading 3D preview…</span>}
+                  {showModelPreview && (modelViewerStatus === 'error' || modelPreviewFailed) && <span className="absolute bottom-3 rounded-full bg-white/90 px-2.5 py-1.5 text-[10px] text-red-600 shadow-sm">3D preview unavailable</span>}
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[11px] font-semibold text-slate-600">Models already in ITrack</p>
+                  <span className="text-[10px] text-slate-400">{modelResponse?.total ?? 0} available</span>
+                </div>
+                {isLoadingModels ? (
+                  <p className="rounded-lg bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">Loading catalogue models…</p>
+                ) : modelsError ? (
+                  <p className="rounded-lg bg-red-50 px-3 py-4 text-center text-xs text-red-600">Catalogue models could not be loaded.</p>
+                ) : modelResponse?.data.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {modelResponse.data.map((model) => (
+                      <button type="button" key={model.id} onClick={() => selectCatalogueModel(model)} className={`rounded-lg border px-2.5 py-2 text-left transition ${selectedModel?.id === model.id ? 'border-[#3155ff] bg-[#3155ff] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'}`}>
+                        <span className="block max-w-32 truncate text-[11px] font-semibold">{model.make} {model.model}</span>
+                        <span className={`mt-0.5 block text-[10px] ${selectedModel?.id === model.id ? 'text-blue-100' : 'text-slate-400'}`}>{model.modelUrl ? '3D model available' : 'Image only'}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-lg bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">No models are available for this device type.</p>
+                )}
+              </div>
+            </section>
+          </div>
 
           <div className="flex justify-end gap-2 pb-3">
             <button

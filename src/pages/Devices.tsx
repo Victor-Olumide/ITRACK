@@ -21,6 +21,7 @@ import type {
   AssetType,
 } from '@/lib/api/assets/types';
 import { categoryDeviceImage } from '@/lib/device-images';
+import Dropdown from '@/components/Dropdown';
 
 type AssetListStatus = 'Assigned' | 'Unassigned' | 'Retired';
 
@@ -447,41 +448,31 @@ export default function DevicesPage({
         <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
           Type
 
-          <select
+          <Dropdown
             value={type}
-            onChange={(event) => {
-              setType(event.target.value as AssetType | '');
+            onChange={(value) => {
+              setType(value as AssetType | '');
               setPage(1);
             }}
-            className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
-          >
-            <option value="">All types</option>
-            <option value="LAPTOP">Laptop</option>
-            <option value="DESKTOP">Desktop</option>
-            <option value="PRINTER">Printer</option>
-            <option value="NETWORK">Network</option>
-            <option value="OTHER">Other</option>
-          </select>
+            placeholder="All types"
+            ariaLabel="Filter by type"
+            options={[{ value: 'LAPTOP', label: 'Laptop' }, { value: 'DESKTOP', label: 'Desktop' }, { value: 'PRINTER', label: 'Printer' }, { value: 'NETWORK', label: 'Network' }, { value: 'OTHER', label: 'Other' }]}
+          />
         </label>
 
         <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
           Condition
 
-          <select
+          <Dropdown
             value={condition}
-            onChange={(event) => {
-              setCondition(event.target.value as AssetCondition | '');
+            onChange={(value) => {
+              setCondition(value as AssetCondition | '');
               setPage(1);
             }}
-            className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-blue-400"
-          >
-            <option value="">All conditions</option>
-            <option value="NEW">New</option>
-            <option value="GOOD">Good</option>
-            <option value="FAIR">Fair</option>
-            <option value="FAULTY">Faulty</option>
-            <option value="RETIRED">Retired</option>
-          </select>
+            placeholder="All conditions"
+            ariaLabel="Filter by condition"
+            options={[{ value: 'NEW', label: 'New' }, { value: 'GOOD', label: 'Good' }, { value: 'FAIR', label: 'Fair' }, { value: 'FAULTY', label: 'Faulty' }, { value: 'RETIRED', label: 'Retired' }]}
+          />
         </label>
 
         <label className="flex items-center gap-2 text-xs font-medium text-slate-600">

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from '../lib/api/assets/assets-api'
 import type { AssetCondition } from '../lib/api/assets/types'
 import { categoryDeviceImage } from '../lib/device-images'
+import Dropdown from '../components/Dropdown'
 
 const CONDITION_LABELS: Record<AssetCondition, string> = {
   NEW: 'New',
@@ -152,16 +153,15 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="text-xs font-semibold text-slate-600">
                 Update condition
-                <select
-                  value={asset.condition}
-                  disabled={updateState.isLoading}
-                  onChange={(event) => void changeCondition(event.target.value as AssetCondition)}
-                  className="mt-1.5 block rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm font-normal text-[#202844]"
-                >
-                  {(['NEW', 'GOOD', 'FAIR', 'FAULTY'] as const).map((condition) => (
-                    <option key={condition} value={condition}>{CONDITION_LABELS[condition]}</option>
-                  ))}
-                </select>
+                <div className="mt-1.5 min-w-40">
+                  <Dropdown
+                    value={asset.condition}
+                    disabled={updateState.isLoading}
+                    onChange={(value) => void changeCondition(value as AssetCondition)}
+                    ariaLabel="Update condition"
+                    options={(['NEW', 'GOOD', 'FAIR', 'FAULTY'] as const).map((value) => ({ value, label: CONDITION_LABELS[value] }))}
+                  />
+                </div>
               </label>
               {user.role === 'IT Admin' && (
                 <button type="button" disabled={retireState.isLoading} onClick={() => void retire()} className="rounded-full border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">

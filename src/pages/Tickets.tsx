@@ -48,6 +48,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "../components/ui/drawer";
+import Dropdown from "../components/Dropdown";
 
 interface TicketView extends Ticket {
   department: string;
@@ -157,19 +158,13 @@ function Filter({
   options: string[];
 }) {
   return (
-    <select
+    <Dropdown
       value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium outline-none hover:border-blue-400 focus:ring-2 focus:ring-blue-100"
-    >
-      <option value="">{label}</option>
-
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      placeholder={label}
+      ariaLabel={label}
+      options={options.map((option) => ({ value: option, label: option }))}
+    />
   );
 }
 
@@ -734,10 +729,10 @@ function TicketDetails({
               </p>
             ) : (
               <>
-                <select
+                <Dropdown
                   value={selectedAssigneeId || ticket.assigneeId || ""}
-                  onChange={(event) => {
-                    setSelectedAssigneeId(event.target.value);
+                  onChange={(value) => {
+                    setSelectedAssigneeId(value);
                     setAssignNotice("");
                   }}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
@@ -754,7 +749,7 @@ function TicketDetails({
                         : ` · ${candidate.department?.name ?? "No department"}`}
                     </option>
                   ))}
-                </select>
+                </Dropdown>
 
                 <button
                   type="button"
@@ -1070,9 +1065,9 @@ export default function TicketPage({
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <select
+            <Dropdown
               value={department}
-              onChange={(event) => setDepartment(event.target.value)}
+              onChange={setDepartment}
               className="rounded-full border border-blue-100 bg-blue-100 px-4 py-2.5 text-sm text-blue-800 outline-none"
             >
               <option value="">All departments</option>
@@ -1084,7 +1079,7 @@ export default function TicketPage({
                   </option>
                 ),
               )}
-            </select>
+            </Dropdown>
 
             <Filter
               label="Priority"

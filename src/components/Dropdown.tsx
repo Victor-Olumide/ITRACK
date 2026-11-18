@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 
 export interface DropdownOption {
@@ -15,24 +15,34 @@ export default function Dropdown({
   ariaLabel,
   searchable = false,
   searchPlaceholder = 'Search options',
+  children,
 }: {
   value: string
-  options: DropdownOption[]
+  options?: DropdownOption[]
   onChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
   ariaLabel?: string
   searchable?: boolean
   searchPlaceholder?: string
+  children?: ReactNode
+  className?: string
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [highlighted, setHighlighted] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
-  const selected = options.find((option) => option.value === value)
+  const legacyOptions = Children.toArray(children).flatMap((child) => {
+    if (!isValidElement(child) || child.type !== 'option') return []
+    const props = child.props as { value?: unknown; children?: ReactNode }
+    const optionValue = typeof props.value === 'string' ? props.value : String(props.children ?? '')
+    return [{ value: optionValue, label: String(props.children ?? optionValue) }]
+  })
+  const resolvedOptions = legacyOptions.length ? legacyOptions : (options ?? [])
+  const selected = resolvedOptions.find((option) => option.value === value)
   const filteredOptions = searchable && search.trim()
-    ? options.filter((option) => option.label.toLowerCase().includes(search.trim().toLowerCase()))
-    : options
+    ? resolvedOptions.filter((option) => option.label.toLowerCase().includes(search.trim().toLowerCase()))
+    : resolvedOptions
 
   useEffect(() => {
     if (!open) return

@@ -27,6 +27,7 @@ import {
 import { toCreateUserRequest } from "@/lib/api/users/create-user-form";
 import type { UserRole as ApiUserRole } from "@/lib/api/auth/types";
 import type { UserRole as DisplayUserRole } from "../types/types";
+import Dropdown from "@/components/Dropdown";
 
 function getCreateUserErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "data" in error) {
@@ -238,19 +239,13 @@ export default function Team({ showCreateForm = false }) {
           </label>
           <label className="text-xs font-semibold text-slate-600">
             Department
-            <select
-              required
+            <Dropdown
               value={inviteDepartment}
-              onChange={(event) => setInviteDepartment(event.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:border-blue-400"
-            >
-              <option value="">Select a department</option>
-              {departmentsResponse?.departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
+              onChange={setInviteDepartment}
+              placeholder="Select a department"
+              ariaLabel="Select a department"
+              options={(departmentsResponse?.departments ?? []).map((department) => ({ value: department.id, label: department.name }))}
+            />
           </label>
           <label className="text-xs font-semibold text-slate-600">
             Staff ID (optional)
@@ -262,22 +257,12 @@ export default function Team({ showCreateForm = false }) {
           </label>
           <label className="text-xs font-semibold text-slate-600">
             Role
-            <select
+            <Dropdown
               value={inviteRole}
-              onChange={(event) => {
-                const nextRole = ROLES.find(
-                  ({ value }) => value === event.target.value,
-                )?.value;
-                if (nextRole) setInviteRole(nextRole);
-              }}
-              className="mt-1.5 w-full rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm font-normal text-slate-800"
-            >
-              {ROLES.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setInviteRole(value as typeof inviteRole)}
+              ariaLabel="Select role"
+              options={ROLES.map(({ value, label }) => ({ value, label }))}
+            />
           </label>
           <label className="text-xs font-semibold text-slate-600">
             Temporary password
@@ -327,16 +312,13 @@ export default function Team({ showCreateForm = false }) {
               className="min-w-0 flex-1 text-sm text-slate-800 outline-none placeholder:text-slate-400"
             />
           </label>
-          <select
+          <Dropdown
             value={role}
-            onChange={(event) => setRole(event.target.value)}
-            aria-label="Filter by role"
-            className="rounded-xl border border-[#e3e8f2] bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-400"
-          >
-            {roleOptions.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
+            onChange={setRole}
+            ariaLabel="Filter by role"
+            placeholder="All roles"
+            options={roleOptions.map((option) => ({ value: option, label: option }))}
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -477,22 +459,12 @@ export default function Team({ showCreateForm = false }) {
             </label>
             <label className="block space-y-1.5 text-sm font-medium text-slate-700">
               Role
-              <select
+              <Dropdown
                 value={editRole}
-                onChange={(event) => {
-                  const nextRole = ROLES.find(
-                    ({ value }) => value === event.target.value,
-                  )?.value;
-                  if (nextRole) setEditRole(nextRole);
-                }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-normal text-slate-900 outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100"
-              >
-                {ROLES.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setEditRole(value as typeof editRole)}
+                ariaLabel="Edit role"
+                options={ROLES.map(({ value, label }) => ({ value, label }))}
+              />
             </label>
             {editError && (
               <p

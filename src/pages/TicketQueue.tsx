@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
+import Dropdown from '../components/Dropdown'
 import type {
   ApiTicketPriority,
   ApiTicketStatus,
@@ -154,36 +155,30 @@ export default function TicketQueue() {
 
         <label>
           <span className="sr-only">Filter by status</span>
-          <select
+          <Dropdown
             value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as ApiTicketStatus | '')
+            onChange={(value) => {
+              setStatus(value as ApiTicketStatus | '')
               setPage(1)
             }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          >
-            <option value="">All statuses</option>
-            {statuses.map((item) => (
-              <option key={item.value} value={item.value}>{item.label}</option>
-            ))}
-          </select>
+            placeholder="All statuses"
+            ariaLabel="Filter by status"
+            options={statuses}
+          />
         </label>
 
         <label>
           <span className="sr-only">Filter by priority</span>
-          <select
+          <Dropdown
             value={priority}
-            onChange={(event) => {
-              setPriority(event.target.value as ApiTicketPriority | '')
+            onChange={(value) => {
+              setPriority(value as ApiTicketPriority | '')
               setPage(1)
             }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          >
-            <option value="">All priorities</option>
-            {priorities.map((item) => (
-              <option key={item.value} value={item.value}>{item.label}</option>
-            ))}
-          </select>
+            placeholder="All priorities"
+            ariaLabel="Filter by priority"
+            options={priorities}
+          />
         </label>
       </div>
 
