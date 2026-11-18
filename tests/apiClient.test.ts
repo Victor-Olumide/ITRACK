@@ -195,7 +195,7 @@ test("links a selected asset to a report ticket and omits the link when none is 
   assert.deepEqual(toCreateTicketRequest(fields, ""), fields);
 });
 
-test("displays sanitized server errors and uses a fallback for transport errors", () => {
+test("displays friendly server and transport errors", () => {
   assert.equal(
     getApiErrorMessage(
       {
@@ -217,7 +217,7 @@ test("displays sanitized server errors and uses a fallback for transport errors"
       { status: "FETCH_ERROR", error: "Failed to fetch" },
       "Tickets could not be loaded.",
     ),
-    "Tickets could not be loaded.",
+    "Unable to connect. Please check your internet connection and try again.",
   );
 });
 

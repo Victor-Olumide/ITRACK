@@ -24,6 +24,7 @@ import type { PublicUser, UserRole } from "../types/types";
 import { useChangePasswordMutation } from "../lib/api/auth/auth-api";
 import { getApiErrorMessage } from "../lib/api/error-message";
 import type { SubmitEvent } from "react";
+import GlobalSearch from "./GlobalSearch";
 
 const initials = (name = "") =>
   name
@@ -208,6 +209,8 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
             ITrack
           </span>
         </Link>
+
+        <GlobalSearch role={role} />
 
         <div className="flex-1" />
 

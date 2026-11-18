@@ -61,3 +61,5 @@ These rules are required. Do not restructure the application around a new archit
 ## Validation
 
 Use the project scripts: `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. Add or update focused tests for API response mapping, query/mutation behavior, and error/loading states. Report any environment-specific build failure separately from TypeScript, lint, or test results.
+
+and produce a commit msg when you are done with code modifications
