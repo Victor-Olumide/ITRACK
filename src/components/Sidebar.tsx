@@ -205,7 +205,7 @@ function Navigation({
                     <Icon size={17} strokeWidth={1.8} />
 
                     {collapsed && badge !== undefined && badge > 0 && (
-                      <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                      <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d2f54a] px-1 text-[9px] font-bold text-[#101c52]">
                         {badge > 99 ? '99+' : badge}
                       </span>
                     )}
@@ -218,7 +218,7 @@ function Navigation({
                       </span>
 
                       {badge !== undefined && badge > 0 && (
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/10 px-1.5 text-[10px] font-semibold text-white">
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#d2f54a] px-1.5 text-[10px] font-semibold text-[#101c52]">
                           {badge > 99 ? '99+' : badge}
                         </span>
                       )}
