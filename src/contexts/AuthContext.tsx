@@ -16,6 +16,7 @@ import { appApi } from '@/lib/api/app-api'
 
 import {
   useLoginMutation,
+  useRefreshMutation,
   useLogoutMutation,
   useUpdateProfileMutation,
   useGetMeQuery,
@@ -140,12 +141,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (meQuery.isLoading || meQuery.isFetching)
 
   const [loginRequest] = useLoginMutation()
+  const [refreshRequest] = useRefreshMutation()
   const [logoutRequest] = useLogoutMutation()
   const [updateProfileRequest] = useUpdateProfileMutation()
 
   const usersQuery = useGetUsersQuery(undefined, {
     skip: sessionUser?.role !== 'IT_ADMIN',
   })
+  const sessionUserId = sessionUser?.id
+
+  useEffect(() => {
+    if (!sessionUserId) return
+
+    const refresh = () => {
+      void refreshRequest()
+        .unwrap()
+        .then((response) => dispatch(setAuthenticatedUser(response.user)))
+        .catch(() => undefined)
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+
+    const interval = window.setInterval(refresh, 10 * 60 * 1000)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [dispatch, refreshRequest, sessionUserId])
 
   const user = useMemo(
     () => (sessionUser ? toPublicUser(sessionUser) : null),

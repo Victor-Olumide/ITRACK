@@ -95,6 +95,26 @@ const refreshSession = async (
   );
 };
 
+const waitForRefreshCookie = () =>
+  new Promise<void>((resolve) => window.setTimeout(resolve, 100));
+
+const refreshSessionWithRecovery = async (
+  api: Parameters<typeof rawBaseQuery>[1],
+  extraOptions: Parameters<typeof rawBaseQuery>[2],
+): Promise<RefreshResult> => {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = await refreshSession(api, extraOptions);
+
+    // Another tab may have rotated the refresh cookie moments earlier. The
+    // server intentionally reports that race as 409; wait for the winning
+    // Set-Cookie response, then retry with the new cookie.
+    if (result.error?.status !== 409 || attempt === 1) return result;
+    await waitForRefreshCookie();
+  }
+
+  return refreshSession(api, extraOptions);
+};
+
 export const appBaseQuery: BaseQueryFn<
   string | FetchArgs,
   unknown,
@@ -107,7 +127,7 @@ export const appBaseQuery: BaseQueryFn<
     !nonRefreshableEndpoints.has(api.endpoint);
 
   if (isRefreshable401) {
-    refreshPromise ??= refreshSession(
+    refreshPromise ??= refreshSessionWithRecovery(
       api,
       extraOptions,
     ).finally(() => {

@@ -22,7 +22,28 @@ import RouteErrorFeedback from './components/RouteErrorFeedback'
 import Layout from './components/Layout'
 
 
-const Auth = lazy(() => import('./pages/Auth'))
+const CHUNK_RECOVERY_KEY = 'itrack:chunk-recovery'
+
+function isStaleChunkError(error: unknown) {
+  return error instanceof TypeError && /dynamically imported module|module script/i.test(error.message)
+}
+
+async function loadWithChunkRecovery<T>(load: () => Promise<T>): Promise<T> {
+  try {
+    const module = await load()
+    sessionStorage.removeItem(CHUNK_RECOVERY_KEY)
+    return module
+  } catch (error) {
+    if (typeof window !== 'undefined' && isStaleChunkError(error) && !sessionStorage.getItem(CHUNK_RECOVERY_KEY)) {
+      sessionStorage.setItem(CHUNK_RECOVERY_KEY, 'true')
+      window.location.reload()
+      return new Promise<T>(() => undefined)
+    }
+    throw error
+  }
+}
+
+const Auth = lazy(() => loadWithChunkRecovery(() => import('./pages/Auth')))
 
 function lazyPage<P extends object = Record<string, never>>(
   load: () => Promise<{ default: ComponentType<P> }>,
@@ -30,7 +51,7 @@ function lazyPage<P extends object = Record<string, never>>(
 ) {
   return {
     lazy: async () => {
-      const { default: Page } = await load()
+      const { default: Page } = await loadWithChunkRecovery(load)
       return {
         Component: () => <Page {...(props ?? ({} as P))} />,
       }
