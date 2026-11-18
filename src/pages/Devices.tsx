@@ -152,7 +152,7 @@ function DeviceImage({
           alt={`${device.name} device`}
           loading="lazy"
           onError={() => setImageFailed(true)}
-          className="absolute inset-0 h-full w-full object-contain p-4"
+          className="absolute inset-0 h-full w-full object-contain"
         />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
@@ -176,7 +176,10 @@ function DeviceImage({
         />
       )}
 
-      {device.modelUrl && !showModel && <button type="button" onClick={(event) => { event.stopPropagation(); setModelViewerStatus('loading'); setShowModel(true) }} className="absolute bottom-3 right-3 z-20 rounded-full border border-lime-200/70 bg-lime-300/90 px-3 py-1.5 text-[10px] font-bold text-[#344500] shadow-[0_4px_14px_rgba(75,100,0,.18)] backdrop-blur-sm hover:bg-lime-200">View 3D</button>}
+      {device.modelUrl && <div className="absolute bottom-3 right-3 z-20 flex overflow-hidden rounded-full border border-white/70 bg-white/90 text-[10px] font-bold shadow-[0_4px_14px_rgba(16,28,82,.14)] backdrop-blur-sm">
+        <button type="button" onClick={(event) => { event.stopPropagation(); setShowModel(false); setModelFailed(false); setModelViewerStatus('idle') }} className={`px-3 py-1.5 ${!showModel ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500 hover:bg-slate-50'}`}>2D</button>
+        <button type="button" onClick={(event) => { event.stopPropagation(); if (!showModel) { setModelViewerStatus('loading'); setShowModel(true) } }} className={`px-3 py-1.5 ${showModel ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500 hover:bg-slate-50'}`}>3D</button>
+      </div>}
 
       {showModel && modelViewerStatus === 'loading' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
 

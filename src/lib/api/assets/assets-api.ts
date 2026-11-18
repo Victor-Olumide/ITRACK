@@ -8,6 +8,7 @@ import type {
   AssetApiRecord,
   AssetModelsResponse,
   AvailableAssetTagsResponse,
+  AvailableAssetTag,
   CreateAssetMutationArgs,
   CreateAssetModelRequest,
   UpdateAssetRequest,
@@ -112,6 +113,17 @@ export const assetsApi = appApi.injectEndpoints({
       ],
     }),
 
+    allocateAssetTag: builder.mutation<AvailableAssetTag, AssetType>({
+      query: (type) => ({
+        url: '/assets/tags/allocate',
+        method: 'POST',
+        body: { type },
+      }),
+      invalidatesTags: (_result, _error, type) => [
+        { type: 'Device', id: `TAGS-${type}` },
+      ],
+    }),
+
     getAssetModels: builder.query<
       AssetModelsResponse,
       AssetType | void
@@ -177,6 +189,7 @@ export const {
   useGetAssetQuery,
   useCreateAssetMutation,
   useGetAvailableAssetTagsQuery,
+  useAllocateAssetTagMutation,
   useGetAssetModelsQuery,
   useCreateAssetModelMutation,
   useUpdateAssetMutation,

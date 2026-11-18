@@ -13,6 +13,7 @@ import { useGetUsersQuery } from '../lib/api/users/users-api';
 
 import {
   useCreateAssetMutation,
+  useAllocateAssetTagMutation,
   useGetAssetModelsQuery,
 } from '../lib/api/assets/assets-api';
 
@@ -77,6 +78,8 @@ export default function RegisterDevicePage({
 
   const [createAsset, { isLoading: isSaving }] =
     useCreateAssetMutation();
+  const [allocateAssetTag, { isLoading: isAllocatingTag, isError: tagAllocationError }] =
+    useAllocateAssetTagMutation();
 
   const [form, setForm] = useState<AssetForm>({
     assetTag: '',
@@ -120,6 +123,17 @@ export default function RegisterDevicePage({
   useEffect(() => {
     if (form.type === 'OTHER') customTypeRef.current?.focus();
   }, [form.type]);
+
+  useEffect(() => {
+    let active = true;
+    void allocateAssetTag(form.type)
+      .unwrap()
+      .then((allocated) => {
+        if (active) setForm((current) => ({ ...current, assetTag: allocated.tag }));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [allocateAssetTag, form.type]);
 
   const updateForm = <K extends keyof AssetForm>(
     key: K,
@@ -315,10 +329,12 @@ export default function RegisterDevicePage({
 
                 <div className="mt-1">
                   <div className="flex h-10 items-center rounded-xl border border-[#e3e8f2] bg-slate-50 px-3 font-mono text-sm text-slate-700">
-                    Generated automatically on registration
+                    {isAllocatingTag ? 'Allocating tag…' : form.assetTag || 'Tag unavailable'}
                   </div>
                 </div>
-                <span className="mt-1 block text-xs font-normal text-slate-500">ITrack allocates the next unique tag for the selected device type.</span>
+                <span className={`mt-1 block text-xs font-normal ${tagAllocationError ? 'text-red-600' : 'text-slate-500'}`}>
+                  {tagAllocationError ? 'Could not allocate a tag. Try selecting the device type again.' : 'Allocated by ITrack and locked for this registration.'}
+                </span>
               </label>
 
               {form.type === 'OTHER' && (
@@ -618,7 +634,7 @@ export default function RegisterDevicePage({
               type="submit"
               disabled={
                 isSaving ||
-                isSaving
+                isSaving || isAllocatingTag || !form.assetTag
               }
               className="rounded-md bg-[#3155ff] px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
