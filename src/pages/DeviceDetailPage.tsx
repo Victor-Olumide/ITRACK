@@ -6,6 +6,7 @@ import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from
 import type { AssetCondition } from '../lib/api/assets/types'
 import { categoryDeviceImage } from '../lib/device-images'
 import Dropdown from '../components/Dropdown'
+import DeviceViewToggle from '../components/DeviceViewToggle'
 
 const CONDITION_LABELS: Record<AssetCondition, string> = {
   NEW: 'New',
@@ -108,9 +109,18 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
             ) : (
               <img src={asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make)} alt={`${asset.make} ${asset.model}`} className="h-full w-full object-contain" />
             )}
-            {asset.modelUrl && <div className="absolute right-4 top-4 z-20 flex overflow-hidden rounded-full border border-white/80 bg-white/90 text-[10px] font-bold shadow-sm backdrop-blur-sm">
-              <button type="button" onClick={() => { setShowModel(false); setModelViewerStatus('idle'); setModelFailed(false) }} className={`px-3 py-1.5 ${!showModel ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-600 hover:bg-slate-50'}`}>2D</button>
-              <button type="button" onClick={() => { setModelFailed(false); setModelViewerStatus('loading'); setShowModel(true) }} className={`px-3 py-1.5 ${showModel ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-600 hover:bg-slate-50'}`}>3D</button>
+            {asset.modelUrl && <div className="absolute right-4 top-4 z-20">
+              <DeviceViewToggle
+                value={showModel ? '3D' : '2D'}
+                onChange={(view) => {
+                  if (view === '2D') {
+                    setShowModel(false); setModelViewerStatus('idle'); setModelFailed(false)
+                  } else {
+                    setModelFailed(false); setModelViewerStatus('loading'); setShowModel(true)
+                  }
+                }}
+                has3D={Boolean(asset.modelUrl)}
+              />
             </div>}
             {showModel && modelViewerStatus === 'loading' && <span className="absolute bottom-3 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-slate-600 shadow-sm">Loading 3D preview…</span>}
             {showModel && (modelViewerStatus === 'error' || modelFailed) && <span className="absolute bottom-3 rounded-full bg-white/90 px-3 py-1.5 text-[10px] text-red-600 shadow-sm">3D preview unavailable</span>}

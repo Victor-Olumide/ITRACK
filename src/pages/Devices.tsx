@@ -22,6 +22,7 @@ import type {
 } from '@/lib/api/assets/types';
 import { categoryDeviceImage } from '@/lib/device-images';
 import Dropdown from '@/components/Dropdown';
+import DeviceViewToggle from '@/components/DeviceViewToggle';
 
 type AssetListStatus = 'Assigned' | 'Unassigned' | 'Retired';
 
@@ -177,9 +178,18 @@ function DeviceImage({
         />
       )}
 
-      {device.modelUrl && <div className="absolute bottom-3 right-3 z-20 flex overflow-hidden rounded-full border border-white/70 bg-white/90 text-[10px] font-bold shadow-[0_4px_14px_rgba(16,28,82,.14)] backdrop-blur-sm">
-        <button type="button" onClick={(event) => { event.stopPropagation(); setShowModel(false); setModelFailed(false); setModelViewerStatus('idle') }} className={`px-3 py-1.5 ${!showModel ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500 hover:bg-slate-50'}`}>2D</button>
-        <button type="button" onClick={(event) => { event.stopPropagation(); if (!showModel) { setModelViewerStatus('loading'); setShowModel(true) } }} className={`px-3 py-1.5 ${showModel ? 'bg-[#d2f54a] text-[#344500]' : 'text-slate-500 hover:bg-slate-50'}`}>3D</button>
+      {device.modelUrl && <div className="absolute right-3 top-3 z-20" onClick={(event) => event.stopPropagation()}>
+        <DeviceViewToggle
+          value={showModel ? '3D' : '2D'}
+          onChange={(view) => {
+            if (view === '2D') {
+              setShowModel(false); setModelFailed(false); setModelViewerStatus('idle')
+            } else {
+              setModelViewerStatus('loading'); setShowModel(true)
+            }
+          }}
+          has3D={Boolean(device.modelUrl)}
+        />
       </div>}
 
       {showModel && modelViewerStatus === 'loading' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
