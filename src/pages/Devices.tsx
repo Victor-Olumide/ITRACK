@@ -20,7 +20,8 @@ import type {
   AssetListArgs,
   AssetType,
 } from '@/lib/api/assets/types';
-import { categoryDeviceImage } from '@/lib/device-images';
+import { categoryDeviceImage } from '@/utils/device-images';
+import { localDeviceModelUrl } from '@/utils/device-models';
 import Dropdown from '@/components/Dropdown';
 import DeviceViewToggle from '@/components/DeviceViewToggle';
 
@@ -38,6 +39,7 @@ interface DeviceCardData {
   warranty: string;
   imageUrl: string;
   modelUrl: string | null;
+  has3D: boolean;
 }
 
 const initials = (name = '') =>
@@ -95,7 +97,8 @@ function toCard(asset: AssetApiRecord): DeviceCardData {
       ? formatWarranty(asset.warrantyExpiry)
       : '—',
     imageUrl: asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make),
-    modelUrl: asset.modelUrl ?? null,
+    modelUrl: asset.modelUrl ?? localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model),
+    has3D: Boolean(asset.modelUrl ?? localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model)),
   };
 }
 
@@ -119,12 +122,14 @@ const uuidPattern =
 
 function DeviceImage({
   device,
+  showModel,
+  onViewChange,
 }: {
   device: DeviceCardData;
+  showModel: boolean;
+  onViewChange: (view: '2D' | '3D') => void;
 }) {
-  const [modelFailed, setModelFailed] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const [showModel, setShowModel] = useState(false);
   const [modelViewerStatus, setModelViewerStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
   const Icon =
@@ -137,14 +142,14 @@ function DeviceImage({
 
   const hasImage = Boolean(device.imageUrl && !imageFailed);
   useEffect(() => {
-    if (!showModel || !device.modelUrl || modelViewerStatus !== 'loading') return;
+    if (!showModel || !device.modelUrl || modelViewerStatus === 'ready') return;
     import('@google/model-viewer').then(
       () => setModelViewerStatus('ready'),
       () => setModelViewerStatus('error'),
     );
   }, [device.modelUrl, modelViewerStatus, showModel]);
 
-  const canShowModel = Boolean(showModel && device.modelUrl && !modelFailed && modelViewerStatus === 'ready');
+  const canShowModel = Boolean(showModel && device.modelUrl && modelViewerStatus === 'ready');
 
   return (
     <div className="device-image relative flex h-43.5 items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
@@ -154,7 +159,7 @@ function DeviceImage({
           alt={`${device.name} device`}
           loading="lazy"
           onError={() => setImageFailed(true)}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
@@ -173,29 +178,15 @@ function DeviceImage({
           auto-rotate
           rotation-per-second="20deg"
           shadow-intensity="1"
-          onError={() => setModelFailed(true)}
+          onError={() => setModelViewerStatus('error')}
           className="relative z-10 h-full w-full bg-transparent"
         />
       )}
 
-      {device.modelUrl && <div className="absolute right-3 top-3 z-20" onClick={(event) => event.stopPropagation()}>
-        <DeviceViewToggle
-          value={showModel ? '3D' : '2D'}
-          onChange={(view) => {
-            if (view === '2D') {
-              setShowModel(false); setModelFailed(false); setModelViewerStatus('idle')
-            } else {
-              setModelViewerStatus('loading'); setShowModel(true)
-            }
-          }}
-          has3D={Boolean(device.modelUrl)}
-        />
-      </div>}
+      {showModel && modelViewerStatus !== 'ready' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
 
-      {showModel && modelViewerStatus === 'loading' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
-
-      {showModel && modelViewerStatus === 'ready' && <button type="button" onClick={(event) => { event.stopPropagation(); setShowModel(false); setModelFailed(false); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#3155ff] shadow-sm">Back to image</button>}
-      {showModel && (modelFailed || modelViewerStatus === 'error') && <button type="button" onClick={(event) => { event.stopPropagation(); setShowModel(false); setModelFailed(false); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm">Back to image</button>}
+      {showModel && modelViewerStatus === 'ready' && <button type="button" onClick={(event) => { event.stopPropagation(); onViewChange('2D'); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#3155ff] shadow-sm">Back to image</button>}
+      {showModel && modelViewerStatus === 'error' && <button type="button" onClick={(event) => { event.stopPropagation(); onViewChange('2D'); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm">Back to image</button>}
 
       <span
         className={`absolute left-3 top-3 z-20 rounded-full px-2.5 py-1 text-[10px] font-semibold ${conditionStyles[device.condition]}`}
@@ -213,15 +204,27 @@ function DeviceCard({
   device: DeviceCardData;
   onClick: (device: DeviceCardData) => void;
 }) {
+  const [showModel, setShowModel] = useState(false);
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onClick(device)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick(device);
+        }
+      }}
       className="group min-w-0 overflow-hidden rounded-xl border border-slate-100 bg-white text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3155ff]"
     >
       <DeviceImage
         key={device.tag}
         device={device}
+        showModel={showModel}
+        onViewChange={(view) => setShowModel(view === '3D')}
       />
 
       <div className="p-3">
@@ -230,9 +233,21 @@ function DeviceCard({
             {device.name}
           </h3>
 
-          <span className="shrink-0 rounded-md bg-lime-300 px-2 py-1 font-mono text-[9px] font-bold text-slate-900">
-            {device.tag}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {device.has3D && (
+              <span onClick={(event) => event.stopPropagation()}>
+                <DeviceViewToggle
+                  value={showModel ? '3D' : '2D'}
+                  onChange={(view) => setShowModel(view === '3D')}
+                  has3D
+                />
+              </span>
+            )}
+
+            <span className="rounded-md bg-lime-300 px-2 py-1 font-mono text-[9px] font-bold text-slate-900">
+              {device.tag}
+            </span>
+          </div>
         </div>
 
         <p className="mt-0.5 text-[11px] text-slate-500">
@@ -269,7 +284,7 @@ function DeviceCard({
           </span>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 

@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from '../lib/api/assets/assets-api'
 import type { AssetCondition } from '../lib/api/assets/types'
-import { categoryDeviceImage } from '../lib/device-images'
+import { categoryDeviceImage } from '../utils/device-images'
 import Dropdown from '../components/Dropdown'
 import DeviceViewToggle from '../components/DeviceViewToggle'
 
@@ -107,7 +107,7 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
             {showModel && asset.modelUrl && modelViewerStatus === 'ready' && !modelFailed ? (
               <model-viewer key={asset.modelUrl} src={asset.modelUrl} alt={`${asset.make} ${asset.model} 3D model`} loading="lazy" camera-controls auto-rotate onError={() => setModelFailed(true)} className="h-full w-full bg-transparent" />
             ) : (
-              <img src={asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make)} alt={`${asset.make} ${asset.model}`} className="h-full w-full object-contain" />
+              <img src={asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make)} alt={`${asset.make} ${asset.model}`} className="h-full w-full object-cover" />
             )}
             {asset.modelUrl && <div className="absolute right-4 top-4 z-20">
               <DeviceViewToggle

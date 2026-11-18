@@ -63,7 +63,7 @@ function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
       <article className="gate-pass-print mx-auto flex min-h-[270mm] max-w-[210mm] flex-col bg-white p-6 text-slate-800 shadow-lg sm:p-8">
         <header className="flex items-start justify-between gap-4 border-b-2 border-[#172554] pb-4">
           <div className="flex items-center gap-3">
-            <img src="/favicon.svg" alt="" className="h-10 w-10 object-contain" />
+            <img src="/favicons/favicon.svg" alt="" className="h-10 w-10 object-contain" />
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-[#111a38]">Gate pass · {pass.isReturnable === false ? 'Non-returnable items' : 'Returnable items'}</h1>
               <p className="mt-0.5 text-[8px] text-slate-500">IT Department · Afe Babalola University, Ado-Ekiti</p>

@@ -1,4 +1,4 @@
-import type { AssetType } from './api/assets/types'
+import type { AssetType } from '../lib/api/assets/types'
 
 const DEVICE_IMAGES: Record<AssetType, string> = {
   LAPTOP: '/images/devices/laptop.webp',
@@ -8,12 +8,21 @@ const DEVICE_IMAGES: Record<AssetType, string> = {
   OTHER: '/images/devices/desktop.webp',
 }
 
-export function categoryDeviceImage(type: AssetType, customType?: string | null, make?: string | null) {
-  const label = customType?.toLowerCase() ?? ''
+export function brandDeviceImage(type: AssetType, make?: string | null) {
   const manufacturer = make?.toLowerCase().trim() ?? ''
 
-  if (type === 'LAPTOP' && manufacturer.includes('apple')) return '/images/devices/laptops/macbook.jpg'
-  if (type === 'LAPTOP' && (manufacturer.includes('hp') || manufacturer.includes('hewlett'))) return '/images/devices/laptops/hp.jpg'
+  if (type === 'LAPTOP' && manufacturer.includes('apple')) return '/images/devices/macbook.jpg'
+  if (type === 'LAPTOP' && manufacturer.includes('dell')) return '/images/devices/dell.jpg'
+  if (type === 'LAPTOP' && (manufacturer.includes('hp') || manufacturer.includes('hewlett'))) return '/images/devices/hp.jpg'
+
+  return null
+}
+
+export function categoryDeviceImage(type: AssetType, customType?: string | null, make?: string | null) {
+  const label = customType?.toLowerCase() ?? ''
+  const manufacturerImage = brandDeviceImage(type, make)
+
+  if (manufacturerImage) return manufacturerImage
 
   if (label.includes('server')) return '/images/devices/server.webp'
   if (label.includes('printer')) return '/images/devices/printer.webp'
