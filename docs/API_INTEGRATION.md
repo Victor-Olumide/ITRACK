@@ -10,6 +10,7 @@ Use the running server's controller, DTO, service, and response types as the con
 |---|---|---|
 | Authentication/session | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/change-password`, `GET/PATCH /auth/me` | `src/lib/api/auth/` |
 | IT-admin users/departments | `GET /auth/users`, `POST /auth/users`, `GET /auth/departments`, `PATCH /users/:id` (name, role, or access) | `src/lib/api/users/`, `src/lib/api/auth/` |
+| Department Head workspace | `GET /department/workspace`, `GET /department/employees`, `GET /department/assets` | `src/lib/api/department/` |
 | Tickets | `GET/POST /tickets`, `GET/PATCH/DELETE /tickets/:id`, `POST /tickets/suggest`, `POST /tickets/:id/status`, `POST /tickets/:id/assign`, `POST /tickets/:id/comments` | `src/lib/api/tickets/` |
 | Assets | `GET/POST /assets`, `GET/PATCH /assets/:id`, `POST /assets/:id/retire` | `src/lib/api/assets/` |
 | Dashboard | `GET /dashboard/summary` | `src/lib/api/dashboard/` |
@@ -22,9 +23,13 @@ All private access, role checks, organization scoping, ownership, validation, an
 
 Asset lists are server-filtered and paginated (`q`, `type`, `condition`, `assignedToId`, `warrantyExpiringWithinDays`, `includeRetired`, `page`, and `pageSize`). Retired assets are excluded by default; explicitly request `condition=RETIRED` or `includeRetired=true` to query them. Asset details include server-persisted assignment history.
 
+Department Head workspace responses are scoped to the signed-in user's organization and department. The workspace summary returns department identity and counts; employee and asset lists support server-side search and pagination. Department Heads may read department assets and tickets but cannot register, update, assign, or retire assets through the client.
+
+Asset registration is restricted to Technicians and IT Admins. The client obtains available tags by asset type, sends the selected `assetTag`, and may send `assignedToId` for an IT-admin assignment. The server validates that the tag is available for the requested type and claims it atomically with asset creation. `customType` is persisted for `OTHER` assets. Optional `imageFile` uploads are limited to 10 MB; catalogue image/model URLs are returned when applicable.
+
 For Employees, `GET /assets` returns only assets assigned to the authenticated user. Ticket creation accepts an optional `assetId`; the server verifies organization and employee-assignment access before linking it.
 
-Asset assignment history uses the additive server `asset_assignments` table. The backend requires a reviewed, non-destructive schema sync before this code is deployed to an environment that does not yet have that table.
+Asset assignment history uses the server `asset_assignments` table. This project does not use Prisma migration files. After reviewing `prisma/schema.prisma`, synchronize an environment with `pnpm prisma db push`; do not run `prisma migrate` for this project.
 
 The dashboard summary provides ticket counts by status, 30-day resolution/category metrics, server-calculated overdue tickets and technician workloads, asset counts by type/condition, and warranties expiring within 30 days. Do not calculate SLA progress or policy values in the client.
 
@@ -42,7 +47,7 @@ Dashboard and report screens may use only the implemented dashboard, ticket, and
 - Represent loading, empty, validation, session-expired, and server-error states explicitly. Never fall back to demo data after a request fails.
 - Wait for mutation success before showing confirmation; invalidate/refetch affected tags.
 - The shared RTK Query request timeout is three minutes. This client-side limit cannot override a server, hosting, or proxy timeout.
-- Ticket attachments are not supported yet: the report-page file picker is not submitted, and the server has no upload endpoint or attachment storage.
+- Ticket attachments are server-backed through the ticket attachment endpoints. The client should use the typed attachment API when a workflow exposes uploads; do not treat a local file picker or browser-only object URL as persisted data.
 - Never put database URLs, passwords, signing keys, or other secrets in `VITE_*` variables, fixtures, tests, or agent instructions.
 - Configure exact credentialed CORS origins on the server/deployment environment, not in client code.
 

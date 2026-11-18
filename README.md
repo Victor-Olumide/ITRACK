@@ -1,6 +1,6 @@
 # ITrack
 
-A desktop-class IT support ticket and asset management web app for Employees, Technicians, and IT Admins. Manage helpdesk tickets and hardware assets using the server-backed v1 workflows.
+A desktop-class IT support ticket and asset management web app for Employees, Department Heads, Technicians, and IT Admins. Manage department workspaces, helpdesk tickets, and hardware assets using the server-backed v1 workflows.
 
 > **Status:** Active development · v1 workflows use implemented server APIs; unsupported v2 routes are disabled
 
@@ -27,19 +27,19 @@ git clone https://github.com/ITrack-App/ITRACK.git
 cd ITRACK
 
 # Install
-npm install
+pnpm install
 
 # Dev server (http://localhost:5173)
-npm run dev
+pnpm run dev
 
 # API transport tests
-npm test
+pnpm test
 
 # Production build
-npm run build
+pnpm run build
 
 # Preview production build
-npm run preview
+pnpm run preview
 ```
 
 ## Role UI routes
@@ -48,11 +48,16 @@ npm run preview
 |---|---|
 | IT Admin | `/` |
 | Technician | `/technician` |
+| Department Head | `/department` |
 | Employee | `/employee` |
 | Sign in | `/login` |
 | Account management | `/people` |
 
-The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, sign-out, profile name/password changes, IT-admin user/department management, tickets, assets, and dashboard summary use implemented `/api/v1` endpoints. Password changes require the current password and end all active sessions; IT Admins can update other users' names and roles. Password recovery is not available, so contact an IT administrator if you cannot sign in.
+The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, sign-out, profile name/password changes, IT-admin user/department management, department-head workspace data, tickets, assets, and dashboard summary use implemented `/api/v1` endpoints. Password changes require the current password and end all active sessions; IT Admins can update other users' names and roles. Password recovery is not available, so contact an IT administrator if you cannot sign in.
+
+Department Heads can view their department's employees and assigned assets, and use the department-scoped ticket workspace. The server enforces department and organization scope; the client route guard is navigation UX only.
+
+Device registration uses searchable shared controls for available asset tags, shared date pickers, optional catalogue selection, optional IT-admin assignment, and `customType` for Other devices. Manual manufacturer/model values are preserved when switching modes. Local category images are used when no asset or catalogue image exists, and 3D model code loads only after an explicit preview click.
 
 The client does not use mock records or session-only demo mutations for application data. Gate passes, gate movements, stock, model library, location management, SLA policy editing, audit events, notifications, profile preferences, and the legacy Security workspace are not part of v1. Their routes and navigation entries are disabled and marked for v2; do not expose those prototype workflows until persistent server APIs are available. Ticket overdue status is server-provided; the client does not invent SLA progress.
 
@@ -85,6 +90,7 @@ src/
 | Workflow | v1 client data source | Availability |
 |---|---|---|
 | Authentication, users, departments | `/api/v1/auth/*` | Available |
+| Department Head workspace | `/api/v1/department/workspace`, `/api/v1/department/employees`, `/api/v1/department/assets` | Available to Department Heads |
 | Tickets and ticket history | `/api/v1/tickets/*` | Available |
 | Assets | `/api/v1/assets/*` | Available |
 | Dashboard summary | `/api/v1/dashboard/summary` | Available to IT Admins and Technicians |
@@ -136,7 +142,7 @@ src/
 | W03 | Home dashboard | ✅ |
 | W05 | Tickets queue and detail | ✅ |
 | W09 | Devices, hover to turn | ✅ |
-| W10 | Device 3D viewer | v2 · model API unavailable |
+| W10 | Device 3D viewer | ✅ · explicit lazy preview when a model URL exists |
 | W11 | Register a device | ✅ |
 | W12 | 3D model library | v2 · API unavailable |
 | W13 | Gate pass approvals | v2 · API unavailable |
@@ -153,5 +159,5 @@ src/
 
 1. Branch off `main` — use `feat/`, `fix/`, or `chore/` prefixes.
 2. Keep each page or component in one commit with a clear message.
-3. Run `npm test`, `npm run lint`, and `npm run build` before opening a PR — all must pass.
+3. Run `pnpm test`, `pnpm run lint`, and `pnpm run build` before opening a PR — all must pass.
 4. Follow [docs/BACKEND_HANDOFF.md](./docs/BACKEND_HANDOFF.md) when replacing the demo data sources with asynchronous API services.

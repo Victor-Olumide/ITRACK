@@ -5,6 +5,7 @@
 The browser uses the server API; it does not connect directly to Neon/PostgreSQL. Authentication uses HTTP-only cookies and RTK Query. The current server includes:
 
 - Authentication, current-user, refresh/logout, and IT-admin user/department endpoints under `/api/v1/auth`.
+- Department Head workspace endpoints under `/api/v1/department` for department summary, employees, and assigned assets.
 - Tenant-scoped ticket workflows under `/api/v1/tickets`.
 - Tenant-scoped asset list/detail/create/update/retire endpoints under `/api/v1/assets`.
 - IT Admin/Technician dashboard summary at `/api/v1/dashboard/summary`.
@@ -23,9 +24,11 @@ The current server has no confirmed persistent endpoints for:
 
 These features must remain unavailable to users: keep their routes and navigation commented out, show no sample records, and do not create client queries for proposed endpoints. Existing prototype code should carry a `TODO(v2)` note and only be restored after the backend API, DTOs, persistence, authorization, and error behavior are implemented.
 
+The Department Head workspace is available in v1. Its server scope is the authenticated user's organization and department. Do not broaden it by trusting a department ID from the browser. Department Heads can read their department workspace, employees, assigned assets, and ticket workflow; asset writes remain restricted to IT staff.
+
 ## Deployment and persistence
 
-The server uses Prisma/PostgreSQL and the project documents a Neon production branch. The client must always retrieve application data through the server API. A configured database URL alone does not prove that a particular deployment or resource is backed by it; verify the server environment and resource implementation before claiming production persistence.
+The server uses Prisma/PostgreSQL and the project documents a Neon production branch. The client must always retrieve application data through the server API. A configured database URL alone does not prove that a particular deployment or resource is backed by it; verify the server environment and resource implementation before claiming production persistence. This project intentionally does not use Prisma migration files: review schema changes and apply them with `pnpm prisma db push`.
 
 For cross-origin deployments, configure the exact frontend origin in the server's `CORS_ORIGINS` environment setting, with credentials enabled. Do not hard-code deployment origins in client code or edit server CORS configuration as part of a client-only change.
 
