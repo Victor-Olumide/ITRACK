@@ -12,3 +12,12 @@ These local fallback images were downloaded from Wikimedia Commons on 17 Novembe
 | `server.webp` | [Servers in a Rack.jpg](https://commons.wikimedia.org/wiki/File:Servers_in_a_Rack.jpg) | Abigor | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
 
 The downloaded source images are used without application-runtime requests to Wikimedia. Where a source was transformed or resized for the app, the local file remains under the source's applicable share-alike terms.
+
+## Brand-specific laptop fallbacks
+
+| Local file | Source | Author | Licence |
+| --- | --- | --- | --- |
+| `laptops/macbook.jpg` | [MacBook.jpg](https://commons.wikimedia.org/wiki/File:MacBook.jpg) | redjar / Jared C. Benedict | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) |
+| `laptops/hp.jpg` | [HP Laptop.jpg](https://commons.wikimedia.org/wiki/File:HP_Laptop.jpg) | Srini297 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+
+The manufacturer product pages supplied in the implementation brief were used for reference. Their runtime image URLs were not embedded in the application. A Dell-specific local image could not be downloaded reliably from the supplied source during this pass, so Dell currently uses the maintained category fallback rather than a broken or fabricated asset.

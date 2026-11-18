@@ -1,11 +1,9 @@
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   ChevronLeft,
-  Search,
   X,
-  Check,
   ImagePlus,
 } from 'lucide-react';
 import Dropdown from '../components/Dropdown';
@@ -15,7 +13,6 @@ import { useGetUsersQuery } from '../lib/api/users/users-api';
 
 import {
   useCreateAssetMutation,
-  useGetAvailableAssetTagsQuery,
   useGetAssetModelsQuery,
 } from '../lib/api/assets/assets-api';
 
@@ -72,10 +69,6 @@ function messageFromError(error: unknown): string {
   return 'Unable to register the device. Check the details and try again.';
 }
 
-function modelLabel(model: AssetModelRecord) {
-  return `${model.make} ${model.model}`;
-}
-
 export default function RegisterDevicePage({
   basePath = '/devices',
 }: RegisterDevicePageProps) {
@@ -102,8 +95,6 @@ export default function RegisterDevicePage({
   const [selectedModel, setSelectedModel] =
     useState<AssetModelRecord | null>(null);
 
-  const [modelSearch, setModelSearch] = useState('');
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [registrationMode, setRegistrationMode] =
     useState<'catalogue' | 'manual'>('catalogue');
 
@@ -114,18 +105,11 @@ export default function RegisterDevicePage({
   const customTypeRef = useRef<HTMLInputElement>(null);
 
   const {
-    data: tagResponse,
-    isLoading: isLoadingTags,
-    isError: tagsError,
-  } = useGetAvailableAssetTagsQuery(form.type);
-
-  const {
     data: modelResponse,
     isLoading: isLoadingModels,
     isError: modelsError,
   } = useGetAssetModelsQuery(form.type);
 
-  const availableTags = tagResponse?.data ?? [];
   const usersQuery = useGetUsersQuery(undefined, {
     skip: user?.role !== 'IT Admin',
   });
@@ -136,19 +120,6 @@ export default function RegisterDevicePage({
   useEffect(() => {
     if (form.type === 'OTHER') customTypeRef.current?.focus();
   }, [form.type]);
-
-  const filteredModels = useMemo(() => {
-    const catalogueModels = modelResponse?.data ?? [];
-    const query = modelSearch.trim().toLowerCase();
-
-    if (!query) return catalogueModels.slice(0, 8);
-
-    return catalogueModels
-      .filter((item) =>
-        `${item.make} ${item.model}`.toLowerCase().includes(query),
-      )
-      .slice(0, 8);
-  }, [modelResponse?.data, modelSearch]);
 
   const updateForm = <K extends keyof AssetForm>(
     key: K,
@@ -171,8 +142,6 @@ export default function RegisterDevicePage({
     }));
 
     setSelectedModel(null);
-    setModelSearch('');
-    setModelDropdownOpen(false);
     setSaveError('');
   };
 
@@ -185,24 +154,17 @@ export default function RegisterDevicePage({
       model: model.model,
     }));
 
-    setModelSearch(modelLabel(model));
-    setModelDropdownOpen(false);
     setSaveError('');
   };
 
   const switchToManual = () => {
     setRegistrationMode('manual');
     setSelectedModel(null);
-    setModelSearch('');
-    setModelDropdownOpen(false);
   };
 
   const switchToCatalogue = () => {
     setRegistrationMode('catalogue');
     setSelectedModel(null);
-    setModelSearch('');
-    setModelDropdownOpen(false);
-
   };
 
   const handleImageChange = (file?: File) => {
@@ -245,16 +207,6 @@ export default function RegisterDevicePage({
     event.preventDefault();
     setSaveError('');
 
-    if (!form.assetTag) {
-      setSaveError('Select an available asset tag.');
-      return;
-    }
-
-    if (!availableTags.some((tag) => tag.tag === form.assetTag)) {
-      setSaveError('Select a currently available asset tag.');
-      return;
-    }
-
     const make = form.make.trim();
     const model = form.model.trim();
     const customType = form.customType.trim();
@@ -272,7 +224,6 @@ export default function RegisterDevicePage({
     }
 
     const payload: CreateAssetRequest = {
-      assetTag: form.assetTag,
       serialNumber: form.serialNumber.trim(),
       type: form.type,
       make,
@@ -351,50 +302,23 @@ export default function RegisterDevicePage({
               <label className={labelClass}>
                 Device type
 
-                <select
+                <Dropdown
                   value={form.type}
-                  onChange={(event) =>
-                    handleTypeChange(event.target.value as AssetType)
-                  }
-                  className={inputClass}
-                >
-                  {assetTypes.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => handleTypeChange(value as AssetType)}
+                  ariaLabel="Device type"
+                  options={assetTypes}
+                />
               </label>
 
               <label className={labelClass}>
-                Available asset tag
+                Asset tag
 
                 <div className="mt-1">
-                  <Dropdown
-                    value={form.assetTag}
-                    onChange={(value) => updateForm('assetTag', value)}
-                    placeholder={isLoadingTags ? 'Loading available tags...' : 'Select an asset tag'}
-                    ariaLabel="Available asset tag"
-                    searchable
-                    searchPlaceholder="Search available tags"
-                    disabled={isLoadingTags || availableTags.length === 0}
-                    options={availableTags.map((tag) => ({ value: tag.tag, label: tag.tag }))}
-                  />
+                  <div className="flex h-10 items-center rounded-xl border border-[#e3e8f2] bg-slate-50 px-3 font-mono text-sm text-slate-700">
+                    Generated automatically on registration
+                  </div>
                 </div>
-
-                {tagsError && (
-                  <span className="mt-1 block text-xs font-normal text-red-600">
-                    Could not retrieve available asset tags.
-                  </span>
-                )}
-
-                {!isLoadingTags &&
-                  !tagsError &&
-                  availableTags.length === 0 && (
-                    <span className="mt-1 block text-xs font-normal text-amber-700">
-                      No available asset tags for this device type. Contact your IT administrator to generate more tags.
-                    </span>
-                  )}
+                <span className="mt-1 block text-xs font-normal text-slate-500">ITrack allocates the next unique tag for the selected device type.</span>
               </label>
 
               {form.type === 'OTHER' && (
@@ -457,106 +381,19 @@ export default function RegisterDevicePage({
 
             {registrationMode === 'catalogue' && (
               <div>
-                <label className={labelClass}>
-                  Search model catalogue
-
-                  <div className="relative mt-1">
-                    <Search
-                      size={15}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-
-                    <input
-                      value={modelSearch}
-                      onChange={(event) => {
-                        setModelSearch(event.target.value);
-                        setModelDropdownOpen(true);
-                        setSelectedModel(null);
-
-                      }}
-                      onFocus={() => setModelDropdownOpen(true)}
-                      placeholder="Search manufacturer or model..."
-                      className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm font-normal text-slate-800 outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100"
-                    />
-
-                    {modelSearch && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModelSearch('');
-                          setSelectedModel(null);
-                          setModelDropdownOpen(false);
-
-                        }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                        aria-label="Clear model search"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                </label>
-
-                {modelDropdownOpen && (
-                  <div className="mt-1 max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
-                    {isLoadingModels && (
-                      <p className="px-3 py-2.5 text-xs text-slate-500">
-                        Loading catalogue models...
-                      </p>
-                    )}
-
-                    {modelsError && (
-                      <p className="px-3 py-2.5 text-xs text-red-600">
-                        Could not retrieve catalogue models. You can
-                        still register manually.
-                      </p>
-                    )}
-
-                    {!isLoadingModels &&
-                      !modelsError &&
-                      filteredModels.length === 0 && (
-                        <p className="px-3 py-2.5 text-xs text-slate-500">
-                          No matching catalogue model found.
-                          You can enter the details manually.
-                        </p>
-                      )}
-
-                    {filteredModels.map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        onClick={() => selectCatalogueModel(item)}
-                        className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm transition hover:bg-blue-50"
-                      >
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="size-10 rounded-md border border-slate-100 object-contain"
-                          />
-                        ) : (
-                          <div className="flex size-10 items-center justify-center rounded-md bg-slate-100">
-                            <ImagePlus size={16} className="text-slate-400" />
-                          </div>
-                        )}
-
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold text-slate-800">
-                            {item.make} {item.model}
-                          </span>
-
-                          <span className="mt-0.5 block text-[11px] text-slate-500">
-                            {item.type}
-                          </span>
-                        </span>
-
-                        {selectedModel?.id === item.id && (
-                          <Check size={15} className="text-[#3155ff]" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <Dropdown
+                  value={selectedModel?.id ?? ''}
+                  onChange={(value) => {
+                    const model = (modelResponse?.data ?? []).find((item) => item.id === value)
+                    if (model) selectCatalogueModel(model)
+                  }}
+                  placeholder={isLoadingModels ? 'Loading catalogue models…' : modelsError ? 'Catalogue unavailable' : 'Select catalogue model (optional)'}
+                  ariaLabel="Catalogue model"
+                  searchable
+                  searchPlaceholder="Search manufacturer or model"
+                  disabled={isLoadingModels || modelsError === true}
+                  options={(modelResponse?.data ?? []).map((item) => ({ value: item.id, label: `${item.make} ${item.model}` }))}
+                />
 
                 {selectedModel && (
                   <div className="mt-2 flex items-center gap-3 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2">
@@ -781,8 +618,7 @@ export default function RegisterDevicePage({
               type="submit"
               disabled={
                 isSaving ||
-                isLoadingTags ||
-                availableTags.length === 0
+                isSaving
               }
               className="rounded-md bg-[#3155ff] px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >

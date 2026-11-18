@@ -8,7 +8,7 @@ import {
   BriefcaseBusiness,
   Home,
   Monitor,
-  Tags,
+  ShieldCheck,
   Ticket,
   Users,
   X,
@@ -49,6 +49,7 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
       { to: '/', label: 'Home', Icon: Home, end: true },
       { to: '/tickets', label: 'Tickets', Icon: Ticket },
       { to: '/devices', label: 'Devices', Icon: Monitor },
+      { to: '/gate-passes', label: 'Gate passes', Icon: ShieldCheck },
       { to: '/reports', label: 'Reports', Icon: BarChart3 },
     ],
   },
@@ -56,7 +57,6 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
     label: 'MANAGEMENT',
     links: [
       { to: '/people', label: 'People and roles', Icon: Users },
-      { to: '/categories', label: 'Categories', Icon: Tags },
     ],
   },
 ]
@@ -94,7 +94,7 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
       ],
     },
   ],
-  Security: [],
+  Security: [{ label: 'SECURITY', links: [{ to: '/security', label: 'Gate station', Icon: ShieldCheck, end: true }] }],
 }
 
 interface NavigationProps {

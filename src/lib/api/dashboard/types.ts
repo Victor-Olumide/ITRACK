@@ -36,4 +36,11 @@ export interface DashboardSummary {
     countsByCondition: Array<{ condition: string; count: number }>;
     warrantiesExpiringIn30Days: number;
   };
+  slaGoal: { targetPercentage: number; metPercentage: number };
+  needsAction: {
+    breachedTickets: number;
+    gatePassesWaiting: number;
+    warrantiesEndingSoon: number;
+    devicesInRepair: number;
+  };
 }

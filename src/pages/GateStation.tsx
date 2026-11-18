@@ -1,5 +1,12 @@
-import GateStationKiosk from './GateStationKiosk'
+import { ShieldCheck } from 'lucide-react'
+import { useGetGatePassesQuery, useMarkGateExitMutation, useMarkGateReturnMutation, useReviewGatePassMutation } from '../lib/api/gates/gates-api'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function GateStation() {
-  return <GateStationKiosk />
+  const { data = [], isLoading } = useGetGatePassesQuery()
+  const { user } = useAuth()
+  const [exit] = useMarkGateExitMutation(); const [checkIn] = useMarkGateReturnMutation()
+  const [review] = useReviewGatePassMutation()
+  const actionable = user?.role === 'Security' ? data.filter(pass => ['APPROVED', 'EXITED'].includes(pass.status)) : data
+  return <main className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7"><div className="flex items-center gap-2"><ShieldCheck className="text-[#3155ff]" size={20}/><div><h1 className="text-2xl font-bold tracking-tight text-[#111a3b]">{user?.role === 'Security' ? 'Gate station' : 'Gate passes'}</h1><p className="text-xs text-slate-500">{user?.role === 'Security' ? 'Verify approved device movements in and out of campus.' : 'Review and approve device movement requests.'}</p></div></div><section className="mt-5 rounded-[18px] border border-[#e9edf6] bg-white p-4 sm:p-5">{isLoading ? <p className="py-8 text-center text-sm text-slate-500">Loading gate passes…</p> : actionable.length ? <div className="divide-y divide-[#edf0f7]">{actionable.map(pass => <div key={pass.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0"><div className="flex-1"><p className="text-sm font-semibold text-[#202844]">{pass.asset.assetTag} · {pass.asset.make} {pass.asset.model}</p><p className="mt-1 text-xs text-slate-500">{pass.requester.fullName} · {pass.destination} · {pass.status}</p></div>{user?.role === 'Security' ? pass.status === 'APPROVED' ? <button onClick={() => void exit(pass.id)} className="rounded-full bg-[#3155ff] px-3 py-2 text-xs font-semibold text-white">Record exit</button> : <button onClick={() => void checkIn(pass.id)} className="rounded-full bg-[#c9f83b] px-3 py-2 text-xs font-semibold text-[#253000]">Record return</button> : pass.status === 'PENDING' ? <div className="flex gap-2"><button onClick={() => void review({ id: pass.id, status: 'REJECTED' })} className="rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">Reject</button><button onClick={() => void review({ id: pass.id, status: 'APPROVED' })} className="rounded-full bg-[#3155ff] px-3 py-2 text-xs font-semibold text-white">Approve</button></div> : null}</div>)}</div> : <p className="py-8 text-center text-sm text-slate-500">No gate passes waiting at the station.</p>}</section></main>
 }

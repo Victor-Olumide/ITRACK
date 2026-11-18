@@ -5,6 +5,8 @@ import {
   Outlet,
   RouterProvider,
 } from 'react-router'
+import { lazy, Suspense } from 'react'
+import type { ComponentType } from 'react'
 
 import {
   AuthProvider,
@@ -19,20 +21,22 @@ import RequireAuth, {
 import RouteErrorFeedback from './components/RouteErrorFeedback'
 import Layout from './components/Layout'
 
-import Auth from './pages/Auth'
-import Home from './pages/Home'
-import Tickets from './pages/Tickets'
-import TicketQueue from './pages/TicketQueue'
-import Devices from './pages/Devices'
-import RegisterDevice from './pages/RegisterDevice'
-import DeviceDetailPage from './pages/DeviceDetailPage'
-import Reports from './pages/Reports'
-import Team from './pages/Team'
-import AdminWorkspace from './pages/AdminWorkspace'
-import EmployeePortal from './pages/EmployeePortal'
-import TechnicianHome from './pages/TechnicianHome'
-import UnavailableWorkspace from './pages/UnavailableWorkspace'
-import DepartmentWorkspace from './pages/DepartmentWorkspace'
+
+const Auth = lazy(() => import('./pages/Auth'))
+
+function lazyPage<P extends object = Record<string, never>>(
+  load: () => Promise<{ default: ComponentType<P> }>,
+  props?: P,
+) {
+  return {
+    lazy: async () => {
+      const { default: Page } = await load()
+      return {
+        Component: () => <Page {...(props ?? ({} as P))} />,
+      }
+    },
+  }
+}
 
 function LoginRoute() {
   const {
@@ -47,7 +51,7 @@ function LoginRoute() {
 
   return user
     ? <Navigate to={homePathForRole(user.role)} replace />
-    : <Auth />
+    : <Suspense fallback={<SessionSplash />}><Auth /></Suspense>
 }
 
 const router = createBrowserRouter([
@@ -73,12 +77,12 @@ const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: [
-          { path: 'department', element: <DepartmentWorkspace section="overview" /> },
-          { path: 'department/employees', element: <DepartmentWorkspace section="employees" /> },
-          { path: 'department/assets', element: <DepartmentWorkspace section="assets" /> },
-          { path: 'department/assets/:tag', element: <DeviceDetailPage basePath="/department/assets" /> },
-          { path: 'department/tickets', element: <EmployeePortal section="tickets" /> },
-          { path: 'department/tickets/new', element: <EmployeePortal section="report" /> },
+          { path: 'department', ...lazyPage(() => import('./pages/DepartmentWorkspace'), { section: 'overview' as const }) },
+          { path: 'department/employees', ...lazyPage(() => import('./pages/DepartmentWorkspace'), { section: 'employees' as const }) },
+          { path: 'department/assets', ...lazyPage(() => import('./pages/DepartmentWorkspace'), { section: 'assets' as const }) },
+          { path: 'department/assets/:tag', ...lazyPage(() => import('./pages/DeviceDetailPage'), { basePath: '/department/assets' }) },
+          { path: 'department/tickets', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'tickets' as const }) },
+          { path: 'department/tickets/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'report' as const }) },
         ],
       },
 
@@ -89,21 +93,18 @@ const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: [
-          { index: true, element: <Home /> },
-          { path: 'tickets', element: <Tickets /> },
-          { path: 'tickets/queue', element: <TicketQueue /> },
-          { path: 'tickets/new', element: <EmployeePortal section="report" /> },
-          { path: 'devices', element: <Devices /> },
-          { path: 'devices/register', element: <RegisterDevice /> },
-          { path: 'devices/:tag', element: <DeviceDetailPage /> },
-          { path: 'reports', element: <Reports /> },
-          { path: 'team', element: <Team /> },
-          { path: 'people', element: <Team /> },
-          { path: 'signup', element: <Team showCreateForm /> },
-          {
-            path: 'categories',
-            element: <AdminWorkspace section="categories" />,
-          },
+          { index: true, ...lazyPage(() => import('./pages/Home')) },
+          { path: 'tickets', ...lazyPage(() => import('./pages/Tickets')) },
+          { path: 'tickets/queue', ...lazyPage(() => import('./pages/TicketQueue')) },
+          { path: 'tickets/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'report' as const }) },
+          { path: 'devices', ...lazyPage(() => import('./pages/Devices')) },
+          { path: 'devices/register', ...lazyPage(() => import('./pages/RegisterDevice')) },
+          { path: 'devices/:tag', ...lazyPage(() => import('./pages/DeviceDetailPage')) },
+          { path: 'reports', ...lazyPage(() => import('./pages/Reports')) },
+          { path: 'gate-passes', ...lazyPage(() => import('./pages/GateStation')) },
+          { path: 'team', ...lazyPage(() => import('./pages/Team')) },
+          { path: 'people', ...lazyPage(() => import('./pages/Team')) },
+          { path: 'signup', ...lazyPage(() => import('./pages/Team'), { showCreateForm: true }) },
 
           // TODO(v2): Re-enable /stock, /passes, /gate, /locations,
           // /audit, /models, and /notifications when their persistent APIs are available.
@@ -119,28 +120,26 @@ const router = createBrowserRouter([
           </RequireAuth>
         ),
         children: [
-          { path: 'technician', element: <TechnicianHome /> },
+          { path: 'technician', ...lazyPage(() => import('./pages/TechnicianHome')) },
           {
             path: 'technician/tickets',
-            element: <Tickets technicianView />,
+            ...lazyPage(() => import('./pages/Tickets'), { technicianView: true }),
           },
           {
             path: 'technician/tickets/queue',
-            element: <TicketQueue />,
+            ...lazyPage(() => import('./pages/TicketQueue')),
           },
           {
             path: 'technician/devices',
-            element: <Devices basePath="/technician/devices" />,
+            ...lazyPage(() => import('./pages/Devices'), { basePath: '/technician/devices' }),
           },
           {
             path: 'technician/devices/register',
-            element: <RegisterDevice basePath="/technician/devices" />,
+            ...lazyPage(() => import('./pages/RegisterDevice'), { basePath: '/technician/devices' }),
           },
           {
             path: 'technician/devices/:tag',
-            element: (
-              <DeviceDetailPage basePath="/technician/devices" />
-            ),
+            ...lazyPage(() => import('./pages/DeviceDetailPage'), { basePath: '/technician/devices' }),
           },
 
           // TODO(v2): Re-enable /technician/passes after the gate-pass API is ready.
@@ -156,23 +155,23 @@ const router = createBrowserRouter([
         children: [
           {
             path: 'employee',
-            element: <EmployeePortal section="home" />,
+            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'home' as const }),
           },
           {
             path: 'employee/report',
-            element: <EmployeePortal section="report" />,
+            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'report' as const }),
           },
           {
             path: 'employee/tickets',
-            element: <EmployeePortal section="tickets" />,
+            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'tickets' as const }),
           },
           {
             path: 'employee/tickets/queue',
-            element: <TicketQueue />,
+            ...lazyPage(() => import('./pages/TicketQueue')),
           },
           {
             path: 'employee/devices/:tag',
-            element: <DeviceDetailPage basePath="/employee" />,
+            ...lazyPage(() => import('./pages/DeviceDetailPage'), { basePath: '/employee' }),
           },
 
           // TODO(v2): Re-enable /employee/passes and /employee/passes/new
@@ -180,14 +179,7 @@ const router = createBrowserRouter([
         ],
       },
 
-      {
-        path: 'workspace-unavailable',
-        element: (
-          <RequireAuth roles={['Security']}>
-            <UnavailableWorkspace />
-          </RequireAuth>
-        ),
-      },
+      { path: 'security', element: <RequireAuth roles={['Security']}><Layout /></RequireAuth>, children: [{ index: true, ...lazyPage(() => import('./pages/GateStation')) }] },
 
       // TODO(v2): Re-enable the /security kiosk only when its workflows
       // have persistent API support.

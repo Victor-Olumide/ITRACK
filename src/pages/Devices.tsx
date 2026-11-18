@@ -92,7 +92,7 @@ function toCard(asset: AssetApiRecord): DeviceCardData {
     warranty: asset.warrantyExpiry
       ? formatWarranty(asset.warrantyExpiry)
       : '—',
-    imageUrl: asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType),
+    imageUrl: asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make),
     modelUrl: asset.modelUrl ?? null,
   };
 }
@@ -176,10 +176,11 @@ function DeviceImage({
         />
       )}
 
-      {device.modelUrl && !showModel && <button type="button" onClick={(event) => { event.stopPropagation(); setModelViewerStatus('loading'); setShowModel(true) }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#3155ff] shadow-sm hover:bg-white">View 3D model</button>}
+      {device.modelUrl && !showModel && <button type="button" onClick={(event) => { event.stopPropagation(); setModelViewerStatus('loading'); setShowModel(true) }} className="absolute bottom-3 right-3 z-20 rounded-full border border-lime-200/70 bg-lime-300/90 px-3 py-1.5 text-[10px] font-bold text-[#344500] shadow-[0_4px_14px_rgba(75,100,0,.18)] backdrop-blur-sm hover:bg-lime-200">View 3D</button>}
 
       {showModel && modelViewerStatus === 'loading' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
 
+      {showModel && modelViewerStatus === 'ready' && <button type="button" onClick={(event) => { event.stopPropagation(); setShowModel(false); setModelFailed(false); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#3155ff] shadow-sm">Back to image</button>}
       {showModel && (modelFailed || modelViewerStatus === 'error') && <button type="button" onClick={(event) => { event.stopPropagation(); setShowModel(false); setModelFailed(false); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm">Back to image</button>}
 
       <span
@@ -344,7 +345,7 @@ export default function DevicesPage({
                 type="button"
                 onClick={() => setView('Grid')}
                 aria-pressed={view === 'Grid'}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition ${
+                className={`inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-semibold transition ${
                   view === 'Grid'
                     ? 'bg-[#101a50] text-white shadow-sm'
                     : 'text-slate-600 hover:bg-slate-50'
@@ -358,7 +359,7 @@ export default function DevicesPage({
                 type="button"
                 onClick={() => setView('List')}
                 aria-pressed={view === 'List'}
-                className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold transition ${
+                className={`inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-semibold transition ${
                   view === 'List'
                     ? 'bg-[#101a50] text-white shadow-sm'
                     : 'text-slate-600 hover:bg-slate-50'
@@ -372,7 +373,7 @@ export default function DevicesPage({
             <button
               type="button"
               onClick={() => navigate(`${basePath}/register`)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#3155ff] px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="inline-flex h-6 items-center gap-1 rounded-lg bg-[#3155ff] px-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
               <Plus size={16} />
               Register device

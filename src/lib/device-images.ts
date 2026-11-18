@@ -8,8 +8,12 @@ const DEVICE_IMAGES: Record<AssetType, string> = {
   OTHER: '/images/devices/desktop.webp',
 }
 
-export function categoryDeviceImage(type: AssetType, customType?: string | null) {
+export function categoryDeviceImage(type: AssetType, customType?: string | null, make?: string | null) {
   const label = customType?.toLowerCase() ?? ''
+  const manufacturer = make?.toLowerCase().trim() ?? ''
+
+  if (type === 'LAPTOP' && manufacturer.includes('apple')) return '/images/devices/laptops/macbook.jpg'
+  if (type === 'LAPTOP' && (manufacturer.includes('hp') || manufacturer.includes('hewlett'))) return '/images/devices/laptops/hp.jpg'
 
   if (label.includes('server')) return '/images/devices/server.webp'
   if (label.includes('printer')) return '/images/devices/printer.webp'

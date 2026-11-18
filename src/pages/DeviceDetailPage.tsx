@@ -91,7 +91,7 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
 
         <section className="mt-5 overflow-hidden rounded-2xl border border-[#e9edf6] bg-white">
           <img
-            src={asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType)}
+            src={asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make)}
             alt={`${asset.make} ${asset.model}`}
             className="h-52 w-full bg-[#f1f4fc] object-contain p-5"
           />

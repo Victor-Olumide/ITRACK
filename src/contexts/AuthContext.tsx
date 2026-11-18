@@ -82,7 +82,7 @@ export function homePathForRole(role: UserRole) {
   if (role === 'Department Head') return '/department'
   if (role === 'Technician') return '/technician'
   if (role === 'Employee') return '/employee'
-  if (role === 'Security') return '/workspace-unavailable'
+  if (role === 'Security') return '/security'
 
   return '/'
 }

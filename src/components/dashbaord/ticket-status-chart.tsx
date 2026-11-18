@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router'
 import {
   Bar,
   BarChart,
+  Cell,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -9,34 +10,21 @@ import {
   YAxis,
 } from 'recharts'
 
-const STATUS_LABELS: Record<string, string> = {
-  NEW: 'New',
-  ASSIGNED: 'Assigned',
-  IN_PROGRESS: 'In progress',
-  WAITING_ON_USER: 'Waiting on user',
-  RESOLVED: 'Resolved',
-  CLOSED: 'Closed',
-}
-
 interface TicketStatusChartProps {
-  byStatus: Record<string, number>
+  categories: Array<{ categoryId: string; category: string; count: number }>
 }
 
 export default function TicketStatusChart({
-  byStatus,
+  categories,
 }: TicketStatusChartProps) {
   const navigate = useNavigate()
 
-  const data = Object.entries(byStatus).map(([status, count]) => ({
-    status,
-    label: STATUS_LABELS[status] ?? status,
-    count,
-  }))
+  const data = categories.map((item) => ({ ...item, label: item.category }))
 
   if (!data.length) {
     return (
       <p className="py-8 text-center text-sm text-slate-500">
-        No ticket status data is available.
+        No ticket category data is available.
       </p>
     )
   }
@@ -44,32 +32,32 @@ export default function TicketStatusChart({
   return (
     <div>
       <p className="mb-2 text-xs text-slate-500">
-        Select a bar to view tickets with that status.
+        Tickets created in the last 30 days.
       </p>
 
       <div className="h-[280px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
-            layout="vertical"
-            margin={{ top: 8, right: 16, bottom: 8, left: 0 }}
+            margin={{ top: 8, right: 8, bottom: 8, left: 0 }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
-              horizontal={false}
+              vertical={false}
             />
 
             <XAxis
-              type="number"
+              type="category"
+              dataKey="label"
               allowDecimals={false}
               tickLine={false}
               axisLine={false}
             />
 
             <YAxis
-              type="category"
-              dataKey="label"
-              width={105}
+              type="number"
+              dataKey="count"
+              width={30}
               tickLine={false}
               axisLine={false}
               fontSize={11}
@@ -80,20 +68,19 @@ export default function TicketStatusChart({
             <Bar
               dataKey="count"
               name="Tickets"
-              fill="#3155ff"
-              radius={[0, 8, 8, 0]}
-              barSize={20}
+              radius={[8, 8, 0, 0]}
+              barSize={28}
               cursor="pointer"
               onClick={(_bar, index) => {
                 const selected = data[index]
 
                 if (selected) {
-                  navigate(
-                    `/tickets?status=${encodeURIComponent(selected.status)}`,
-                  )
+                  navigate(`/tickets?category=${encodeURIComponent(selected.categoryId)}`)
                 }
               }}
-            />
+            >
+              {data.map((item, index) => <Cell key={item.categoryId} fill={['#3155ff', '#c9f83b', '#ff8a65', '#7c5cff', '#20b6a8', '#f5b942'][index % 6]} />)}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -102,8 +89,8 @@ export default function TicketStatusChart({
       <div className="mt-3 flex flex-wrap gap-2">
         {data.map((item) => (
           <Link
-            key={item.status}
-            to={`/tickets?status=${encodeURIComponent(item.status)}`}
+            key={item.categoryId}
+            to={`/tickets?category=${encodeURIComponent(item.categoryId)}`}
             className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
           >
             {item.label}: {item.count}

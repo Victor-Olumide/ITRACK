@@ -114,7 +114,7 @@ export interface AssetListResponse {
 }
 
 export interface CreateAssetRequest {
-  assetTag: string;
+  assetTag?: string;
   serialNumber: string;
   type: AssetType;
   customType?: string | null;
