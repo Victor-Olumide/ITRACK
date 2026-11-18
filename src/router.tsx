@@ -105,12 +105,11 @@ const router = createBrowserRouter([
           { path: 'gate-passes', ...lazyPage(() => import('./pages/GateStation')) },
           { path: 'team', ...lazyPage(() => import('./pages/Team')) },
           { path: 'people', ...lazyPage(() => import('./pages/Team')) },
+          { path: 'settings', ...lazyPage(() => import('./pages/Settings')) },
           { path: 'signup', ...lazyPage(() => import('./pages/Team'), { showCreateForm: true }) },
 
           // TODO(v2): Re-enable /stock, /passes, /gate, /locations,
           // /audit, /models, and /notifications when their persistent APIs are available.
-          // TODO(v2): Re-enable /settings profile preferences and
-          // /security after their v1 APIs are implemented.
         ],
       },
 
