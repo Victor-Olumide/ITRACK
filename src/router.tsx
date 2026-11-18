@@ -57,6 +57,7 @@ function LoginRoute() {
 const router = createBrowserRouter([
   {
     path: '/',
+    HydrateFallback: SessionSplash,
     element: (
       <AuthProvider>
         <Outlet />

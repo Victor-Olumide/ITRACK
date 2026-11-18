@@ -194,9 +194,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await logoutRequest().unwrap()
-
-    endSessionLocally()
+    try {
+      await logoutRequest().unwrap()
+    } catch {
+      // Continue with local sign-out if the access session has expired or the
+      // API is temporarily unavailable. A logout action must not strand the
+      // user in the protected workspace.
+    } finally {
+      // Signing out locally must succeed even when an expired session or a
+      // transient API failure prevents the server-side cookie from being
+      // revoked. The server endpoint remains responsible for revocation when
+      // it is reachable.
+      endSessionLocally()
+    }
   }
 
   const value: AuthContextValue = {
