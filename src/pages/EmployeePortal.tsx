@@ -104,6 +104,9 @@ function Home({ viewer }: { viewer: PublicUser }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Link to="/employee/asset-requests/new" className="rounded-full border border-[#dce2ef] bg-white px-4 py-2.5 text-xs font-semibold text-[#202844] hover:bg-slate-50">
+            Request equipment
+          </Link>
           <Link to="/employee/passes/new" className="rounded-full border border-[#dce2ef] bg-white px-4 py-2.5 text-xs font-semibold text-[#202844] hover:bg-slate-50">
             Request gate pass
           </Link>

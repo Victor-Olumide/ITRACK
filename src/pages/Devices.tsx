@@ -152,7 +152,7 @@ function DeviceImage({
   const canShowModel = Boolean(showModel && device.modelUrl && modelViewerStatus === 'ready');
 
   return (
-    <div className="device-image relative flex h-43.5 items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
+    <div className="device-image relative flex h-[174px] items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
       {showModel ? (
         <div className="absolute inset-0 flex items-center justify-center bg-white">
           {canShowModel && (

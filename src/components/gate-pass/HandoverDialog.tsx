@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog'
 import SignaturePad from '../SignaturePad'
 import { useHandoverGatePassMutation } from '../../lib/api/gates/gates-api'
@@ -32,7 +32,7 @@ export default function HandoverDialog({ pass, signingAsRequester, onClose }: Ha
     onClose()
   }
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!pass) return
     setError('')

@@ -232,7 +232,7 @@ export default function RegisterDevicePage({
   };
 
   const saveAsset = async (
-    event: React.FormEvent<HTMLFormElement>,
+    event: React.SubmitEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
     setSaveError('');

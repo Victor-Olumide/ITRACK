@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { ArrowRight, FileText, PenLine, Plus } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -64,7 +64,7 @@ function RequestForm({ listPath }: { listPath: string }) {
   const toggle = (id: string) =>
     setSelected((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]))
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
     if (!selected.length) return setError('Pick at least one device.')

@@ -18,6 +18,7 @@ export const appApi = createApi({
     "Dashboard",
     "Department",
     "Signature",
+    "AssetRequest",
   ],
   endpoints: () => ({}),
 });

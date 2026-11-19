@@ -60,6 +60,6 @@ These rules are required. Do not restructure the application around a new archit
 
 ## Validation
 
-Use the project scripts: `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`. Add or update focused tests for API response mapping, query/mutation behavior, and error/loading states. Report any environment-specific build failure separately from TypeScript, lint, or test results.
+Use the project scripts: `pnpm run typecheck`, `pnpm run lint`, `pnpm test`, and `pnpm run build`. `pnpm run lint` includes `scripts/check-client-conventions.mjs`, which scans all client source files for deprecated React form event types and large fractional dimension utilities. Keep exact non-standard dimensions explicit with Tailwind arbitrary values: use `w-[130px]` rather than `w-32.5`. Small canonical spacing utilities such as `gap-1.5`, `p-2.5`, and `h-0.5` are valid and should not be changed mechanically. Use React 19's `SubmitEvent`/`SubmitEventHandler` for form submissions; do not add deprecated `FormEvent`/`FormEventHandler` types. Add or update focused tests for API response mapping, query/mutation behavior, and error/loading states. Report any environment-specific build failure separately from TypeScript, lint, test, or convention-check results.
 
 and produce a commit msg when you are done with code modifications

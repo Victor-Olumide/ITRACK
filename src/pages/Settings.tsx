@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { Bell, PenLine, UserRound } from 'lucide-react'
+import type { SubmitEvent } from 'react'
+import { PenLine, UserRound } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import SignaturePad from '../components/SignaturePad'
 import {
@@ -55,7 +55,7 @@ function SignatureSection({ role }: { role: string }) {
     setChangingPin(false)
   }
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     setMessage(null)
     if (!drawn) {
@@ -201,7 +201,7 @@ export default function Settings() {
           </dl>
         </section>
 
-        <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+        {/* <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
           <div className="flex items-center gap-2">
             <Bell size={17} />
             <h2 className="text-sm font-semibold">Notifications</h2>
@@ -209,7 +209,7 @@ export default function Settings() {
           <p className="mt-2 text-sm leading-6 text-amber-900">
             Notification preferences are unavailable until a persistent API is provided.
           </p>
-        </article>
+        </article> */}
         {/* TODO(v2): Restore notification and desktop start-up preferences (D17) when their APIs are ready. */}
       </div>
     </main>

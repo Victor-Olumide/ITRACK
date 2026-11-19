@@ -282,7 +282,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
                 }
               >
                 <Settings size={15} aria-hidden="true" />
-                Settings & signature
+                Settings
               </NavLink>
 
               <button

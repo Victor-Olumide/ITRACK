@@ -25,10 +25,6 @@ export function SessionSplash() {
         <h1 className="mt-3 text-2xl font-bold tracking-tight text-[#0B184C]">
           iTrack
         </h1>
-
-        <p className="mt-1 text-xs font-medium text-slate-500">
-          Asset & Ticket Management
-        </p>
       </div>
 
       <div className="flex flex-col items-center gap-4">

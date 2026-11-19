@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import { Link } from 'react-router'
 import { Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -378,7 +378,7 @@ function CheckInDialog({ pass, onClose }: { pass: GatePass; onClose: () => void 
   const [error, setError] = useState('')
   const count = outstanding.filter((item) => ticked[item.id]).length
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
     try {
