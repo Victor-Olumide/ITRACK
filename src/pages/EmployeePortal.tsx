@@ -15,7 +15,6 @@ import {
 import Badge from '../components/Badge'
 import AssetTag from '../components/AssetTag'
 import Dropdown from '../components/Dropdown'
-import DatePicker from '../components/DatePicker'
 import FileUpload from '../components/FileUpload'
 import { useAuth } from '../contexts/AuthContext'
 import type { PublicUser } from '../types/types'
@@ -37,7 +36,10 @@ import {
   type SelectableTicketPriority,
 } from '../lib/api/tickets/ticket-priority'
 import { getApiErrorMessage } from '../lib/api/error-message'
-import { useCreateGatePassMutation, useGetGatePassesQuery } from '../lib/api/gates/gates-api'
+import { useGetGatePassesQuery } from '../lib/api/gates/gates-api'
+import PassStatePill from '../components/gate-pass/PassStatePill'
+import { formatShortDay } from '../lib/api/gates/gate-pass-format'
+import GatePasses from './GatePasses'
 
 function PageTitle({
   title,
@@ -64,6 +66,8 @@ function PageTitle({
 function Home({ viewer }: { viewer: PublicUser }) {
   const ticketsQuery = useGetTicketsQuery({ page: 1, pageSize: 100 })
   const assetsQuery = useGetAssetsQuery({ page: 1, pageSize: 100 })
+  const passesQuery = useGetGatePassesQuery()
+  const recentPasses = (passesQuery.data ?? []).slice(0, 3)
 
   const myTickets = useMemo(
     () => (ticketsQuery.data?.data ?? []).map(toClientTicket),
@@ -197,14 +201,39 @@ function Home({ viewer }: { viewer: PublicUser }) {
           <article className="rounded-2xl border border-[#e9edf6] bg-white p-4 sm:p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold text-[#18203e]">Gate passes</h2>
+              <Link
+                to="/employee/passes"
+                className="text-xs font-semibold text-[#3155ff] hover:underline"
+              >
+                All my passes
+              </Link>
             </div>
-            <p
-              role="status"
-              className="border-t border-[#edf0f7] py-5 text-sm leading-6 text-slate-600"
-            >
-              Gate-pass records and requests are not supported by the current
-              v1 API.
-            </p>
+            <div className="divide-y divide-[#edf0f7] border-t border-[#edf0f7]">
+              {passesQuery.isLoading ? (
+                <p role="status" className="py-5 text-sm text-slate-500">Loading gate passes…</p>
+              ) : passesQuery.isError ? (
+                <p role="alert" className="py-5 text-sm text-red-700">
+                  {getApiErrorMessage(passesQuery.error, 'Gate passes could not be loaded.')}
+                </p>
+              ) : recentPasses.length === 0 ? (
+                <p className="py-5 text-sm text-slate-500">No gate passes yet.</p>
+              ) : (
+                recentPasses.map((pass) => (
+                  <Link key={pass.id} to="/employee/passes" className="flex items-center gap-3 py-3">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-[#202844]">
+                        {pass.code} · {pass.asset.make} {pass.asset.model}
+                        {pass.items.length > 1 ? ` + ${pass.items.length - 1}` : ''}
+                      </span>
+                      <span className="mt-1 block text-xs text-slate-500">
+                        {pass.destination} · {formatShortDay(pass.leavesOn)}
+                      </span>
+                    </span>
+                    <PassStatePill pass={pass} />
+                  </Link>
+                ))
+              )}
+            </div>
           </article>
         </section>
 
@@ -1101,101 +1130,6 @@ function MyTickets() {
   )
 }
 
-// Where each role's gate-pass screens live; must match the routes in src/router.tsx.
-const EMPLOYEE_PASS_PATHS = { home: '/employee', passes: '/employee/passes' }
-const PASS_PATHS: Partial<Record<PublicUser['role'], typeof EMPLOYEE_PASS_PATHS>> = {
-  'IT Admin': { home: '/', passes: '/passes' },
-  Technician: { home: '/technician', passes: '/technician/passes' },
-  'Department Head': { home: '/department', passes: '/department/passes' },
-  Employee: EMPLOYEE_PASS_PATHS,
-}
-
-function Passes({ request = false }: { request?: boolean }) {
-  const { user } = useAuth()
-  const paths = (user && PASS_PATHS[user.role]) ?? EMPLOYEE_PASS_PATHS
-  const workspacePath = paths.home
-  const newPassPath = `${paths.passes}/new`
-  const assetsQuery = useGetAssetsQuery({ page: 1, pageSize: 100 })
-  const passesQuery = useGetGatePassesQuery()
-  const [createGatePass, createState] = useCreateGatePassMutation()
-  const [assetId, setAssetId] = useState('')
-  const [reason, setReason] = useState('')
-  const [destination, setDestination] = useState('')
-  const [expectedReturnAt, setExpectedReturnAt] = useState('')
-  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setMessage(null)
-    try {
-      await createGatePass({
-        assetId,
-        reason: reason.trim(),
-        destination: destination.trim(),
-        ...(expectedReturnAt ? { expectedReturnAt: `${expectedReturnAt}T23:59:59.000Z` } : {}),
-      }).unwrap()
-      setAssetId('')
-      setReason('')
-      setDestination('')
-      setExpectedReturnAt('')
-      setMessage({ type: 'success', text: 'Gate-pass request submitted for review.' })
-    } catch (error) {
-      setMessage({ type: 'error', text: getApiErrorMessage(error, 'Could not submit the gate-pass request.') })
-    }
-  }
-
-  const assetOptions = (assetsQuery.data?.data ?? []).map((asset) => ({
-    value: asset.id,
-    label: `${asset.assetTag} · ${asset.make} ${asset.model}`,
-  }))
-
-  return (
-    <div className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
-      <PageTitle
-        title={request ? 'Request a gate pass' : 'Gate passes'}
-        description={request ? 'Request approval to take an assigned device outside campus.' : 'Track your device movement requests and approval status.'}
-      >
-        {request && (
-          <Link
-            to={workspacePath}
-            className="rounded-full border border-[#dce2ef] bg-white px-4 py-2.5 text-xs font-semibold text-[#202844] hover:bg-slate-50"
-          >
-            Back to home
-          </Link>
-        )}
-      </PageTitle>
-
-      {request ? (
-        <form onSubmit={submit} className="mt-5 max-w-2xl space-y-4 rounded-2xl border border-[#e9edf6] bg-white p-5 sm:p-6">
-          <label className="block text-xs font-semibold text-slate-600">Device
-            <div className="mt-1.5">
-              <Dropdown value={assetId} onChange={setAssetId} placeholder={assetsQuery.isLoading ? 'Loading assigned devices…' : 'Select a device'} ariaLabel="Select a device" disabled={assetsQuery.isLoading || assetsQuery.isError} options={assetOptions} />
-            </div>
-          </label>
-          <label className="block text-xs font-semibold text-slate-600">Reason
-            <textarea required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why does this device need to leave campus?" rows={3} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100" />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-xs font-semibold text-slate-600">Destination
-              <input required minLength={2} maxLength={255} value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="e.g. Client site" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100" />
-            </label>
-            <label className="block text-xs font-semibold text-slate-600">Expected return (optional)
-              <DatePicker value={expectedReturnAt} onChange={setExpectedReturnAt} />
-            </label>
-          </div>
-          {message && <p role={message.type === 'error' ? 'alert' : 'status'} className={`rounded-lg px-3 py-2 text-xs ${message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-800'}`}>{message.text}</p>}
-          <button type="submit" disabled={createState.isLoading || !assetId || !assetOptions.length} className="rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{createState.isLoading ? 'Submitting…' : 'Submit request'}</button>
-        </form>
-      ) : (
-        <section className="mt-5 rounded-2xl border border-[#e9edf6] bg-white p-5">
-          <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-bold text-[#18203e]">My gate-pass requests</h2><Link to={newPassPath} className="rounded-full bg-[#3155ff] px-3 py-2 text-xs font-semibold text-white">New request</Link></div>
-          {passesQuery.isLoading ? <p className="py-8 text-center text-sm text-slate-500">Loading requests…</p> : passesQuery.isError ? <p className="py-8 text-center text-sm text-red-700">Gate-pass requests could not be loaded.</p> : passesQuery.data?.length ? <div className="mt-3 divide-y divide-slate-100">{passesQuery.data.map((pass) => <div key={pass.id} className="flex flex-wrap items-center gap-3 py-3"><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-[#202844]">{pass.asset.assetTag} · {pass.asset.make} {pass.asset.model}</p><p className="mt-1 text-xs text-slate-500">{pass.destination} · {pass.reason}</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{pass.status}</span></div>)}</div> : <p className="py-8 text-center text-sm text-slate-500">No gate-pass requests yet.</p>}
-        </section>
-      )}
-    </div>
-  )
-}
-
 export default function EmployeePortal({
   section,
   viewer,
@@ -1209,8 +1143,8 @@ export default function EmployeePortal({
   if (!activeViewer) return <Navigate to="/login" replace />
   if (section === 'report') return <ReportProblem viewer={activeViewer} />
   if (section === 'tickets') return <MyTickets />
-  if (section === 'passes') return <Passes />
-  if (section === 'pass-form') return <Passes request />
+  if (section === 'passes') return <GatePasses section="list" />
+  if (section === 'pass-form') return <GatePasses section="new" />
 
   return <Home viewer={activeViewer} />
 }

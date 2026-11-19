@@ -8,6 +8,8 @@ import {
   BriefcaseBusiness,
   Home,
   Monitor,
+  ScanLine,
+  Settings,
   ShieldCheck,
   Ticket,
   Users,
@@ -49,7 +51,8 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
       { to: '/', label: 'Home', Icon: Home, end: true },
       { to: '/tickets', label: 'Tickets', Icon: Ticket },
       { to: '/devices', label: 'Devices', Icon: Monitor },
-      { to: '/gate-passes', label: 'Gate passes', Icon: ShieldCheck },
+      { to: '/gate-passes', label: 'Pass approvals', Icon: ShieldCheck },
+      { to: '/gate', label: 'Gate station', Icon: ScanLine },
       { to: '/reports', label: 'Reports', Icon: BarChart3 },
     ],
   },
@@ -57,6 +60,7 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
     label: 'MANAGEMENT',
     links: [
       { to: '/people', label: 'People and roles', Icon: Users },
+      { to: '/settings', label: 'Settings', Icon: Settings },
     ],
   },
 ]
@@ -70,6 +74,7 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
         { to: '/employee/report', label: 'Report a problem', Icon: Ticket },
         { to: '/employee/tickets', label: 'My tickets', Icon: ClipboardCheck },
         { to: '/employee/passes', label: 'Gate passes', Icon: ShieldCheck },
+        { to: '/employee/settings', label: 'Settings', Icon: Settings },
       ],
     },
   ],
@@ -80,7 +85,9 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
         { to: '/technician', label: 'Home', Icon: Home, end: true },
         { to: '/technician/tickets', label: 'My tickets', Icon: Ticket },
         { to: '/technician/devices', label: 'Devices', Icon: Monitor },
-        { to: '/technician/passes', label: 'Gate passes', Icon: ShieldCheck },
+        { to: '/technician/approvals', label: 'Pass approvals', Icon: ClipboardCheck },
+        { to: '/technician/passes', label: 'My gate passes', Icon: ShieldCheck },
+        { to: '/technician/settings', label: 'Settings', Icon: Settings },
       ],
     },
   ],
@@ -94,10 +101,19 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
         { to: '/department/tickets', label: 'My tickets', Icon: ClipboardCheck },
         { to: '/department/tickets/new', label: 'Create ticket', Icon: Ticket },
         { to: '/department/passes', label: 'Gate passes', Icon: ShieldCheck },
+        { to: '/department/settings', label: 'Settings', Icon: Settings },
       ],
     },
   ],
-  Security: [{ label: 'SECURITY', links: [{ to: '/security', label: 'Gate station', Icon: ShieldCheck, end: true }] }],
+  Security: [
+    {
+      label: 'SECURITY',
+      links: [
+        { to: '/security', label: 'Gate station', Icon: ScanLine, end: true },
+        { to: '/security/settings', label: 'Settings', Icon: Settings },
+      ],
+    },
+  ],
 }
 
 interface NavigationProps {

@@ -33,9 +33,32 @@ Asset assignment history uses the server `asset_assignments` table. This project
 
 The dashboard summary provides ticket counts by status, 30-day resolution/category metrics, server-calculated overdue tickets and technician workloads, asset counts by type/condition, and warranties expiring within 30 days. Do not calculate SLA progress or policy values in the client.
 
+## Gate passes and signatures
+
+Follows the ITrack UI design (W14, D06/D06b, D07-D10, D17, D19). Endpoints live in `src/lib/api/gates/` and `src/lib/api/signatures/`.
+
+| Step | Who | Endpoint |
+| --- | --- | --- |
+| Save, replace or remove my signature (PNG/JPEG, 4-6 digit PIN) | everyone | `GET/PUT/DELETE /me/signature` |
+| Revoke someone's signature and PIN | IT Admin | `DELETE /users/:id/signature` |
+| Devices I can put on a pass | everyone | `GET /gate-passes/my-assets` |
+| Request a pass (several devices, purpose, dates, phone, returnable) | everyone | `POST /gate-passes` |
+| List passes (own for Employee/Department Head, all for IT and Security) | everyone | `GET /gate-passes` |
+| One pass with item lines and signature images (slip) | owner, IT, Security | `GET /gate-passes/:id` |
+| Look up a tag to add an item | IT Admin, Technician | `GET /gate-passes/assets/lookup?tag=` |
+| Edit items and approve with saved signature + PIN, or reject with a reason | IT Admin, Technician (not their own pass) | `PATCH /gate-passes/:id/review` |
+| Person taking the items signs at handover (`APPROVED` -> `ISSUED`) | requester or IT | `POST /gate-passes/:id/handover` |
+| Scan a tag at the gate: `CLEARED`, `RETURNING` or `NOT_CLEARED` | Security, IT Admin | `GET /gate-passes/gate-check?tag=` |
+| Log exit after every item is ticked (`ISSUED` -> `EXITED`) | Security, IT Admin | `POST /gate-passes/:id/exit` |
+| Check items back in; all back -> `RETURNED` | Security, IT | `POST /gate-passes/:id/return` |
+| Log a stopped device | Security, IT Admin | `POST /gate-passes/stops` |
+| Today's gate log, counts and overdue returns | Security, IT | `GET /gate-passes/gate-log?from=` |
+
+The server enforces every role, ownership and state rule above; the client guards are navigation only. Signature images are snapshotted onto a pass when it is signed, so changing or removing a saved signature never alters a signed pass.
+
 ## Unsupported workflows
 
-There are no confirmed v1 APIs for gate passes, gate movements/scans, stock, 3D models, locations, SLA policy editing, audit events, notifications, or profile preferences. Do not define RTK Query endpoints or show fixture-backed interfaces for these resources. Their routes and navigation entries stay commented out in `src/router.tsx`; mark future work with `TODO(v2)` and restore it only after the server contract and persistence behavior exist.
+There are no confirmed v1 APIs for stock, 3D models, locations, SLA policy editing, audit events, notifications, or profile preferences. Do not define RTK Query endpoints or show fixture-backed interfaces for these resources. Their routes and navigation entries stay commented out in `src/router.tsx`; mark future work with `TODO(v2)` and restore it only after the server contract and persistence behavior exist.
 
 Dashboard and report screens may use only the implemented dashboard, ticket, and asset endpoints. Do not infer SLA compliance, gate activity, or other server-owned values from client data.
 

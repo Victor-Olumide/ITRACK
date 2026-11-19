@@ -17,6 +17,7 @@ export const appApi = createApi({
     "Category",
     "Dashboard",
     "Department",
+    "Signature",
   ],
   endpoints: () => ({}),
 });

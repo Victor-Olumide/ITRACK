@@ -5,6 +5,7 @@ import {
   ChevronDown,
   LogOut,
   Menu,
+  Settings,
   Ticket,
   UserRound,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import { useChangePasswordMutation } from "../lib/api/auth/auth-api";
 import { getApiErrorMessage } from "../lib/api/error-message";
 import type { SubmitEvent } from "react";
 import GlobalSearch from "./GlobalSearch";
+import { pathsForRole } from "../utils/role-paths";
 
 const initials = (name = "") =>
   name
@@ -72,6 +74,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
         : "/tickets";
 
   const ticketsLabel = role === "IT Admin" ? "Tickets" : "My tickets";
+  const settingsPath = pathsForRole(role).settings;
   const homePath = homePathForRole(role);
 
   useEffect(() => {
@@ -265,6 +268,21 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
               >
                 <Ticket size={15} aria-hidden="true" />
                 {ticketsLabel}
+              </NavLink>
+
+              <NavLink
+                to={settingsPath}
+                onClick={() => setProfileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium transition focus-visible:outline-2 focus-visible:outline-[#3155ff] ${
+                    isActive
+                      ? "bg-blue-50 text-[#3155ff]"
+                      : "text-slate-700 hover:bg-slate-50 hover:text-[#3155ff]"
+                  }`
+                }
+              >
+                <Settings size={15} aria-hidden="true" />
+                Settings & signature
               </NavLink>
 
               <button

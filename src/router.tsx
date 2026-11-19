@@ -105,8 +105,9 @@ const router = createBrowserRouter([
           { path: 'department/assets/:tag', ...lazyPage(() => import('./pages/DeviceDetailPage'), { basePath: '/department/assets' }) },
           { path: 'department/tickets', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'tickets' as const }) },
           { path: 'department/tickets/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'report' as const }) },
-          { path: 'department/passes', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }) },
-          { path: 'department/passes/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }) },
+          { path: 'department/passes', ...lazyPage(() => import('./pages/GatePasses'), { section: 'list' as const }) },
+          { path: 'department/passes/new', ...lazyPage(() => import('./pages/GatePasses'), { section: 'new' as const }) },
+          { path: 'department/settings', ...lazyPage(() => import('./pages/Settings')) },
         ],
       },
 
@@ -121,19 +122,20 @@ const router = createBrowserRouter([
           { path: 'tickets', ...lazyPage(() => import('./pages/Tickets')) },
           { path: 'tickets/queue', ...lazyPage(() => import('./pages/TicketQueue')) },
           { path: 'tickets/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'report' as const }) },
-          { path: 'passes', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }) },
-          { path: 'passes/new', ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }) },
+          { path: 'passes', ...lazyPage(() => import('./pages/GatePasses'), { section: 'list' as const }) },
+          { path: 'passes/new', ...lazyPage(() => import('./pages/GatePasses'), { section: 'new' as const }) },
           { path: 'devices', ...lazyPage(() => import('./pages/Devices')) },
           { path: 'devices/register', ...lazyPage(() => import('./pages/RegisterDevice')) },
           { path: 'devices/:tag', ...lazyPage(() => import('./pages/DeviceDetailPage')) },
           { path: 'reports', ...lazyPage(() => import('./pages/Reports')) },
-          { path: 'gate-passes', ...lazyPage(() => import('./pages/GateStation')) },
+          { path: 'gate-passes', ...lazyPage(() => import('./pages/GatePassApprovals')) },
+          { path: 'gate', ...lazyPage(() => import('./pages/GateStation')) },
           { path: 'team', ...lazyPage(() => import('./pages/Team')) },
           { path: 'people', ...lazyPage(() => import('./pages/Team')) },
           { path: 'settings', ...lazyPage(() => import('./pages/Settings')) },
           { path: 'signup', ...lazyPage(() => import('./pages/Team'), { showCreateForm: true }) },
 
-          // TODO(v2): Re-enable /stock, /gate, /locations, /audit, /models,
+          // TODO(v2): Re-enable /stock, /locations, /audit, /models,
           // and /notifications when their persistent APIs are available.
         ],
       },
@@ -168,12 +170,17 @@ const router = createBrowserRouter([
           },
           {
             path: 'technician/passes',
-            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }),
+            ...lazyPage(() => import('./pages/GatePasses'), { section: 'list' as const }),
           },
           {
             path: 'technician/passes/new',
-            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }),
+            ...lazyPage(() => import('./pages/GatePasses'), { section: 'new' as const }),
           },
+          {
+            path: 'technician/approvals',
+            ...lazyPage(() => import('./pages/GatePassApprovals')),
+          },
+          { path: 'technician/settings', ...lazyPage(() => import('./pages/Settings')) },
         ],
       },
 
@@ -206,16 +213,35 @@ const router = createBrowserRouter([
           },
           {
             path: 'employee/passes',
-            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }),
+            ...lazyPage(() => import('./pages/GatePasses'), { section: 'list' as const }),
           },
           {
             path: 'employee/passes/new',
-            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }),
+            ...lazyPage(() => import('./pages/GatePasses'), { section: 'new' as const }),
           },
+          { path: 'employee/settings', ...lazyPage(() => import('./pages/Settings')) },
         ],
       },
 
-      { path: 'security', element: <RequireAuth roles={['Security']}><Layout /></RequireAuth>, children: [{ index: true, ...lazyPage(() => import('./pages/GateStation')) }] },
+      {
+        path: 'security',
+        element: <RequireAuth roles={['Security']}><Layout /></RequireAuth>,
+        children: [
+          { index: true, ...lazyPage(() => import('./pages/GateStation')) },
+          { path: 'settings', ...lazyPage(() => import('./pages/Settings')) },
+        ],
+      },
+
+      // D19 printable slip: full page, no app shell, for anyone who can see the pass.
+      {
+        path: 'gate-pass-slips/:id',
+        element: (
+          <RequireAuth roles={['IT Admin', 'Technician', 'Department Head', 'Employee', 'Security']}>
+            <Outlet />
+          </RequireAuth>
+        ),
+        children: [{ index: true, ...lazyPage(() => import('./pages/GatePassSlip')) }],
+      },
 
       // TODO(v2): Re-enable the /security kiosk only when its workflows
       // have persistent API support.

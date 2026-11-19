@@ -1,170 +1,180 @@
-import { Printer, X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { GatePass, PublicUser } from '../types/types'
+import { useNavigate, useParams } from 'react-router'
+import { ArrowLeft, Printer } from 'lucide-react'
+import { useGetGatePassQuery } from '../lib/api/gates/gates-api'
+import { formatDateTime, formatDay, itemCount, passState, shortHash } from '../lib/api/gates/gate-pass-format'
+import { getApiErrorMessage } from '../lib/api/error-message'
 
-function formatDate(value: string) {
-  if (!value) return '—'
-  const date = new Date(`${value}T00:00:00`)
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
-}
-
-function Field({ label, value, className = '' }: { label: string; value: ReactNode; className?: string }) {
+function Row({ cells }: { cells: [string, ReactNode][] }) {
   return (
-    <div className={`grid grid-cols-[minmax(90px,0.7fr)_minmax(0,1.3fr)] border-b border-r border-slate-300 last:border-r-0 ${className}`}>
-      <dt className="bg-slate-50 px-2 py-1.5 text-[8px] font-semibold text-slate-700">{label}</dt>
-      <dd className="min-w-0 px-2 py-1.5 text-[8px] text-slate-700">{value || '—'}</dd>
-    </div>
+    <tr>
+      {cells.map(([label, value]) => (
+        <Cell key={label} label={label} value={value} wide={cells.length === 1} />
+      ))}
+    </tr>
   )
 }
 
-// TODO(v2): Re-enable this prototype only after pass records come from the server API.
-interface GatePassSlipProps {
-  pass: GatePass
-  viewer: PublicUser
-  requester: PublicUser
-  onClose: () => void
+function Cell({ label, value, wide }: { label: string; value: ReactNode; wide?: boolean }) {
+  return (
+    <>
+      <th className="w-[18%] border border-slate-300 bg-[#F4F6FB] px-2 py-1.5 text-left font-semibold">{label}</th>
+      <td colSpan={wide ? 3 : 1} className="border border-slate-300 px-2 py-1.5">{value || '—'}</td>
+    </>
+  )
 }
 
-function GatePassSlip({ pass, viewer, requester, onClose }: GatePassSlipProps) {
-  const items = pass.items ?? []
-  const printDate = new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date())
-  const pieces = items.reduce((total, item) => total + (Number(item.qty) || 1), 0)
-  const status = pass.status ?? 'Waiting'
+/** D19 "Printable gate pass slip (A4)" */
+export default function GatePassSlip() {
+  const { id = '' } = useParams()
+  const navigate = useNavigate()
+  const passQuery = useGetGatePassQuery(id, { skip: !id })
+  const pass = passQuery.data
+
+  if (passQuery.isLoading) {
+    return <p role="status" className="p-10 text-center text-sm text-slate-500">Loading the gate pass…</p>
+  }
+  if (passQuery.isError || !pass) {
+    return (
+      <div role="alert" className="p-10 text-center">
+        <p className="text-sm text-red-700">{getApiErrorMessage(passQuery.error, 'This gate pass could not be loaded.')}</p>
+        <button type="button" onClick={() => navigate(-1)} className="mt-3 text-sm font-semibold text-[#3155ff] hover:underline">Go back</button>
+      </div>
+    )
+  }
+
+  const pieces = itemCount(pass)
+  const state = passState(pass)
+  const back = pass.items.filter((item) => item.returnedAt).length
 
   return (
-    <div className="gate-pass-preview fixed inset-0 z-70 overflow-y-auto bg-slate-100 p-3 sm:p-6">
+    <div className="gate-pass-preview min-h-screen bg-slate-100 p-3 sm:p-6">
       <div className="gate-pass-toolbar mx-auto mb-4 flex max-w-[210mm] items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-700">Print preview · {pass.id}</p>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-full bg-[#3155ff] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            <Printer size={16} /> Print slip
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close print preview"
-            title="Close print preview"
-            className="rounded-full border border-slate-300 bg-white p-2 text-slate-600 hover:bg-slate-50"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <ArrowLeft size={16} aria-hidden="true" /> Back
+        </button>
+        <p className="text-sm font-semibold text-slate-700">{pass.code} · {state}</p>
+        <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-[#3155ff] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+          <Printer size={16} aria-hidden="true" /> Print slip
+        </button>
       </div>
 
-      <article className="gate-pass-print mx-auto flex min-h-[270mm] max-w-[210mm] flex-col bg-white p-6 text-slate-800 shadow-lg sm:p-8">
-        <header className="flex items-start justify-between gap-4 border-b-2 border-[#172554] pb-4">
-          <div className="flex items-center gap-3">
-            <img src="/favicons/favicon.svg" alt="" className="h-10 w-10 object-contain" />
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-[#111a38]">Gate pass · {pass.isReturnable === false ? 'Non-returnable items' : 'Returnable items'}</h1>
-              <p className="mt-0.5 text-[8px] text-slate-500">IT Department · Afe Babalola University, Ado-Ekiti</p>
-            </div>
+      <article className="gate-pass-print mx-auto flex min-h-[297mm] max-w-[210mm] flex-col gap-3.5 bg-white px-11 py-10 text-[12px] text-[#0E1430] shadow-lg">
+        <header className="flex items-start gap-3.5 border-b-2 border-[#0F1A4A] pb-3">
+          <img src="/favicons/favicon.svg" alt="" className="h-10 w-10 object-contain" />
+          <div className="flex-1">
+            <h1 className="text-[22px] font-bold">Gate pass · {pass.isReturnable ? 'Returnable items' : 'Non-returnable items'}</h1>
+            <p className="text-[#5B6480]">IT Department · Afe Babalola University, Ado-Ekiti · Form ITR-GP-01</p>
           </div>
-          <div className="shrink-0 text-right">
-            <p className="font-mono text-lg font-bold">{pass.id}</p>
-            <p className="text-[8px] text-slate-500">Issued {printDate}</p>
-            <span className={`mt-1 inline-block rounded border px-2 py-0.5 text-[7px] font-bold uppercase ${status === 'Approved' ? 'border-emerald-700 text-emerald-800' : 'border-amber-700 text-amber-800'}`}>
-              {status}
+          <div className="text-right">
+            <p className="font-mono text-lg font-semibold">{pass.code}</p>
+            <p className="text-[#5B6480]">Issued {formatDateTime(pass.approvedAt)}</p>
+            <span className={`mt-1 inline-block rounded border-[1.5px] px-1.5 font-bold ${pass.isReturnable ? 'border-[#1C2E9E] text-[#1C2E9E]' : 'border-[#8A4B05] text-[#8A4B05]'}`}>
+              {pass.isReturnable ? 'RETURNABLE' : 'NON-RETURNABLE'}
             </span>
           </div>
         </header>
 
-        <section className="mt-4" aria-label="Pass details">
-          <dl className="grid grid-cols-2 border-l border-t border-slate-300">
-            <Field label="Taken by" value={`${requester?.name ?? '—'}${requester?.staffId ? ` · Staff ID ${requester.staffId}` : ''}`} />
-            <Field label="Department" value={requester?.department} />
-            {requester?.phone && <Field label="Phone" value={requester.phone} />}
-            {pass.purpose && <Field label="Purpose" value={pass.purpose} />}
-            <Field label="Destination" value={pass.destination} className="col-span-2" />
-            <Field label="Out → back" value={`${formatDate(pass.outDate)} → ${formatDate(pass.returnDate)}`} className="col-span-2" />
-          </dl>
-        </section>
+        <table className="w-full border-collapse">
+          <tbody>
+            <Row cells={[['Taken by', `${pass.requester.fullName} · Staff ID ${pass.requester.staffId}`], ['Department', pass.requester.department.name]]} />
+            <Row cells={[['Phone', pass.contactPhone ?? pass.requester.phone], ['Purpose', pass.reason]]} />
+            <Row cells={[['Destination', pass.destination], ['Out → back', `${formatDay(pass.leavesOn)} → ${pass.isReturnable ? formatDay(pass.expectedReturnAt) : 'leaves for good'}`]]} />
+          </tbody>
+        </table>
 
-        <section className="mt-4">
-          <h2 className="mb-2 text-xs font-bold text-[#111a38]">All items leaving the site</h2>
-          <div className="overflow-hidden border border-slate-300">
-            <table className="w-full table-fixed border-collapse text-left text-[7px]">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="w-[5%] border-b border-r border-slate-300 px-1.5 py-2">#</th>
-                  <th className="w-[18%] border-b border-r border-slate-300 px-1.5 py-2">Item</th>
-                  <th className="w-[14%] border-b border-r border-slate-300 px-1.5 py-2">Tag</th>
-                  <th className="w-[22%] border-b border-r border-slate-300 px-1.5 py-2">Make and model</th>
-                  <th className="w-[16%] border-b border-r border-slate-300 px-1.5 py-2">Serial number</th>
-                  <th className="w-[7%] border-b border-r border-slate-300 px-1.5 py-2">Qty</th>
-                  <th className="w-[14%] border-b border-slate-300 px-1.5 py-2">Condition out</th>
+        <div>
+          <div className="mb-1.5 font-bold">Main device</div>
+          <table className="w-full border-collapse">
+            <tbody>
+              <Row cells={[['Device name', <b key="name">{pass.asset.make} {pass.asset.model}</b>], ['Asset tag', <span key="tag" className="font-mono font-semibold">{pass.asset.assetTag}</span>]]} />
+              <Row cells={[['Serial number', <span key="sn" className="font-mono font-semibold">{pass.asset.serialNumber}</span>], ['Type', pass.asset.type.charAt(0) + pass.asset.type.slice(1).toLowerCase()]]} />
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <div className="mb-1.5 font-bold">All items leaving the site</div>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-[#F4F6FB] text-left">
+                {['#', 'Item', 'Tag', 'Make and model', 'Serial number', 'Qty', 'Condition out', 'Back ✓'].map((heading) => (
+                  <th key={heading} className="border border-slate-300 px-1.5 py-1.5 font-semibold">{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pass.items.map((item, index) => (
+                <tr key={item.id}>
+                  <td className="border border-slate-300 px-1.5 py-1.5">{index + 1}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 font-bold">{item.name}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 font-mono">{item.assetTag ?? '—'}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5">{item.makeModel ?? '—'}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 font-mono font-semibold">{item.serialNumber ?? 'None printed'}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5">{item.quantity}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5">{item.conditionOut ?? '—'}</td>
+                  <td className="border border-slate-300 px-1.5 py-1.5 text-center font-bold text-[#12733A]">{item.returnedAt ? '✓' : ''}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {items.map((item, index) => {
-                  return (
-                    <tr key={`${item.tag}-${index}`}>
-                      <td className="border-b border-r border-slate-300 px-1.5 py-2 align-top">{index + 1}</td>
-                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top font-semibold">
-                        {item.name ?? item.type ?? 'Accessory'}
-                      </td>
-                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.tag}</td>
-                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.make ?? '—'}</td>
-                      <td className="wrap-break-word border-b border-r border-slate-300 px-1.5 py-2 align-top font-mono">{item.serial ?? '—'}</td>
-                      <td className="border-b border-r border-slate-300 px-1.5 py-2 align-top">{item.qty ?? 1}</td>
-                      <td className="wrap-break-word border-b border-slate-300 px-1.5 py-2 align-top">{item.condition ?? 'Not recorded'}</td>
-                    </tr>
-                  )
-                })}
-                {items.length === 0 && (
-                  <tr><td colSpan={7} className="px-2 py-4 text-center text-slate-500">No items recorded on this pass.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-1 text-[7px] text-slate-500">
-            {items.length} {items.length === 1 ? 'item' : 'items'}, {pieces} {pieces === 1 ? 'piece' : 'pieces'}.
-            {' '}Security must see every item before release. Any item not returned keeps this pass open.
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-1 text-[#5B6480]">
+            {pass.items.length} item{pass.items.length === 1 ? '' : 's'}, {pieces} piece{pieces === 1 ? '' : 's'}. Security must see every item before release.
+            {pass.isReturnable ? ' Any item not returned keeps this pass open.' : ''}
           </p>
-        </section>
+        </div>
 
-        <section className="mt-4 grid grid-cols-3 gap-2">
-          {[
-            { title: 'Prepared by', name: `${viewer.name} · ${viewer.role}${viewer.staffId ? ` · ${viewer.staffId}` : ''}` },
-            { title: 'Received by', name: `${requester?.name ?? 'Requester'}${requester?.staffId ? ` · ${requester.staffId}` : ''}` },
-            { title: 'Security release', name: 'Officer name and signature' },
-          ].map(({ title, name }) => (
-            <div key={title} className="min-h-20.5 rounded-md border border-slate-300 p-2">
-              <h3 className="text-[7px] font-bold">{title}</h3>
-              <div className="mt-7 border-b border-slate-400" />
-              <p className="mt-1 text-[6px] text-slate-600">{name}</p>
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="flex flex-col gap-1 rounded-md border border-[#9AA3BF] p-2.5">
+            <b>Issued and approved by</b>
+            <div className="flex h-[50px] items-center">
+              {pass.issuerSignature?.image && <img src={pass.issuerSignature.image} alt={`Signature of ${pass.reviewer?.fullName ?? 'the issuer'}`} className="h-[50px] max-w-full object-contain" />}
             </div>
-          ))}
-        </section>
+            <span className="border-t border-[#9AA3BF] pt-1">{pass.reviewer ? `${pass.reviewer.fullName} · ${pass.reviewer.staffId}` : '—'}</span>
+            <span className="text-[10px] text-[#5B6480]">
+              {pass.issuerSignature
+                ? `E-signed ${formatDateTime(pass.issuerSignature.signedAt)} · PIN confirmed · sha256 ${shortHash(pass.issuerSignature.sha256)}`
+                : 'Not yet signed by IT.'}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-md border border-[#9AA3BF] p-2.5">
+            <b>Received by</b>
+            <div className="flex h-[50px] items-center">
+              {pass.receiverSignature?.image && <img src={pass.receiverSignature.image} alt={`Signature of ${pass.requester.fullName}`} className="h-[50px] max-w-full object-contain" />}
+            </div>
+            <span className="border-t border-[#9AA3BF] pt-1">{pass.requester.fullName} · {pass.requester.staffId}</span>
+            <span className="text-[10px] text-[#5B6480]">
+              {pass.receiverSignature
+                ? `Signed ${formatDateTime(pass.receiverSignature.signedAt)}. I accept these items in the condition stated.`
+                : 'Signs on screen at handover.'}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-md border border-[#9AA3BF] p-2.5">
+            <b>Security release</b>
+            <span className="flex h-[50px] items-center text-[#5B6480]">
+              {pass.exitedAt ? `${pass.exitGate ?? 'Gate'} · ${formatDateTime(pass.exitedAt)}` : 'Gate ______ · Time ______'}
+            </span>
+            <span className="border-t border-[#9AA3BF] pt-1">{pass.exitedBy ? `${pass.exitedBy.fullName} · ${pass.exitedBy.staffId}` : 'Officer name and signature'}</span>
+            <span className="text-[10px] text-[#5B6480]">Filled in automatically when scanned at the gate station.</span>
+          </div>
+        </div>
 
-        {pass.isReturnable !== false && (
-          <section className="mt-3 rounded-md border border-dashed border-slate-400 p-2">
-            <h2 className="text-[7px] font-bold">Return check</h2>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-[6px]">
-              <p>Date and time back: __________________</p>
-              <p>Items checked in: ____ of {pieces}</p>
-              <p>Officer: __________________</p>
-            </div>
-            <p className="mt-2 text-[6px]">Condition on return / notes: _________________________________________________</p>
-          </section>
+        {pass.isReturnable && (
+          <div className="grid grid-cols-3 gap-2.5 rounded-md border border-dashed border-[#9AA3BF] p-2.5">
+            <b className="col-span-3">Return check</b>
+            <span>Date and time back: {pass.returnedAt ? formatDateTime(pass.returnedAt) : '__________'}</span>
+            <span>Items checked in: {back} of {pass.items.length}</span>
+            <span>Officer: {pass.returnedBy?.fullName ?? '__________'}</span>
+            <span className="col-span-3 text-[#5B6480]">Condition on return / notes: {pass.returnNote ?? '______________________________________________'}</span>
+          </div>
         )}
 
-        <footer className="mt-auto flex justify-between gap-4 border-t border-slate-200 pt-2 text-[6px] text-slate-500">
-          <p>{status === 'Approved' ? 'Approved pass. Present this slip at the security gate for item verification.' : 'This request is not yet approved. Do not release items until approval is recorded.'}</p>
-          <p className="shrink-0">Copy: Gate · IT · Holder</p>
+        <footer className="mt-auto flex justify-between gap-4 border-t border-[#D4DAEA] pt-2 text-[10px] text-[#5B6480]">
+          <span>Signed passes cannot be edited. Check this pass at the gate station by scanning the main device tag.</span>
+          <span>Copy: Gate · IT · Holder</span>
+          <span>Page 1 of 1</span>
         </footer>
       </article>
     </div>
   )
 }
-
-export default GatePassSlip
