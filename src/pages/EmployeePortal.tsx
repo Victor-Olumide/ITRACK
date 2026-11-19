@@ -1101,10 +1101,20 @@ function MyTickets() {
   )
 }
 
+// Where each role's gate-pass screens live; must match the routes in src/router.tsx.
+const EMPLOYEE_PASS_PATHS = { home: '/employee', passes: '/employee/passes' }
+const PASS_PATHS: Partial<Record<PublicUser['role'], typeof EMPLOYEE_PASS_PATHS>> = {
+  'IT Admin': { home: '/', passes: '/passes' },
+  Technician: { home: '/technician', passes: '/technician/passes' },
+  'Department Head': { home: '/department', passes: '/department/passes' },
+  Employee: EMPLOYEE_PASS_PATHS,
+}
+
 function Passes({ request = false }: { request?: boolean }) {
   const { user } = useAuth()
-  const workspacePath = user?.role === 'Department Head' ? '/department' : '/employee'
-  const newPassPath = user?.role === 'Department Head' ? '/department/passes/new' : '/employee/passes/new'
+  const paths = (user && PASS_PATHS[user.role]) ?? EMPLOYEE_PASS_PATHS
+  const workspacePath = paths.home
+  const newPassPath = `${paths.passes}/new`
   const assetsQuery = useGetAssetsQuery({ page: 1, pageSize: 100 })
   const passesQuery = useGetGatePassesQuery()
   const [createGatePass, createState] = useCreateGatePassMutation()

@@ -80,6 +80,7 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
         { to: '/technician', label: 'Home', Icon: Home, end: true },
         { to: '/technician/tickets', label: 'My tickets', Icon: Ticket },
         { to: '/technician/devices', label: 'Devices', Icon: Monitor },
+        { to: '/technician/passes', label: 'Gate passes', Icon: ShieldCheck },
       ],
     },
   ],

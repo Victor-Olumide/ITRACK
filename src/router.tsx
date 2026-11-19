@@ -133,8 +133,8 @@ const router = createBrowserRouter([
           { path: 'settings', ...lazyPage(() => import('./pages/Settings')) },
           { path: 'signup', ...lazyPage(() => import('./pages/Team'), { showCreateForm: true }) },
 
-          // TODO(v2): Re-enable /stock, /passes, /gate, /locations,
-          // /audit, /models, and /notifications when their persistent APIs are available.
+          // TODO(v2): Re-enable /stock, /gate, /locations, /audit, /models,
+          // and /notifications when their persistent APIs are available.
         ],
       },
 
@@ -166,8 +166,14 @@ const router = createBrowserRouter([
             path: 'technician/devices/:tag',
             ...lazyPage(() => import('./pages/DeviceDetailPage'), { basePath: '/technician/devices' }),
           },
-
-          // TODO(v2): Re-enable /technician/passes after the gate-pass API is ready.
+          {
+            path: 'technician/passes',
+            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }),
+          },
+          {
+            path: 'technician/passes/new',
+            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }),
+          },
         ],
       },
 
@@ -198,9 +204,14 @@ const router = createBrowserRouter([
             path: 'employee/devices/:tag',
             ...lazyPage(() => import('./pages/DeviceDetailPage'), { basePath: '/employee' }),
           },
-
-          // TODO(v2): Re-enable /employee/passes and /employee/passes/new
-          // after the gate-pass API is ready.
+          {
+            path: 'employee/passes',
+            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'passes' as const }),
+          },
+          {
+            path: 'employee/passes/new',
+            ...lazyPage(() => import('./pages/EmployeePortal'), { section: 'pass-form' as const }),
+          },
         ],
       },
 
