@@ -153,7 +153,24 @@ function DeviceImage({
 
   return (
     <div className="device-image relative flex h-43.5 items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
-      {hasImage ? (
+      {showModel ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-white">
+          {canShowModel && (
+            <model-viewer
+              key={device.modelUrl}
+              src={device.modelUrl!}
+              alt={`${device.name} 3D model`}
+              loading="lazy"
+              camera-controls
+              auto-rotate
+              rotation-per-second="20deg"
+              shadow-intensity="1"
+              onError={() => setModelViewerStatus('error')}
+              className="h-full w-full bg-white"
+            />
+          )}
+        </div>
+      ) : hasImage ? (
         <img
           src={device.imageUrl!}
           alt={`${device.name} device`}
@@ -166,21 +183,6 @@ function DeviceImage({
           <Icon size={60} strokeWidth={1} />
           <span className="text-xs">{device.category}</span>
         </div>
-      )}
-
-      {canShowModel && (
-        <model-viewer
-          key={device.modelUrl}
-          src={device.modelUrl!}
-          alt={`${device.name} 3D model`}
-          loading="lazy"
-          camera-controls
-          auto-rotate
-          rotation-per-second="20deg"
-          shadow-intensity="1"
-          onError={() => setModelViewerStatus('error')}
-          className="relative z-10 h-full w-full bg-transparent"
-        />
       )}
 
       {showModel && modelViewerStatus !== 'ready' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
@@ -361,7 +363,7 @@ export default function DevicesPage({
             </h1>
 
             <p className="mt-1 text-xs text-slate-500">
-              Live asset records filtered and paginated by the server.
+              Live asset records.
             </p>
           </div>
 
