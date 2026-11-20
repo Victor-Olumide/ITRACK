@@ -67,12 +67,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
 
-  const ticketsPath =
-    role === "Employee"
-      ? "/employee/tickets"
-      : role === "Technician"
-        ? "/technician/tickets"
-        : "/tickets";
+  const ticketsPath = pathsForRole(role).tickets;
 
   const ticketsLabel = role === "IT Admin" ? "Tickets" : "My tickets";
   const settingsPath = pathsForRole(role).settings;
@@ -258,6 +253,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
               id="profile-menu"
               className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 text-slate-900 shadow-lg shadow-slate-950/10"
             >
+              {ticketsPath && (
               <NavLink
                 to={ticketsPath}
                 onClick={() => setProfileMenuOpen(false)}
@@ -272,6 +268,7 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
                 <Ticket size={15} aria-hidden="true" />
                 {ticketsLabel}
               </NavLink>
+              )}
 
               <NavLink
                 to={settingsPath}
