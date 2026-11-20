@@ -25,6 +25,7 @@ export default function GlobalSearch({ role }: { role: UserRole }) {
   const [value, setValue] = useState('');
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
+  const [shortcutHintVisible, setShortcutHintVisible] = useState(false);
   const debounced = useDebouncedValue(value.trim(), 250);
   const query = useGlobalSearchQuery(debounced, { skip: debounced.length < 2 });
   const results = useMemo(() => [
@@ -32,6 +33,16 @@ export default function GlobalSearch({ role }: { role: UserRole }) {
     ...(query.data?.devices ?? []).map((item) => ({ type: 'device' as const, item })),
     ...(query.data?.people ?? []).map((item) => ({ type: 'person' as const, item })),
   ], [query.data]);
+
+  useEffect(() => {
+    const showHint = () => {
+      if (!window.matchMedia('(min-width: 1024px)').matches) return;
+      setShortcutHintVisible(true);
+      window.setTimeout(() => setShortcutHintVisible(false), 2400);
+    };
+    const timer = window.setInterval(showHint, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -69,11 +80,11 @@ export default function GlobalSearch({ role }: { role: UserRole }) {
   };
 
   const showDropdown = open && value.trim().length >= 2;
-  return <div ref={rootRef} className="relative min-w-0 flex-1 max-w-2xl">
+  return <div ref={rootRef} className="relative min-w-0 flex-1">
     <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
     <input ref={inputRef} value={value} onFocus={() => setOpen(true)} onChange={(event) => { setValue(event.target.value); setOpen(true); }} onKeyDown={onKeyDown} placeholder="Search tickets, devices, people" aria-label="Search tickets, devices, people" aria-expanded={showDropdown} aria-controls="global-search-results" role="combobox" className="h-9 w-full rounded-full border border-white/10 bg-[#1b2a69] pl-9 pr-20 text-xs text-white outline-none placeholder:text-slate-400 focus:border-[#d2f54a] focus:ring-2 focus:ring-[#d2f54a]/20" />
     {value && <button type="button" onClick={() => { setValue(''); setOpen(false); inputRef.current?.focus(); }} aria-label="Clear search" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"><X size={14} /></button>}
-    {!value && <kbd aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 flex h-5 -translate-y-1/2 items-center rounded border border-white/20 px-1.5 font-sans text-[9px] leading-none text-slate-400">{shortcutLabel}</kbd>}
+    {!value && <kbd aria-hidden="true" className={`pointer-events-none absolute right-4 top-1/2 flex h-5 -translate-y-1/2 items-center rounded border px-1.5 font-sans text-[9px] leading-none transition-all duration-300 max-lg:hidden ${shortcutHintVisible ? 'scale-110 border-[#d2f54a]/70 text-[#d2f54a] opacity-100' : 'border-white/20 text-slate-400 opacity-70'}`}>{shortcutLabel}</kbd>}
     {showDropdown && <div id="global-search-results" role="listbox" className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[min(70vh,30rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 text-slate-900 shadow-2xl shadow-slate-950/20 sm:min-w-[28rem]">
       {query.isFetching && <div className="flex items-center gap-2 px-3 py-4 text-xs text-slate-500"><LoaderCircle size={15} className="animate-spin" /> Searching…</div>}
       {!query.isFetching && query.isError && <div className="px-3 py-4 text-xs text-red-600">Search is temporarily unavailable. Try again.</div>}

@@ -35,7 +35,7 @@ const STEPS = [
 ] as const
 
 const inputClass =
-  'h-11 w-full rounded-xl border border-[#D4DAEA] bg-white px-3 text-sm text-[#0E1430] outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100'
+  'h-9 w-full rounded-lg border border-[#D4DAEA] bg-white px-3 text-xs text-[#0E1430] outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100'
 
 function todayInput() {
   const now = new Date()
@@ -89,9 +89,9 @@ function RequestForm({ listPath }: { listPath: string }) {
 
   return (
     <div className="mt-5 grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <form onSubmit={submit} className="flex flex-col gap-4 rounded-[20px] bg-white p-5 sm:p-6">
+      <form onSubmit={submit} className="flex flex-col gap-3 rounded-[18px] bg-white p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-[#0E1430]">What are you taking?</h2>
+          <h2 className="text-base font-semibold text-[#0E1430]">What are you taking?</h2>
           <span className="text-[13px] text-[#5B6480]">{selected.length} item{selected.length === 1 ? '' : 's'} selected</span>
         </div>
 
@@ -165,7 +165,7 @@ function RequestForm({ listPath }: { listPath: string }) {
           ) : (
             <span className="flex flex-col gap-1.5 text-[13px] font-semibold text-[#3E4766]">
               Back by
-              <span className="flex h-11 items-center rounded-xl bg-[#FEF3C7] px-3 text-xs text-[#5C3A06]">Leaves for good</span>
+              <span className="flex h-9 items-center rounded-lg bg-[#FEF3C7] px-3 text-xs text-[#5C3A06]">Leaves for good</span>
             </span>
           )}
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[#3E4766]">
@@ -198,20 +198,20 @@ function RequestForm({ listPath }: { listPath: string }) {
         {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
         <div className="flex justify-end gap-2">
-          <Link to={listPath} className="inline-flex h-11 items-center rounded-full border-[1.5px] border-[#CBD2E6] bg-white px-[18px] text-sm font-bold text-[#0E1430]">
+          <Link to={listPath} className="inline-flex h-9 items-center rounded-full border-[1.5px] border-[#CBD2E6] bg-white px-3 text-xs font-bold text-[#0E1430]">
             Cancel
           </Link>
           <button
             type="submit"
             disabled={createState.isLoading || !assets.length}
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-[#2F4BF5] px-[18px] text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-2 rounded-full bg-[#2F4BF5] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowRight size={16} aria-hidden="true" /> {createState.isLoading ? 'Sending…' : 'Send request'}
           </button>
         </div>
       </form>
 
-      <section className="flex flex-col gap-3 rounded-[20px] bg-white p-[18px]">
+      <section className="flex flex-col gap-3 rounded-[18px] bg-white p-4">
         <span className="text-xs font-bold uppercase tracking-[0.06em] text-[#5B6480]">What happens next</span>
         {STEPS.map(([title, help], index) => (
           <div key={title} className="grid grid-cols-[28px_1fr] gap-2.5">
@@ -236,7 +236,7 @@ function PassList({ newPath }: { newPath: string }) {
   const mine = (passesQuery.data ?? []).filter((pass) => pass.requester.id === user?.id)
 
   return (
-    <section className="mt-5 rounded-[20px] bg-white p-5">
+    <section className="mt-5 rounded-[18px] bg-white p-4">
       {flash && <p role="status" className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-[#12733A]">{flash}</p>}
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-[#18203e]">My gate-pass requests</h2>

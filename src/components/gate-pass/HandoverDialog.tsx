@@ -106,7 +106,7 @@ export default function HandoverDialog({ pass, signingAsRequester, onClose }: Ha
                   maxLength={6}
                   value={pin}
                   onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))}
-                  className="h-10 rounded-xl border border-[#D4DAEA] px-3 text-sm font-normal outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100"
+                  className="h-9 rounded-lg border border-[#D4DAEA] px-3 text-xs font-normal outline-none focus:border-[#3155ff] focus:ring-2 focus:ring-blue-100"
                 />
               </label>
             )}
@@ -114,13 +114,13 @@ export default function HandoverDialog({ pass, signingAsRequester, onClose }: Ha
             {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={close} className="h-10 rounded-full border-[1.5px] border-[#CBD2E6] px-4 text-sm font-semibold text-[#0E1430]">
+              <button type="button" onClick={close} className="h-9 rounded-full border-[1.5px] border-[#CBD2E6] px-3 text-xs font-semibold text-[#0E1430]">
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!ready || state.isLoading}
-                className="h-10 rounded-full bg-[#2F4BF5] px-5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-[#C3CADF]"
+                className="h-9 rounded-full bg-[#2F4BF5] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-[#C3CADF]"
               >
                 {state.isLoading ? 'Signing…' : 'Accept items and sign'}
               </button>

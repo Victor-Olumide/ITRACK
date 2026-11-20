@@ -52,7 +52,7 @@ function RequestReset() {
       {sentMessage ? (
         <div role="status" className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">
           <p>{sentMessage}</p>
-          <p className="mt-2">The link they send you works once and expires after an hour. If you need it sooner, call the IT desk on ext. 2040.</p>
+          <p className="mt-2">The link they send you works once and expires after an hour. If you need it sooner, contact the IT desk.</p>
         </div>
       ) : (
         <>

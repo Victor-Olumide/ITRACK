@@ -214,8 +214,8 @@ export default function GateStation() {
         <span className="ml-auto">{user?.name} on duty</span>
       </div>
 
-      <div className="flex flex-col gap-5 xl:flex-row">
-        <section className={`flex min-h-[560px] min-w-0 flex-1 flex-col gap-4 rounded-[22px] px-4 py-5 text-[#0E1430] sm:px-6 sm:py-6 ${panel}`}>
+      <div className="flex flex-col gap-4 xl:flex-row">
+        <section className={`flex min-h-[520px] min-w-0 flex-1 flex-col gap-3 rounded-[20px] px-4 py-4 text-[#0E1430] sm:px-5 sm:py-5 ${panel}`}>
           {message && <p role="status" className="rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-[#12733A]">{message}</p>}
           {error && <p role="alert" className="rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
 
@@ -235,7 +235,7 @@ export default function GateStation() {
                   placeholder="IT-LAP-0057"
                   className="h-10 min-w-0 flex-1 rounded-xl border-2 border-[#CBD2E6] px-3 font-mono text-sm font-semibold uppercase text-[#0E1430] outline-none focus:border-[#2F4BF5]"
                 />
-                <button type="submit" disabled={checkState.isFetching} className="h-10 rounded-xl bg-[#2F4BF5] px-5 text-sm font-bold text-white disabled:opacity-60">
+                <button type="submit" disabled={checkState.isFetching} className="h-10 rounded-xl bg-[#2F4BF5] px-4 text-xs font-bold text-white disabled:opacity-60">
                   {checkState.isFetching ? 'Checking…' : 'Check'}
                 </button>
               </label>
@@ -244,9 +244,9 @@ export default function GateStation() {
 
           {result?.result === 'CLEARED' && pass && (
             <>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <span className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#12A150] text-white"><Check size={42} strokeWidth={3} aria-hidden="true" /></span>
-                <h2 className="text-2xl font-bold text-[#0B5C2E] sm:text-3xl">Cleared to leave</h2>
+                <h2 className="text-xl font-bold text-[#0B5C2E] sm:text-2xl">Cleared to leave</h2>
               </div>
               <PassFacts pass={pass} tone="green" />
               <ItemChecklist pass={pass} ticked={ticked} onToggle={toggle} mode="exit" />
@@ -268,20 +268,20 @@ export default function GateStation() {
                   type="button"
                   onClick={() => void logExit()}
                   disabled={!allSeen || exitState.isLoading}
-                  className="h-12 flex-1 rounded-[14px] bg-[#0B5C2E] text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9DBFAA]"
+                  className="h-10 flex-1 rounded-xl bg-[#0B5C2E] text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9DBFAA]"
                 >
                   {exitState.isLoading ? 'Logging…' : allSeen ? `Log exit · all ${exitItems.length} items` : 'Tick every item to log exit'}
                 </button>
-                <button type="button" onClick={reset} className="h-12 rounded-[14px] border-2 border-[#0B5C2E] px-5 text-sm font-bold text-[#0B5C2E]">Next scan</button>
+                <button type="button" onClick={reset} className="h-10 rounded-xl border-2 border-[#0B5C2E] px-4 text-xs font-bold text-[#0B5C2E]">Next scan</button>
               </div>
             </>
           )}
 
           {result?.result === 'RETURNING' && pass && (
             <>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <span className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#2F4BF5] text-white"><Check size={42} strokeWidth={3} aria-hidden="true" /></span>
-                <h2 className="text-2xl font-bold text-[#1C2E9E] sm:text-3xl">Coming back</h2>
+                <h2 className="text-xl font-bold text-[#1C2E9E] sm:text-2xl">Coming back</h2>
               </div>
               <PassFacts pass={pass} tone="blue" />
               <ItemChecklist pass={pass} ticked={ticked} onToggle={toggle} mode="return" />
@@ -290,20 +290,20 @@ export default function GateStation() {
                   type="button"
                   onClick={() => void logBack()}
                   disabled={!backCount || returnState.isLoading}
-                  className="h-12 flex-1 rounded-[14px] bg-[#1C2E9E] text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-[#AEB8E6]"
+                  className="h-10 flex-1 rounded-xl bg-[#1C2E9E] text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-[#AEB8E6]"
                 >
                   {returnState.isLoading ? 'Logging…' : `Log return · ${backCount} of ${returning.length} items`}
                 </button>
-                <button type="button" onClick={reset} className="h-12 rounded-[14px] border-2 border-[#1C2E9E] px-5 text-sm font-bold text-[#1C2E9E]">Next scan</button>
+                <button type="button" onClick={reset} className="h-10 rounded-xl border-2 border-[#1C2E9E] px-4 text-xs font-bold text-[#1C2E9E]">Next scan</button>
               </div>
             </>
           )}
 
           {result?.result === 'NOT_CLEARED' && (
             <>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <span className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#C2261C] text-white"><X size={40} strokeWidth={3} aria-hidden="true" /></span>
-                <h2 className="text-2xl font-bold text-[#8F1A11] sm:text-3xl">Not cleared</h2>
+                <h2 className="text-xl font-bold text-[#8F1A11] sm:text-2xl">Not cleared</h2>
               </div>
               <p className="text-sm text-[#3B0E0A]">{result.reason}</p>
               <div className="rounded-[14px] bg-white/75 px-4 py-3 text-sm text-[#3B0E0A]">
@@ -314,10 +314,10 @@ export default function GateStation() {
                     : <>Call the IT desk before letting this device leave.</>}
               </div>
               <div className="mt-auto flex flex-col gap-3.5 sm:flex-row">
-                <button type="button" onClick={() => void stop()} disabled={stopState.isLoading} className="h-12 flex-1 rounded-[14px] bg-[#8F1A11] text-sm font-bold text-white disabled:opacity-60">
+                <button type="button" onClick={() => void stop()} disabled={stopState.isLoading} className="h-10 flex-1 rounded-xl bg-[#8F1A11] text-xs font-bold text-white disabled:opacity-60">
                   {stopState.isLoading ? 'Logging…' : 'Log stopped device'}
                 </button>
-                <button type="button" onClick={reset} className="h-12 rounded-[14px] border-2 border-[#8F1A11] px-5 text-sm font-bold text-[#8F1A11]">Next scan</button>
+                <button type="button" onClick={reset} className="h-10 rounded-xl border-2 border-[#8F1A11] px-4 text-xs font-bold text-[#8F1A11]">Next scan</button>
               </div>
             </>
           )}
