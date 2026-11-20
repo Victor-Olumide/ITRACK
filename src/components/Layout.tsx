@@ -4,6 +4,8 @@ import { Navigate, Outlet } from 'react-router'
 
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import Toaster from './Toaster'
+import OfflineBanner from './OfflineBanner'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Layout() {
@@ -14,6 +16,7 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#101c52]">
+      <OfflineBanner />
       <Topbar
         user={user}
         role={user.role}
@@ -33,6 +36,7 @@ export default function Layout() {
           </main>
         </div>
       </div>
+      <Toaster />
     </div>
   )
 }

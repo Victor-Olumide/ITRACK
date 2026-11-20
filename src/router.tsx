@@ -91,6 +91,8 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: 'login', element: <LoginRoute /> },
+      // W02: public, reached from "Forgot password?" or an admin-issued link.
+      { path: 'reset-password', ...lazyPage(() => import('./pages/ResetPassword')) },
 
       {
         element: (
@@ -109,6 +111,7 @@ const router = createBrowserRouter([
           { path: 'department/passes/new', ...lazyPage(() => import('./pages/GatePasses'), { section: 'new' as const }) },
           { path: 'department/asset-requests', ...lazyPage(() => import('./pages/AssetRequests'), { mode: 'department' as const }) },
           { path: 'department/settings', ...lazyPage(() => import('./pages/Settings')) },
+          { path: 'department/notifications', ...lazyPage(() => import('./pages/Notifications')) },
         ],
       },
 
@@ -136,9 +139,13 @@ const router = createBrowserRouter([
           { path: 'people', ...lazyPage(() => import('./pages/Team')) },
           { path: 'settings', ...lazyPage(() => import('./pages/Settings')) },
           { path: 'signup', ...lazyPage(() => import('./pages/Team'), { showCreateForm: true }) },
+          { path: 'notifications', ...lazyPage(() => import('./pages/Notifications')) },
+          { path: 'stock', ...lazyPage(() => import('./pages/Stock')) },
+          { path: 'models', ...lazyPage(() => import('./pages/ModelLibrary')) },
+          { path: 'categories', ...lazyPage(() => import('./pages/CategoriesSla')) },
+          { path: 'audit', ...lazyPage(() => import('./pages/AuditTrail')) },
 
-          // TODO(v2): Re-enable /stock, /locations, /audit, /models,
-          // and /notifications when their persistent APIs are available.
+          // TODO(v2): Re-enable /locations when location management has a persistent API.
         ],
       },
 
@@ -183,6 +190,9 @@ const router = createBrowserRouter([
             ...lazyPage(() => import('./pages/GatePassApprovals')),
           },
           { path: 'technician/settings', ...lazyPage(() => import('./pages/Settings')) },
+          { path: 'technician/notifications', ...lazyPage(() => import('./pages/Notifications')) },
+          { path: 'technician/stock', ...lazyPage(() => import('./pages/Stock')) },
+          { path: 'technician/models', ...lazyPage(() => import('./pages/ModelLibrary')) },
         ],
       },
 
@@ -224,6 +234,7 @@ const router = createBrowserRouter([
           { path: 'employee/asset-requests', ...lazyPage(() => import('./pages/AssetRequests'), { mode: 'employee' as const }) },
           { path: 'employee/asset-requests/new', ...lazyPage(() => import('./pages/AssetRequests'), { mode: 'employee' as const, create: true }) },
           { path: 'employee/settings', ...lazyPage(() => import('./pages/Settings')) },
+          { path: 'employee/notifications', ...lazyPage(() => import('./pages/Notifications')) },
         ],
       },
 
@@ -233,6 +244,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, ...lazyPage(() => import('./pages/GateStation')) },
           { path: 'settings', ...lazyPage(() => import('./pages/Settings')) },
+          { path: 'notifications', ...lazyPage(() => import('./pages/Notifications')) },
         ],
       },
 

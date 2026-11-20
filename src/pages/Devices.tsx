@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import {
   Plus,
   Search,
@@ -8,6 +8,7 @@ import {
   Monitor,
   Laptop,
   Printer,
+  Box,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
 import type { LucideIcon } from 'lucide-react';
@@ -154,7 +155,8 @@ function DeviceImage({
   return (
     <div className="device-image relative flex h-[174px] items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
       {showModel ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
+        // Clicks here rotate/pan the model; they must not open the device.
+        <div className="absolute inset-0 flex items-center justify-center bg-white" onClick={(event) => event.stopPropagation()}>
           {canShowModel && (
             <model-viewer
               key={device.modelUrl}
@@ -199,20 +201,39 @@ function DeviceImage({
   );
 }
 
+// A pointer that travels further than this between press and release was a
+// drag (e.g. rotating a 3D model), not a click.
+const DRAG_THRESHOLD_PX = 6;
+
 function DeviceCard({
   device,
   onClick,
+  initialView = '2D',
 }: {
   device: DeviceCardData;
   onClick: (device: DeviceCardData) => void;
+  initialView?: '2D' | '3D';
 }) {
-  const [showModel, setShowModel] = useState(false);
+  const [showModel, setShowModel] = useState(initialView === '3D' && device.has3D);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    const start = pointerStart.current;
+    pointerStart.current = null;
+    // Ctrl/Shift/Alt/Cmd-clicks are 3D pan gestures or selections, not "open".
+    if (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return;
+    if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > DRAG_THRESHOLD_PX) return;
+    onClick(device);
+  };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onClick(device)}
+      onPointerDown={(event) => {
+        pointerStart.current = { x: event.clientX, y: event.clientY };
+      }}
+      onClick={handleClick}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
         if (event.key === 'Enter' || event.key === ' ') {
@@ -304,6 +325,7 @@ export default function DevicesPage({
     tabs.find((status) => status === requestedStatus) ?? 'All';
 
   const [view, setView] = useState<'Grid' | 'List'>('Grid');
+  const [allIn3D, setAllIn3D] = useState(false);
   const [search, setSearch] = useState('');
   const [type, setType] = useState<AssetType | ''>('');
   const [condition, setCondition] = useState<AssetCondition | ''>('');
@@ -351,6 +373,7 @@ export default function DevicesPage({
   const devices = (assets?.data ?? []).map(toCard);
   const total = assets?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const devicesWith3D = devices.filter((device) => device.has3D).length;
 
 
   return (
@@ -400,6 +423,24 @@ export default function DevicesPage({
                 List
               </button>
             </div>
+
+            {view === 'Grid' && (
+              <button
+                type="button"
+                onClick={() => setAllIn3D((value) => !value)}
+                aria-pressed={allIn3D}
+                disabled={devicesWith3D === 0}
+                title={devicesWith3D === 0 ? 'No device on this page has a 3D model' : allIn3D ? 'Show photos on every card' : `Show ${devicesWith3D} device${devicesWith3D === 1 ? '' : 's'} in 3D`}
+                className={`inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                  allIn3D
+                    ? 'border-[#101a50] bg-[#101a50] text-white shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Box size={14} />
+                {allIn3D ? 'Show photos' : 'Show all in 3D'}
+              </button>
+            )}
 
             <button
               type="button"
@@ -561,8 +602,11 @@ export default function DevicesPage({
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {devices.map((device) => (
               <DeviceCard
-                key={device.id}
+                // Re-keyed so every card adopts the page-wide view when it changes;
+                // each card's own 2D/3D switch still works afterwards.
+                key={`${device.id}-${allIn3D ? '3D' : '2D'}`}
                 device={device}
+                initialView={allIn3D ? '3D' : '2D'}
                 onClick={(selected) =>
                   navigate(`${basePath}/${selected.tag}`, {
                     state: { device: selected },

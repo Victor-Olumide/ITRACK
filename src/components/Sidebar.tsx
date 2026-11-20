@@ -1,17 +1,22 @@
 
 import { useState } from 'react'
+import type { ComponentProps } from 'react'
 import { NavLink } from 'react-router'
 import {
   BarChart3,
+  Box,
   ChevronLeft,
   ClipboardCheck,
   BriefcaseBusiness,
   Home,
   Monitor,
+  Package,
   PackageOpen,
   ScanLine,
+  ScrollText,
   Settings,
   ShieldCheck,
+  Tags,
   Ticket,
   Users,
   X,
@@ -56,6 +61,8 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
       { to: '/gate-passes', label: 'Pass approvals', Icon: ShieldCheck },
       { to: '/asset-requests', label: 'Asset requests', Icon: PackageOpen },
       { to: '/gate', label: 'Gate station', Icon: ScanLine },
+      { to: '/stock', label: 'Stock and licences', Icon: Package },
+      { to: '/models', label: '3D model library', Icon: Box },
       { to: '/reports', label: 'Reports', Icon: BarChart3 },
     ],
   },
@@ -63,6 +70,8 @@ const ADMIN_NAV_GROUPS: NavigationGroup[] = [
     label: 'MANAGEMENT',
     links: [
       { to: '/people', label: 'People and roles', Icon: Users },
+      { to: '/categories', label: 'Categories and SLA', Icon: Tags },
+      { to: '/audit', label: 'Audit trail', Icon: ScrollText },
       { to: '/settings', label: 'Settings', Icon: Settings },
     ],
   },
@@ -91,6 +100,8 @@ const ROLE_NAV_GROUPS: Partial<Record<UserRole, NavigationGroup[]>> = {
         { to: '/technician/devices', label: 'Devices', Icon: Monitor },
         { to: '/technician/approvals', label: 'Pass approvals', Icon: ClipboardCheck },
         { to: '/technician/passes', label: 'My gate passes', Icon: ShieldCheck },
+        { to: '/technician/stock', label: 'Stock and licences', Icon: Package },
+        { to: '/technician/models', label: '3D model library', Icon: Box },
         { to: '/technician/settings', label: 'Settings', Icon: Settings },
       ],
     },
@@ -208,11 +219,21 @@ function Navigation({
 
           <div className="space-y-1">
             {group.links.map(({ to, label, Icon, end, badge }) => {
-              const link = (
+              // In the collapsed rail the NavLink itself is the tooltip trigger, so the
+              // trigger's props (ref, hover/focus handlers, aria) are spread onto it.
+              // Wrapping it in the default trigger <button> nests a link inside a
+              // button and lays the inline buttons out two per row.
+              const renderLink = (
+                triggerProps: ComponentProps<'a'> = {},
+              ) => (
                 <NavLink
+                  {...triggerProps}
                   to={to}
                   end={end}
-                  onClick={onNavigate}
+                  onClick={(event) => {
+                    triggerProps.onClick?.(event)
+                    onNavigate?.()
+                  }}
                   className={({ isActive }) =>
                     `group relative flex min-h-10 items-center rounded-lg text-xs font-medium transition-colors ${
                       collapsed
@@ -253,15 +274,13 @@ function Navigation({
 
               return collapsed ? (
                 <Tooltip key={to}>
-                  <TooltipTrigger>
-                    {link}
-                  </TooltipTrigger>
+                  <TooltipTrigger render={(props) => renderLink(props)} />
                   <TooltipContent side="right" sideOffset={8}>
                     {label}
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <div key={to}>{link}</div>
+                <div key={to}>{renderLink()}</div>
               )
             })}
           </div>

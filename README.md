@@ -53,13 +53,13 @@ pnpm run preview
 | Sign in | `/login` |
 | Account management | `/people` |
 
-The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, sign-out, profile name/password changes, IT-admin user/department management, department-head workspace data, tickets, assets, and dashboard summary use implemented `/api/v1` endpoints. Password changes require the current password and end all active sessions; IT Admins can update other users' names and roles. Password recovery is not available, so contact an IT administrator if you cannot sign in.
+The UI requires a server-authenticated user and checks role access for each workspace. Sign-in, current-session lookup, refresh, sign-out, profile name/password changes, IT-admin user/department management, department-head workspace data, tickets, assets, and dashboard summary use implemented `/api/v1` endpoints. Password changes require the current password and end all active sessions; IT Admins can update other users' names and roles. Forgotten passwords use single-use, one-hour reset links: an IT Admin issues one from People and roles, and "Forgot password?" on the sign-in page alerts the IT Admins to send one (there is no email provider). Notifications, notification preferences, stock and licences, the 3D model library, ticket categories and SLA targets, and the audit trail also use implemented endpoints.
 
 Department Heads can view their department's employees and assigned assets, and use the department-scoped ticket workspace. The server enforces department and organization scope; the client route guard is navigation UX only. Seeded Department Head accounts use the `@abuad.edu.ng` domain.
 
 Device registration uses searchable shared controls for available asset tags, shared date pickers, optional catalogue selection, optional IT-admin assignment, and `customType` for Other devices. Manual manufacturer/model values are preserved when switching modes. Local category images are used when no asset or catalogue image exists, and 3D model code loads only after an explicit preview click.
 
-The client does not use mock records or session-only demo mutations for application data. Gate passes, gate movements, stock, model library, location management, SLA policy editing, audit events, notifications, profile preferences, and the legacy Security workspace are not part of v1. Their routes and navigation entries are disabled and marked for v2; do not expose those prototype workflows until persistent server APIs are available. Ticket overdue status is server-provided; the client does not invent SLA progress.
+The client does not use mock records or session-only demo mutations for application data. Location management is not yet available; its route is disabled and marked for v2 until a persistent server API exists. Ticket overdue status is server-provided from the organization's SLA targets; the client does not invent SLA progress.
 
 ## Backend handoff
 

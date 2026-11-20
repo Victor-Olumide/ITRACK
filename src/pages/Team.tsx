@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { SubmitEvent } from "react";
-import { Pencil, Search, UserPlus, Users } from "lucide-react";
+import { Check, Copy, KeyRound, Pencil, Search, UserPlus, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,8 @@ import { toCreateUserRequest } from "@/lib/api/users/create-user-form";
 import type { UserRole as ApiUserRole } from "@/lib/api/auth/types";
 import type { UserRole as DisplayUserRole } from "../types/types";
 import Dropdown from "@/components/Dropdown";
+import { useIssuePasswordResetLinkMutation } from "@/lib/api/auth/password-reset-api";
+import { getApiErrorMessage } from "@/lib/api/error-message";
 
 function getCreateUserErrorMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "data" in error) {
@@ -91,6 +93,7 @@ export default function Team({ showCreateForm = false }) {
   const [formError, setFormError] = useState("");
   const [createdMessage, setCreatedMessage] = useState("");
   const [editingUser, setEditingUser] = useState<DirectoryUser | null>(null);
+  const [resettingUser, setResettingUser] = useState<DirectoryUser | null>(null);
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<DisplayUserRole>("Employee");
   const [editError, setEditError] = useState("");
@@ -413,6 +416,17 @@ export default function Team({ showCreateForm = false }) {
                           Update profile
                         </button>
                       )}
+                      {user.id !== currentUser?.id && !("isActive" in user && user.isActive === false) && (
+                        <button
+                          type="button"
+                          onClick={() => setResettingUser(user)}
+                          aria-label={`Issue a password reset link for ${user.name}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+                        >
+                          <KeyRound size={14} aria-hidden="true" />
+                          Reset password
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -433,6 +447,12 @@ export default function Team({ showCreateForm = false }) {
           Showing {filteredUsers.length} of {allUsers.length} people
         </div>
       </section>
+      <Dialog open={resettingUser !== null} onOpenChange={(open) => !open && setResettingUser(null)}>
+        <DialogContent>
+          {resettingUser && <ResetLinkDialog key={resettingUser.id} person={resettingUser} />}
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={editingUser !== null}
         onOpenChange={(open) => {
@@ -494,6 +514,66 @@ export default function Team({ showCreateForm = false }) {
           </form>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// W02: admins issue a single-use, one-hour link and pass it on (no email provider).
+function ResetLinkDialog({ person }: { person: { id: string; name: string } }) {
+  const [issue, state] = useIssuePasswordResetLinkMutation();
+  const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+
+  const create = async () => {
+    setError("");
+    setCopied(false);
+    try {
+      const result = await issue(person.id).unwrap();
+      setLink({ url: `${window.location.origin}${result.path}`, expiresAt: result.expiresAt });
+    } catch (err) {
+      setError(getApiErrorMessage(err, "The reset link could not be created."));
+    }
+  };
+
+  const copy = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link.url);
+      setCopied(true);
+    } catch {
+      setError("Copy failed. Select the link and copy it manually.");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <DialogHeader className="pr-8">
+        <DialogTitle>Reset password for {person.name}</DialogTitle>
+        <DialogDescription>
+          Creates a link that lets {person.name} choose a new password. It works once, expires in an hour, and signs them out everywhere. Creating a new link cancels earlier ones.
+        </DialogDescription>
+      </DialogHeader>
+      {link ? (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input readOnly value={link.url} onFocus={(event) => event.currentTarget.select()} aria-label="Reset link" className="h-10 min-w-0 flex-1 rounded-xl border border-[#d4daea] bg-slate-50 px-3 font-mono text-xs" />
+            <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1.5 rounded-xl bg-[#101c52] px-3 text-xs font-semibold text-white">
+              {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">
+            Expires {new Date(link.expiresAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}. Send it to {person.name} directly; anyone with the link can set their password.
+          </p>
+        </div>
+      ) : null}
+      {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+      <div className="flex justify-end">
+        <button type="button" onClick={() => void create()} disabled={state.isLoading} className="rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">
+          {state.isLoading ? "Creating…" : link ? "Create a new link" : "Create reset link"}
+        </button>
+      </div>
     </div>
   );
 }

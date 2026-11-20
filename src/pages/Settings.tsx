@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
-import { PenLine, UserRound } from 'lucide-react'
+import { Bell, PenLine, UserRound } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import SignaturePad from '../components/SignaturePad'
 import {
@@ -9,6 +9,13 @@ import {
   useSaveMySignatureMutation,
 } from '../lib/api/signatures/signatures-api'
 import { getApiErrorMessage } from '../lib/api/error-message'
+import {
+  useGetNotificationPreferencesQuery,
+  useUpdateNotificationPreferencesMutation,
+  type NotificationPreferences,
+} from '../lib/api/notifications/notifications-api'
+import { useToast } from '@/hooks/use-toast'
+import type { UserRole } from '../types/types'
 import { formatDay, shortHash } from '../lib/api/gates/gate-pass-format'
 
 const PIN_PATTERN = /^\d{4,6}$/
@@ -201,17 +208,74 @@ export default function Settings() {
           </dl>
         </section>
 
-        {/* <article className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
-          <div className="flex items-center gap-2">
-            <Bell size={17} />
-            <h2 className="text-sm font-semibold">Notifications</h2>
-          </div>
-          <p className="mt-2 text-sm leading-6 text-amber-900">
-            Notification preferences are unavailable until a persistent API is provided.
-          </p>
-        </article> */}
-        {/* TODO(v2): Restore notification and desktop start-up preferences (D17) when their APIs are ready. */}
+        <NotificationPreferencesSection role={user?.role ?? 'Employee'} />
+        {/* TODO(v2): Desktop start-up preferences (D17) belong to the desktop app. */}
       </div>
     </main>
+  )
+}
+
+const PREFERENCE_OPTIONS: Array<{ key: keyof NotificationPreferences; label: string; hint: string; roles?: UserRole[] }> = [
+  { key: 'ticketUpdates', label: 'Ticket updates', hint: 'New tickets, assignments, replies and status changes.' },
+  { key: 'gatePassUpdates', label: 'Gate passes', hint: 'Approvals, handovers, exits and returns.' },
+  { key: 'assetRequestUpdates', label: 'Equipment requests', hint: 'Requests you made or need to review.' },
+  { key: 'stockAlerts', label: 'Low stock alerts', hint: 'When an item drops to its reorder level.', roles: ['IT Admin'] },
+]
+
+// W19: choose which in-app notifications to receive. Account notices always arrive.
+function NotificationPreferencesSection({ role }: { role: UserRole }) {
+  const toast = useToast()
+  const query = useGetNotificationPreferencesQuery()
+  const [update, updateState] = useUpdateNotificationPreferencesMutation()
+  const options = PREFERENCE_OPTIONS.filter((option) => !option.roles || option.roles.includes(role))
+
+  const toggle = async (key: keyof NotificationPreferences, value: boolean) => {
+    try {
+      await update({ [key]: value }).unwrap()
+      toast(value ? 'Notifications turned on.' : 'Notifications turned off.')
+    } catch (error) {
+      toast(getApiErrorMessage(error, 'Your preference could not be saved.'), 'error')
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-[#e9edf6] bg-white p-5 sm:p-6" aria-labelledby="notification-preferences">
+      <div className="flex items-center gap-2">
+        <Bell size={17} className="text-[#3155ff]" />
+        <h2 id="notification-preferences" className="text-base font-bold text-[#111a38]">Notifications</h2>
+      </div>
+      <p className="mt-1 text-sm text-slate-500">Choose what appears in your notification bell. Account and password notices always arrive.</p>
+      {query.isLoading ? (
+        <p className="mt-4 text-sm text-slate-500">Loading preferences…</p>
+      ) : query.isError || !query.data ? (
+        <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{getApiErrorMessage(query.error, 'Preferences could not be loaded.')}</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-[#eef1f7]">
+          {options.map((option) => {
+            const checked = query.data[option.key]
+            return (
+              <li key={option.key} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#202844]">{option.label}</p>
+                  <p className="text-xs text-slate-500">{option.hint}</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={checked}
+                  aria-label={option.label}
+                  disabled={updateState.isLoading}
+                  onClick={() => void toggle(option.key, !checked)}
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${checked ? 'bg-[#3155ff]' : 'bg-slate-300'}`}
+                >
+                  {/* Anchored left: a button centres its content, which pushed the knob off the track. */}
+                  <span aria-hidden="true" className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
   )
 }
