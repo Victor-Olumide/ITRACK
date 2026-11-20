@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { getApiErrorMessage } from '../lib/api/error-message'
 import { useCreateAssetModelMutation, useGetAssetModelsQuery } from '../lib/api/assets/assets-api'
 import type { AssetModelRecord, AssetType } from '../lib/api/assets/types'
+import { BUILT_IN_MODELS, localDeviceModelUrl } from '../utils/device-models'
 
 const TYPE_LABELS: Record<AssetType, string> = {
   LAPTOP: 'Laptop',
@@ -26,9 +27,10 @@ export default function ModelLibrary() {
   const isAdmin = user?.role === 'IT Admin'
   const [type, setType] = useState<AssetType | ''>('')
   const [adding, setAdding] = useState(false)
-  const [previewing, setPreviewing] = useState<AssetModelRecord | null>(null)
+  const [previewing, setPreviewing] = useState<{ title: string; url: string; note?: string } | null>(null)
   const query = useGetAssetModelsQuery(type || undefined)
   const models = query.data?.data ?? []
+  const builtIns = BUILT_IN_MODELS.filter((model) => !type || model.type === type)
 
   return (
     <main className="min-h-full px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
@@ -56,7 +58,7 @@ export default function ModelLibrary() {
         ) : query.isError ? (
           <p role="alert" className="rounded-2xl bg-white p-8 text-center text-sm text-red-700">{getApiErrorMessage(query.error, 'The model library could not be loaded.')}</p>
         ) : models.length === 0 ? (
-          <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">{type ? `No ${TYPE_LABELS[type].toLowerCase()} models yet.` : 'No models in the library yet.'}</p>
+          <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">{type ? `No ${TYPE_LABELS[type].toLowerCase()} models in the catalogue yet.` : 'No makes or models in the catalogue yet.'}{isAdmin ? ' Add one to give its devices a photo and 3D view.' : ''}</p>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {models.map((model) => (
@@ -66,12 +68,7 @@ export default function ModelLibrary() {
                 </div>
                 <div className="p-3.5">
                   <p className="text-sm font-semibold text-[#202844]">{model.make} {model.model}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{TYPE_LABELS[model.type]} · {model.modelUrl ? '3D model attached' : 'No 3D model'}</p>
-                  {model.modelUrl && (
-                    <button type="button" onClick={() => setPreviewing(model)} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#dce2ef] px-3 py-1.5 text-xs font-semibold text-[#202844]">
-                      <RotateCcw size={13} /> View in 3D
-                    </button>
-                  )}
+                  <CatalogueModelActions model={model} onPreview={setPreviewing} />
                 </div>
               </li>
             ))}
@@ -79,17 +76,37 @@ export default function ModelLibrary() {
         )}
       </section>
 
+      {builtIns.length > 0 && (
+        <section className="mt-6" aria-labelledby="built-in-models">
+          <h2 id="built-in-models" className="text-sm font-bold text-[#111a38]">Built-in 3D models</h2>
+          <p className="mt-0.5 text-xs text-slate-500">Bundled with ITrack. Devices without an uploaded model use the closest match.</p>
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {builtIns.map((model) => (
+              <li key={model.url} className="flex items-center justify-between gap-2 rounded-2xl border border-[#e9edf6] bg-white p-3.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#202844]">{model.name}</p>
+                  <p className="text-xs text-slate-500">{TYPE_LABELS[model.type]}</p>
+                </div>
+                <button type="button" onClick={() => setPreviewing({ title: model.name, url: model.url })} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#dce2ef] px-3 py-1.5 text-xs font-semibold text-[#202844]">
+                  <RotateCcw size={13} /> View in 3D
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent className="max-w-xl">{adding && <AddModelForm onDone={() => setAdding(false)} />}</DialogContent>
       </Dialog>
       <Dialog open={Boolean(previewing)} onOpenChange={(open) => !open && setPreviewing(null)}>
-        <DialogContent className="max-w-3xl">{previewing && <ModelPreview model={previewing} />}</DialogContent>
+        <DialogContent className="max-w-3xl">{previewing && <ModelPreview key={previewing.url} {...previewing} />}</DialogContent>
       </Dialog>
     </main>
   )
 }
 
-function ModelPreview({ model }: { model: AssetModelRecord }) {
+function ModelPreview({ title, url, note }: { title: string; url: string; note?: string }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   useEffect(() => {
     import('@google/model-viewer').then(
@@ -101,14 +118,14 @@ function ModelPreview({ model }: { model: AssetModelRecord }) {
   return (
     <div>
       <DialogHeader>
-        <DialogTitle>{model.make} {model.model}</DialogTitle>
-        <DialogDescription>Drag to rotate, scroll to zoom.</DialogDescription>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{note ? `${note} ` : ''}Drag to rotate, scroll to zoom.</DialogDescription>
       </DialogHeader>
       <div className="mt-4 flex h-[min(60vh,460px)] items-center justify-center overflow-hidden rounded-xl bg-[#f3f5fc]">
-        {status === 'ready' && model.modelUrl ? (
+        {status === 'ready' ? (
           <model-viewer
-            src={model.modelUrl}
-            alt={`${model.make} ${model.model} 3D model`}
+            src={url}
+            alt={`${title} 3D model`}
             camera-controls
             auto-rotate
             shadow-intensity="1"
@@ -183,5 +200,27 @@ function FilePicker({ label, hint, accept, file, onChange }: { label: string; hi
       />
       <span className="mt-1 block font-normal text-slate-400">{file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB` : hint}</span>
     </label>
+  )
+}
+
+// Uploaded model when there is one; otherwise the bundled model devices of this kind use.
+function CatalogueModelActions({ model, onPreview }: { model: AssetModelRecord; onPreview: (preview: { title: string; url: string; note?: string }) => void }) {
+  const fallback = model.modelUrl ? null : localDeviceModelUrl(model.type, null, model.make, model.model)
+  const url = model.modelUrl ?? fallback
+  return (
+    <>
+      <p className="mt-0.5 text-xs text-slate-500">
+        {TYPE_LABELS[model.type]} · {model.modelUrl ? '3D model uploaded' : fallback ? 'Using the built-in 3D model' : 'No 3D model'}
+      </p>
+      {url && (
+        <button
+          type="button"
+          onClick={() => onPreview({ title: `${model.make} ${model.model}`, url, note: fallback ? 'Built-in model shown until one is uploaded.' : undefined })}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#dce2ef] px-3 py-1.5 text-xs font-semibold text-[#202844]"
+        >
+          <RotateCcw size={13} /> View in 3D
+        </button>
+      )}
+    </>
   )
 }
