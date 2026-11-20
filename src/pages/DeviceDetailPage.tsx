@@ -6,8 +6,10 @@ import { useGetAssetQuery, useRetireAssetMutation, useUpdateAssetMutation } from
 import type { AssetCondition } from '../lib/api/assets/types'
 import { categoryDeviceImage } from '../utils/device-images'
 import { localDeviceModelUrl } from '../utils/device-models'
+import { useFallbackSrc } from '../hooks/use-fallback-src'
 import Dropdown from '../components/Dropdown'
 import DeviceViewToggle from '../components/DeviceViewToggle'
+import ModelViewer from '../components/ModelViewer'
 
 const CONDITION_LABELS: Record<AssetCondition, string> = {
   NEW: 'New',
@@ -33,14 +35,13 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
   const [actionError, setActionError] = useState('')
   const [showModel, setShowModel] = useState(false)
   const [modelViewerStatus, setModelViewerStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
-  const [modelFailed, setModelFailed] = useState(false)
   const asset = assetQuery.data
-  const modelUrl = asset
-    ? asset.modelUrl ?? localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model)
-    : null
-  const imageUrl = asset
-    ? asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make)
-    : null
+  // Uploaded files first; the bundled photo/model if they're missing or fail to load.
+  const model = useFallbackSrc(asset?.modelUrl, asset ? localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model) : null)
+  const image = useFallbackSrc(asset?.imageUrl, asset ? categoryDeviceImage(asset.type, asset.customType, asset.make) : null)
+  const modelUrl = model.src
+  const has3D = Boolean(asset?.modelUrl ?? (asset ? localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model) : null))
+  const modelFailed = showModel && !modelUrl
 
   useEffect(() => {
     if (!showModel || !modelUrl || modelViewerStatus !== 'loading') return
@@ -111,19 +112,21 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
 
         <section className="relative mt-5 overflow-hidden rounded-2xl border border-[#e9edf6] bg-white">
           <div className="relative flex h-64 items-center justify-center bg-white p-5 sm:h-72">
-            {showModel && modelUrl && modelViewerStatus === 'ready' && !modelFailed ? (
-              <model-viewer key={modelUrl} src={modelUrl} alt={`${asset.make} ${asset.model} 3D model`} loading="lazy" camera-controls auto-rotate onError={() => setModelFailed(true)} className="h-full w-full bg-white" />
+            {showModel && modelUrl && modelViewerStatus === 'ready' ? (
+              <ModelViewer key={modelUrl} src={modelUrl} alt={`${asset.make} ${asset.model} 3D model`} loading="lazy" camera-controls auto-rotate onLoadError={model.onError} className="h-full w-full bg-white" />
+            ) : image.src ? (
+              <img src={image.src} alt={`${asset.make} ${asset.model}`} onError={image.onError} className="h-full w-full object-contain" />
             ) : (
-              <img src={imageUrl ?? undefined} alt={`${asset.make} ${asset.model}`} className="h-full w-full object-contain" />
+              <span className="text-sm text-slate-400">No photo available</span>
             )}
-            {modelUrl && <div className="absolute right-4 top-4 z-20">
+            {has3D && <div className="absolute right-4 top-4 z-20">
               <DeviceViewToggle
                 value={showModel ? '3D' : '2D'}
                 onChange={(view) => {
                   if (view === '2D') {
-                    setShowModel(false); setModelViewerStatus('idle'); setModelFailed(false)
+                    setShowModel(false); setModelViewerStatus('idle')
                   } else {
-                    setModelFailed(false); setModelViewerStatus('loading'); setShowModel(true)
+                    setModelViewerStatus('loading'); setShowModel(true)
                   }
                 }}
                 has3D
@@ -134,7 +137,7 @@ export default function DeviceDetailsPage({ basePath = '/devices' }: { basePath?
           </div>
           <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 text-[11px] text-slate-500">
             <span>{showModel ? 'Interactive 3D model' : 'Device image'}</span>
-            {modelUrl ? <span className="font-semibold text-[#3155ff]">Switch view above</span> : <span>2D view only</span>}
+            {has3D ? <span className="font-semibold text-[#3155ff]">Switch view above</span> : <span>2D view only</span>}
           </div>
         </section>
 

@@ -24,6 +24,7 @@ import type {
   AssetType,
   CreateAssetRequest,
 } from '../lib/api/assets/types';
+import ModelViewer from '../components/ModelViewer';
 
 interface RegisterDevicePageProps {
   basePath?: string;
@@ -637,7 +638,7 @@ export default function RegisterDevicePage({
                 </div>
                 <div className="relative flex h-64 items-center justify-center p-4">
                   {showModelPreview && selectedModel?.modelUrl && modelViewerStatus === 'ready' && !modelPreviewFailed ? (
-                    <model-viewer key={selectedModel.modelUrl} src={selectedModel.modelUrl} alt={`${selectedModel.make} ${selectedModel.model} 3D model`} loading="lazy" camera-controls onError={() => setModelPreviewFailed(true)} className="h-full w-full bg-transparent" />
+                    <ModelViewer key={selectedModel.modelUrl} src={selectedModel.modelUrl} alt={`${selectedModel.make} ${selectedModel.model} 3D model`} loading="lazy" camera-controls onLoadError={() => setModelPreviewFailed(true)} className="h-full w-full bg-transparent" />
                   ) : selectedModel?.imageUrl ? (
                     <img src={selectedModel.imageUrl} alt={`${selectedModel.make} ${selectedModel.model}`} className="h-full w-full object-contain" />
                   ) : (

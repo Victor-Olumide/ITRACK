@@ -10,6 +10,7 @@ import { getApiErrorMessage } from '../lib/api/error-message'
 import { useCreateAssetModelMutation, useGetAssetModelsQuery } from '../lib/api/assets/assets-api'
 import type { AssetModelRecord, AssetType } from '../lib/api/assets/types'
 import { BUILT_IN_MODELS, localDeviceModelUrl } from '../utils/device-models'
+import ModelViewer from '../components/ModelViewer'
 
 const TYPE_LABELS: Record<AssetType, string> = {
   LAPTOP: 'Laptop',
@@ -123,13 +124,13 @@ function ModelPreview({ title, url, note }: { title: string; url: string; note?:
       </DialogHeader>
       <div className="mt-4 flex h-[min(60vh,460px)] items-center justify-center overflow-hidden rounded-xl bg-[#f3f5fc]">
         {status === 'ready' ? (
-          <model-viewer
+          <ModelViewer
             src={url}
             alt={`${title} 3D model`}
             camera-controls
             auto-rotate
             shadow-intensity="1"
-            onError={() => setStatus('error')}
+            onLoadError={() => setStatus('error')}
             className="h-full w-full"
           />
         ) : (

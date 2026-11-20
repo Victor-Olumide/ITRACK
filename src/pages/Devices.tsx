@@ -25,6 +25,8 @@ import { categoryDeviceImage } from '@/utils/device-images';
 import { localDeviceModelUrl } from '@/utils/device-models';
 import Dropdown from '@/components/Dropdown';
 import DeviceViewToggle from '@/components/DeviceViewToggle';
+import { useFallbackSrc } from '@/hooks/use-fallback-src';
+import ModelViewer from '@/components/ModelViewer';
 
 type AssetListStatus = 'Assigned' | 'Unassigned' | 'Retired';
 
@@ -38,8 +40,11 @@ interface DeviceCardData {
   initials: string;
   notes: string;
   warranty: string;
-  imageUrl: string;
+  // Uploaded files first; the bundled photo/model is used if they're missing or fail to load.
+  imageUrl: string | null;
+  fallbackImageUrl: string;
   modelUrl: string | null;
+  fallbackModelUrl: string | null;
   has3D: boolean;
 }
 
@@ -97,8 +102,10 @@ function toCard(asset: AssetApiRecord): DeviceCardData {
     warranty: asset.warrantyExpiry
       ? formatWarranty(asset.warrantyExpiry)
       : '—',
-    imageUrl: asset.imageUrl ?? categoryDeviceImage(asset.type, asset.customType, asset.make),
-    modelUrl: asset.modelUrl ?? localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model),
+    imageUrl: asset.imageUrl ?? null,
+    fallbackImageUrl: categoryDeviceImage(asset.type, asset.customType, asset.make),
+    modelUrl: asset.modelUrl ?? null,
+    fallbackModelUrl: localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model),
     has3D: Boolean(asset.modelUrl ?? localDeviceModelUrl(asset.type, asset.customType, asset.make, asset.model)),
   };
 }
@@ -130,7 +137,8 @@ function DeviceImage({
   showModel: boolean;
   onViewChange: (view: '2D' | '3D') => void;
 }) {
-  const [imageFailed, setImageFailed] = useState(false);
+  const image = useFallbackSrc(device.imageUrl, device.fallbackImageUrl);
+  const model = useFallbackSrc(device.modelUrl, device.fallbackModelUrl);
   const [modelViewerStatus, setModelViewerStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
   const Icon =
@@ -141,16 +149,17 @@ function DeviceImage({
       Network: Monitor,
     } as Record<string, LucideIcon>)[device.category] ?? Monitor;
 
-  const hasImage = Boolean(device.imageUrl && !imageFailed);
+  const hasImage = Boolean(image.src);
   useEffect(() => {
-    if (!showModel || !device.modelUrl || modelViewerStatus === 'ready') return;
+    if (!showModel || !model.src || modelViewerStatus === 'ready') return;
     import('@google/model-viewer').then(
       () => setModelViewerStatus('ready'),
       () => setModelViewerStatus('error'),
     );
-  }, [device.modelUrl, modelViewerStatus, showModel]);
+  }, [model.src, modelViewerStatus, showModel]);
 
-  const canShowModel = Boolean(showModel && device.modelUrl && modelViewerStatus === 'ready');
+  const canShowModel = Boolean(showModel && model.src && modelViewerStatus === 'ready');
+  const modelUnavailable = showModel && (!model.src || modelViewerStatus === 'error');
 
   return (
     <div className="device-image relative flex h-[174px] items-center justify-center overflow-hidden bg-linear-to-b from-[#f1f4fc] to-[#e8edf9]">
@@ -158,26 +167,26 @@ function DeviceImage({
         // Clicks here rotate/pan the model; they must not open the device.
         <div className="absolute inset-0 flex items-center justify-center bg-white" onClick={(event) => event.stopPropagation()}>
           {canShowModel && (
-            <model-viewer
-              key={device.modelUrl}
-              src={device.modelUrl!}
+            <ModelViewer
+              key={model.src}
+              src={model.src!}
               alt={`${device.name} 3D model`}
               loading="lazy"
               camera-controls
               auto-rotate
               rotation-per-second="20deg"
               shadow-intensity="1"
-              onError={() => setModelViewerStatus('error')}
+              onLoadError={model.onError}
               className="h-full w-full bg-white"
             />
           )}
         </div>
       ) : hasImage ? (
         <img
-          src={device.imageUrl!}
+          src={image.src!}
           alt={`${device.name} device`}
           loading="lazy"
-          onError={() => setImageFailed(true)}
+          onError={image.onError}
           className="absolute inset-0 h-full w-full object-cover"
         />
       ) : (
@@ -187,10 +196,11 @@ function DeviceImage({
         </div>
       )}
 
-      {showModel && modelViewerStatus !== 'ready' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
+      {showModel && !modelUnavailable && modelViewerStatus !== 'ready' && <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-500 shadow-sm">Loading 3D preview...</span>}
 
-      {showModel && modelViewerStatus === 'ready' && <button type="button" onClick={(event) => { event.stopPropagation(); onViewChange('2D'); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#3155ff] shadow-sm">Back to image</button>}
-      {showModel && modelViewerStatus === 'error' && <button type="button" onClick={(event) => { event.stopPropagation(); onViewChange('2D'); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm">Back to image</button>}
+      {showModel && !modelUnavailable && modelViewerStatus === 'ready' && <button type="button" onClick={(event) => { event.stopPropagation(); onViewChange('2D'); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-[#3155ff] shadow-sm">Back to image</button>}
+      {modelUnavailable && <span className="absolute inset-x-3 top-1/2 z-10 -translate-y-1/2 text-center text-[11px] text-slate-500">3D preview unavailable</span>}
+      {modelUnavailable && <button type="button" onClick={(event) => { event.stopPropagation(); onViewChange('2D'); setModelViewerStatus('idle') }} className="absolute bottom-3 right-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm">Back to image</button>}
 
       <span
         className={`absolute left-3 top-3 z-20 rounded-full px-2.5 py-1 text-[10px] font-semibold ${conditionStyles[device.condition]}`}
