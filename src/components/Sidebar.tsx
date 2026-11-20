@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import type { ComponentProps } from 'react'
 import { NavLink } from 'react-router'
 import {
   BarChart3,
@@ -207,11 +208,21 @@ function Navigation({
 
           <div className="space-y-1">
             {group.links.map(({ to, label, Icon, end, badge }) => {
-              const link = (
+              // In the collapsed rail the NavLink itself is the tooltip trigger, so the
+              // trigger's props (ref, hover/focus handlers, aria) are spread onto it.
+              // Wrapping it in the default trigger <button> nests a link inside a
+              // button and lays the inline buttons out two per row.
+              const renderLink = (
+                triggerProps: ComponentProps<'a'> = {},
+              ) => (
                 <NavLink
+                  {...triggerProps}
                   to={to}
                   end={end}
-                  onClick={onNavigate}
+                  onClick={(event) => {
+                    triggerProps.onClick?.(event)
+                    onNavigate?.()
+                  }}
                   className={({ isActive }) =>
                     `group relative flex min-h-10 items-center rounded-lg text-xs font-medium transition-colors ${
                       collapsed
@@ -252,15 +263,13 @@ function Navigation({
 
               return collapsed ? (
                 <Tooltip key={to}>
-                  <TooltipTrigger>
-                    {link}
-                  </TooltipTrigger>
+                  <TooltipTrigger render={(props) => renderLink(props)} />
                   <TooltipContent side="right" sideOffset={8}>
                     {label}
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <div key={to}>{link}</div>
+                <div key={to}>{renderLink()}</div>
               )
             })}
           </div>

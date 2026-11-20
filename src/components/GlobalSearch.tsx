@@ -5,6 +5,10 @@ import { useGlobalSearchQuery } from '@/lib/api/search/search-api';
 import type { GlobalSearchDevice, GlobalSearchTicket } from '@/lib/api/search/types';
 import type { UserRole } from '@/types/types';
 
+// ⌘ only exists on Apple keyboards; the handler accepts Ctrl+K and ⌘K either way.
+const shortcutLabel =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.userAgent) ? '⌘K' : 'Ctrl K';
+
 function useDebouncedValue(value: string, delay: number) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -67,9 +71,9 @@ export default function GlobalSearch({ role }: { role: UserRole }) {
   const showDropdown = open && value.trim().length >= 2;
   return <div ref={rootRef} className="relative min-w-0 flex-1 max-w-2xl">
     <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-    <input ref={inputRef} value={value} onFocus={() => setOpen(true)} onChange={(event) => { setValue(event.target.value); setOpen(true); }} onKeyDown={onKeyDown} placeholder="Search tickets, devices, people" aria-label="Search tickets, devices, people" aria-expanded={showDropdown} aria-controls="global-search-results" role="combobox" className="h-9 w-full rounded-full border border-white/10 bg-[#1b2a69] pl-9 pr-16 text-xs text-white outline-none placeholder:text-slate-400 focus:border-[#d2f54a] focus:ring-2 focus:ring-[#d2f54a]/20" />
-    {value && <button type="button" onClick={() => { setValue(''); setOpen(false); inputRef.current?.focus(); }} aria-label="Clear search" className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"><X size={14} /></button>}
-    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-white/20 px-1 text-[9px] text-slate-400">⌘K</span>
+    <input ref={inputRef} value={value} onFocus={() => setOpen(true)} onChange={(event) => { setValue(event.target.value); setOpen(true); }} onKeyDown={onKeyDown} placeholder="Search tickets, devices, people" aria-label="Search tickets, devices, people" aria-expanded={showDropdown} aria-controls="global-search-results" role="combobox" className="h-9 w-full rounded-full border border-white/10 bg-[#1b2a69] pl-9 pr-20 text-xs text-white outline-none placeholder:text-slate-400 focus:border-[#d2f54a] focus:ring-2 focus:ring-[#d2f54a]/20" />
+    {value && <button type="button" onClick={() => { setValue(''); setOpen(false); inputRef.current?.focus(); }} aria-label="Clear search" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"><X size={14} /></button>}
+    {!value && <kbd aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 flex h-5 -translate-y-1/2 items-center rounded border border-white/20 px-1.5 font-sans text-[9px] leading-none text-slate-400">{shortcutLabel}</kbd>}
     {showDropdown && <div id="global-search-results" role="listbox" className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[min(70vh,30rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 text-slate-900 shadow-2xl shadow-slate-950/20 sm:min-w-[28rem]">
       {query.isFetching && <div className="flex items-center gap-2 px-3 py-4 text-xs text-slate-500"><LoaderCircle size={15} className="animate-spin" /> Searching…</div>}
       {!query.isFetching && query.isError && <div className="px-3 py-4 text-xs text-red-600">Search is temporarily unavailable. Try again.</div>}
