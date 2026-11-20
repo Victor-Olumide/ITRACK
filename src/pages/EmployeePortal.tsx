@@ -104,15 +104,15 @@ function Home({ viewer }: { viewer: PublicUser }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Link to="/employee/asset-requests/new" className="rounded-full border border-[#dce2ef] bg-white px-4 py-2.5 text-xs font-semibold text-[#202844] hover:bg-slate-50">
+          <Link to="/employee/asset-requests/new" className="rounded-full border border-[#dce2ef] bg-white px-2 py-2 text-xs font-semibold text-[#202844] hover:bg-slate-50">
             Request equipment
           </Link>
-          <Link to="/employee/passes/new" className="rounded-full border border-[#dce2ef] bg-white px-4 py-2.5 text-xs font-semibold text-[#202844] hover:bg-slate-50">
+          <Link to="/employee/passes/new" className="rounded-full border border-[#dce2ef] bg-white px-2 py-2 text-xs font-semibold text-[#202844] hover:bg-slate-50">
             Request gate pass
           </Link>
           <Link
             to="/employee/report"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-1 rounded-full bg-[#3155ff] px-2 py-2 text-xs font-semibold text-white hover:bg-blue-700"
           >
             <Plus size={14} /> Report a problem
           </Link>
@@ -793,7 +793,7 @@ function ReportProblem({ viewer }: { viewer: PublicUser }) {
           <section className="rounded-2xl border border-[#e9edf6] bg-white p-4">
             <h2 className="text-sm font-bold text-[#202844]">IT desk</h2>
             <p className="mt-2 text-xs text-slate-500">
-              For urgent issues call ext. 2040, Mon–Fri 07:30–18:00.
+              For urgent issues call the IT support Desk, Mon–Fri 07:30–18:00.
             </p>
           </section>
         </aside>
@@ -870,7 +870,7 @@ function MyTickets() {
       >
         <Link
           to="/employee/report"
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#3155ff] px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+          className="inline-flex items-center gap-1 rounded-full bg-[#3155ff] px-2 py-2 text-xs font-semibold text-white hover:bg-blue-700"
         >
           <Plus size={14} /> Report a problem
         </Link>

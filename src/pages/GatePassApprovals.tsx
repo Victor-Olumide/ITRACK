@@ -493,7 +493,7 @@ export default function GatePassApprovals() {
             <button type="button" onClick={() => void passesQuery.refetch()} className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline">Retry</button>
           </div>
         ) : shown.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-500">No passes in “{filter}”.</p>
+          <p className="py-10 text-center text-sm text-slate-500">No passes in {filter} category.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] border-collapse text-[13px]">

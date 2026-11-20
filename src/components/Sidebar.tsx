@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { UserRole } from '../types/types'
+import { useGetDashboardSummaryQuery } from '../lib/api/dashboard/dashboard-api'
 import { useGetTicketsQuery } from '../lib/api/tickets/tickets-api'
 import {
   Drawer,
@@ -284,6 +285,10 @@ function SidebarContent({
   onToggleCollapse,
 }: SidebarContentProps) {
   const isEmployee = role === 'Employee'
+  const dashboardQuery = useGetDashboardSummaryQuery(undefined, {
+    skip: isEmployee || role === 'Security' || collapsed,
+  })
+  const slaGoal = dashboardQuery.data?.slaGoal
 
   return (
     <div className="flex h-full flex-col bg-[#101c52]">
@@ -294,16 +299,41 @@ function SidebarContent({
         onToggleCollapse={onToggleCollapse}
       />
 
-      {/* TODO(v2): Restore the SLA summary panel when the server exposes an SLA reporting contract. */}
+      {!isEmployee && role !== 'Security' && !collapsed && slaGoal && (
+        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/4 p-2.5">
+          <p className="text-xs text-slate-400">SLA met this month</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <p className="text-2xl font-bold text-white">
+              {slaGoal.metPercentage}%
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Target {slaGoal.targetPercentage}%
+            </p>
+          </div>
+          <div
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-label="SLA met this month"
+            aria-valuenow={slaGoal.metPercentage}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="h-full rounded-full bg-[#d2f54a]"
+              style={{ width: `${slaGoal.metPercentage}%` }}
+            />
+          </div>
+        </div>
+      )}
       {isEmployee && !collapsed && (
-        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/4 p-4">
+        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/4 p-2.5">
           <p className="text-xs font-semibold text-white">
             Need help fast?
           </p>
           <p className="mt-2 text-xs text-slate-300">
-            IT desk · ext. 2040
+            IT desk
           </p>
-          <p className="mt-1 text-[8px] text-slate-400">
+          <p className="mt-2 text-[8px] text-slate-400">
             Mon–Fri, 07:30–18:00
           </p>
         </div>

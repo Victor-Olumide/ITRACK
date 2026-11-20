@@ -215,8 +215,6 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
 
         <GlobalSearch role={role} />
 
-        <div className="flex-1" />
-
         <div className="relative shrink-0" ref={profileMenuRef}>
           <button
             ref={profileButtonRef}

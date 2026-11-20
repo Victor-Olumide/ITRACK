@@ -19,10 +19,10 @@ export function SessionSplash() {
       role="status"
       aria-live="polite"
     >
-      <div className="mb-8 flex flex-col items-center">
+      <div className="mb-6 flex flex-col items-center">
         <Logo size={64} />
 
-        <h1 className="mt-3 text-2xl font-bold tracking-tight text-[#0B184C]">
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#0B184C]">
           iTrack
         </h1>
       </div>
