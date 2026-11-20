@@ -268,7 +268,8 @@ function NotificationPreferencesSection({ role }: { role: UserRole }) {
                   onClick={() => void toggle(option.key, !checked)}
                   className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${checked ? 'bg-[#3155ff]' : 'bg-slate-300'}`}
                 >
-                  <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  {/* Anchored left: a button centres its content, which pushed the knob off the track. */}
+                  <span aria-hidden="true" className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </li>
             )
