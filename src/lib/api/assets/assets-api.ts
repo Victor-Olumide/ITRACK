@@ -146,6 +146,9 @@ export const assetsApi = appApi.injectEndpoints({
         method: 'POST',
         body: createAssetModelFormData(data),
       }),
+      // The server wraps the new record as { message, data }.
+      transformResponse: (response: AssetModelRecord | { data: AssetModelRecord }) =>
+        'data' in response ? response.data : response,
       invalidatesTags: [
         { type: 'Device', id: 'MODELS-ALL' },
         { type: 'Device', id: 'MODELS-LAPTOP' },
@@ -154,6 +157,22 @@ export const assetsApi = appApi.injectEndpoints({
         { type: 'Device', id: 'MODELS-NETWORK' },
         { type: 'Device', id: 'MODELS-OTHER' },
       ],
+    }),
+
+    updateAssetModel: builder.mutation<
+      AssetModelRecord,
+      { id: string; make?: string; model?: string; modelFile?: File | null; imageFile?: File | null }
+    >({
+      query: ({ id, make, model, modelFile, imageFile }) => {
+        const formData = new FormData();
+        if (make) formData.append('make', make);
+        if (model) formData.append('model', model);
+        if (modelFile) formData.append('modelFile', modelFile);
+        if (imageFile) formData.append('imageFile', imageFile);
+        return { url: `/assets/models/${id}`, method: 'PATCH', body: formData };
+      },
+      // Devices show their catalogue model's files, so device lists refresh too.
+      invalidatesTags: ['Device', 'Audit'],
     }),
 
     updateAsset: builder.mutation<
@@ -192,6 +211,7 @@ export const {
   useAllocateAssetTagMutation,
   useGetAssetModelsQuery,
   useCreateAssetModelMutation,
+  useUpdateAssetModelMutation,
   useUpdateAssetMutation,
   useRetireAssetMutation,
 } = assetsApi;

@@ -25,6 +25,8 @@ import type {
   CreateAssetRequest,
 } from '../lib/api/assets/types';
 import ModelViewer from '../components/ModelViewer';
+import ModelUploadForm from '../components/ModelUploadForm';
+import { Dialog, DialogContent } from '../components/ui/dialog';
 
 interface RegisterDevicePageProps {
   basePath?: string;
@@ -97,6 +99,7 @@ export default function RegisterDevicePage({
     notes: '',
   });
 
+  const [addingModel, setAddingModel] = useState(false);
   const [selectedModel, setSelectedModel] =
     useState<AssetModelRecord | null>(null);
 
@@ -453,6 +456,29 @@ export default function RegisterDevicePage({
                   disabled={isLoadingModels || modelsError === true}
                   options={(modelResponse?.data ?? []).map((item) => ({ value: item.id, label: `${item.make} ${item.model}` }))}
                 />
+                <button
+                  type="button"
+                  onClick={() => setAddingModel(true)}
+                  className="mt-2 text-xs font-semibold text-[#3155ff] hover:underline"
+                >
+                  + Model not listed? Add a new model with its 3D file and photo
+                </button>
+
+                <Dialog open={addingModel} onOpenChange={setAddingModel}>
+                  <DialogContent className="max-w-3xl">
+                    {addingModel && (
+                      <ModelUploadForm
+                        defaultType={form.type}
+                        lockType
+                        onDone={(model) => {
+                          setAddingModel(false)
+                          selectCatalogueModel(model)
+                        }}
+                        onCancel={() => setAddingModel(false)}
+                      />
+                    )}
+                  </DialogContent>
+                </Dialog>
 
                 {selectedModel && (
                   <div className="mt-2 flex items-center gap-3 rounded-md border border-blue-100 bg-blue-50/60 px-3 py-2">
