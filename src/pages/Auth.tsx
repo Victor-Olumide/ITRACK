@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, ReactNode, SubmitEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation, useNavigate, Link } from 'react-router'
 import Logo from '../components/Logo'
 import { homePathForRole, useAuth } from '../contexts/AuthContext'
 import { getLoginErrorMessage } from '../lib/api/auth/login-errors'
@@ -115,6 +115,10 @@ function LoginForm() {
           </button>
         }
       />
+
+      <Link to="/reset-password" className="-mt-2 self-end text-xs font-semibold text-blue-600 hover:text-blue-800">
+        Forgot password?
+      </Link>
 
       <button
         type="submit"

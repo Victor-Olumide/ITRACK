@@ -26,6 +26,7 @@ import { useChangePasswordMutation } from "../lib/api/auth/auth-api";
 import { getApiErrorMessage } from "../lib/api/error-message";
 import type { SubmitEvent } from "react";
 import GlobalSearch from "./GlobalSearch";
+import NotificationBell from "./NotificationBell";
 import { pathsForRole } from "../utils/role-paths";
 
 const initials = (name = "") =>
@@ -216,6 +217,8 @@ export default function Topbar({ onMenuClick, user, role }: TopbarProps) {
         <GlobalSearch role={role} />
 
         <div className="flex-1" />
+
+        <NotificationBell role={role} />
 
         <div className="relative shrink-0" ref={profileMenuRef}>
           <button
